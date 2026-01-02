@@ -1,0 +1,990 @@
+{
+  "stocks": [
+    {
+      "ticker": "A2M.AX",
+      "name": "The a2 Milk Company Ltd",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "AAA.AX",
+      "name": "Betashares Australian High Interest Cash ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "ABC.AX",
+      "name": "Adbri Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "ABP.AX",
+      "name": "Abacus Property Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "AFI.AX",
+      "name": "Australian Foundation Investment Company Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "AGL.AX",
+      "name": "AGL Energy Ltd",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "AIA.AX",
+      "name": "Auckland International Airport Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "ALD.AX",
+      "name": "Ampol Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "ALL.AX",
+      "name": "Aristocrat Leisure Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "ALQ.AX",
+      "name": "ALS Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "ALU.AX",
+      "name": "Altium Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "ALX.AX",
+      "name": "Atlas Arteria",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "AMC.AX",
+      "name": "Amcor Plc",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "AMP.AX",
+      "name": "AMP Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "ANN.AX",
+      "name": "Ansell Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "ANZ.AX",
+      "name": "Australia and New Zealand Banking Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "APA.AX",
+      "name": "APA Group",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "APE.AX",
+      "name": "Eagers Automotive Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "APX.AX",
+      "name": "Appen Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "ARB.AX",
+      "name": "ARB Corporation Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "ARG.AX",
+      "name": "Argo Investments Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "AST.AX",
+      "name": "Ausnet Services Ltd",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "ASX.AX",
+      "name": "ASX Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "AWC.AX",
+      "name": "Alumina Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "AZJ.AX",
+      "name": "Aurizon Holdings Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "BAP.AX",
+      "name": "Bapcor Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "BEN.AX",
+      "name": "Bendigo and Adelaide Bank Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "BGA.AX",
+      "name": "Bega Cheese Ltd",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "BHP.AX",
+      "name": "BHP Group Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "BIN.AX",
+      "name": "Bingo Industries Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "BKW.AX",
+      "name": "Brickworks Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "BLD.AX",
+      "name": "Boral Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "BOQ.AX",
+      "name": "Bank of Queensland Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "BPT.AX",
+      "name": "Beach Energy Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "BRG.AX",
+      "name": "Breville Group Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "BSL.AX",
+      "name": "Bluescope Steel Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "BWP.AX",
+      "name": "BWP Trust",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "BXB.AX",
+      "name": "Brambles Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "CAR.AX",
+      "name": "Carsales.com Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "CBA.AX",
+      "name": "Commonwealth Bank of Australia",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "CCL.AX",
+      "name": "Coca-Cola Amatil Ltd",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "CCP.AX",
+      "name": "Credit Corp Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "CDA.AX",
+      "name": "Codan Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "CGF.AX",
+      "name": "Challenger Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "CHC.AX",
+      "name": "Charter Hall Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "CHN.AX",
+      "name": "Chalice Mining Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "CIA.AX",
+      "name": "Champion Iron Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "CIM.AX",
+      "name": "Cimic Group Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "CLW.AX",
+      "name": "Charter Hall Long Wale REIT",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "CMW.AX",
+      "name": "Cromwell Property Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "CNU.AX",
+      "name": "Chorus Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "COH.AX",
+      "name": "Cochlear Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "COL.AX",
+      "name": "Coles Group Ltd",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "CPU.AX",
+      "name": "Computershare Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "CQR.AX",
+      "name": "Charter Hall Retail REIT",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "CSL.AX",
+      "name": "CSL Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "CSR.AX",
+      "name": "CSR Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "CTD.AX",
+      "name": "Corporate Travel Management Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "CWN.AX",
+      "name": "Crown Resorts Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "CWY.AX",
+      "name": "Cleanaway Waste Management Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "DEG.AX",
+      "name": "De Grey Mining Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "DHG.AX",
+      "name": "Domain Holdings Australia Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "DMP.AX",
+      "name": "Domino's Pizza Enterprises Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "DOW.AX",
+      "name": "Downer EDI Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "DRR.AX",
+      "name": "Deterra Royalties Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "DXS.AX",
+      "name": "Dexus",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "EBO.AX",
+      "name": "Ebos Group Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "ELD.AX",
+      "name": "Elders Ltd",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "EML.AX",
+      "name": "EML Payments Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "EVN.AX",
+      "name": "Evolution Mining Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "EVT.AX",
+      "name": "Event Hospitality and Entertainment Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "FBU.AX",
+      "name": "Fletcher Building Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "FLT.AX",
+      "name": "Flight Centre Travel Group Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "FMG.AX",
+      "name": "Fortescue Metals Group Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "FPH.AX",
+      "name": "Fisher & Paykel Healthcare Corporation Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "GMG.AX",
+      "name": "Goodman Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "GNE.AX",
+      "name": "Genesis Energy Ltd",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "GOZ.AX",
+      "name": "Growthpoint Properties Australia",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "GPT.AX",
+      "name": "GPT Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "GXY.AX",
+      "name": "Galaxy Resources Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "HLS.AX",
+      "name": "Healius Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "HVN.AX",
+      "name": "Harvey Norman Holdings Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "IAG.AX",
+      "name": "Insurance Australia Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "IEL.AX",
+      "name": "IDP Education Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "IFL.AX",
+      "name": "IOOF Holdings Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "IFT.AX",
+      "name": "Infratil Ltd",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "IGO.AX",
+      "name": "IGO Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "ILU.AX",
+      "name": "Iluka Resources Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "IOO.AX",
+      "name": "iShares Global 100 ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "IOZ.AX",
+      "name": "iShares Core S&P/ASX 200 ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "IPL.AX",
+      "name": "Incitec Pivot Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "IRE.AX",
+      "name": "Iress Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "IVV.AX",
+      "name": "iShares S&P 500 ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "JBH.AX",
+      "name": "JB Hi-Fi Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "JHX.AX",
+      "name": "James Hardie Industries Plc",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "LFG.AX",
+      "name": "Liberty Financial Group",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "LFS.AX",
+      "name": "Latitude Group Holdings Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "LLC.AX",
+      "name": "Lendlease Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "LNK.AX",
+      "name": "Link Administration Holdings Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "LYC.AX",
+      "name": "Lynas Rare Earths Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "MCY.AX",
+      "name": "Mercury NZ Ltd",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "MEZ.AX",
+      "name": "Meridian Energy Ltd",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "MFG.AX",
+      "name": "Magellan Financial Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "MGF.AX",
+      "name": "Magellan Global Fund",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "MGR.AX",
+      "name": "Mirvac Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "MIN.AX",
+      "name": "Mineral Resources Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "MLT.AX",
+      "name": "Milton Corporation Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "MP1.AX",
+      "name": "Megaport Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "MPL.AX",
+      "name": "Medibank Private Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "MQG.AX",
+      "name": "Macquarie Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "MTS.AX",
+      "name": "Metcash Ltd",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "NAB.AX",
+      "name": "National Australia Bank Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "NCM.AX",
+      "name": "Newcrest Mining Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "NEC.AX",
+      "name": "Nine Entertainment Co Holdings Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "NHF.AX",
+      "name": "nib Holdings Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "NIC.AX",
+      "name": "Nickel Mines Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "NSR.AX",
+      "name": "National Storage REIT",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "NST.AX",
+      "name": "Northern Star Resources Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "NUF.AX",
+      "name": "Nufarm Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "NWL.AX",
+      "name": "Netwealth Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "NXT.AX",
+      "name": "NEXTDC Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "ORA.AX",
+      "name": "Orora Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "ORE.AX",
+      "name": "Orocobre Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "ORG.AX",
+      "name": "Origin Energy Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "ORI.AX",
+      "name": "Orica Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "OSH.AX",
+      "name": "Oil Search Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "OZL.AX",
+      "name": "OZ Minerals Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "PBH.AX",
+      "name": "Pointsbet Holdings Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "PDL.AX",
+      "name": "Pendal Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "PLS.AX",
+      "name": "Pilbara Minerals Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "PME.AX",
+      "name": "Pro Medicus Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "PMV.AX",
+      "name": "Premier Investments Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "PNI.AX",
+      "name": "Pinnacle Investment Management Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "PNV.AX",
+      "name": "PolyNovo Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "PPT.AX",
+      "name": "Perpetual Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "PTM.AX",
+      "name": "Platinum Asset Management Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "QAN.AX",
+      "name": "Qantas Airways Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "QBE.AX",
+      "name": "QBE Insurance Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "QUB.AX",
+      "name": "Qube Holdings Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "REA.AX",
+      "name": "REA Group Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "REH.AX",
+      "name": "Reece Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "RHC.AX",
+      "name": "Ramsay Health Care Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "RIO.AX",
+      "name": "Rio Tinto Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "RMD.AX",
+      "name": "ResMed Inc",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "RRL.AX",
+      "name": "Regis Resources Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "RWC.AX",
+      "name": "Reliance Worldwide Corporation Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "S32.AX",
+      "name": "South32 Ltd",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "SCG.AX",
+      "name": "Scentre Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "SCP.AX",
+      "name": "Shopping Centres Australasia Property Group",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "SDF.AX",
+      "name": "Steadfast Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "SEK.AX",
+      "name": "Seek Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "SGM.AX",
+      "name": "Sims Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "SGP.AX",
+      "name": "Stockland",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "SGR.AX",
+      "name": "The Star Entertainment Group Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "SHL.AX",
+      "name": "Sonic Healthcare Ltd",
+      "sector": "Healthcare"
+    },
+    {
+      "ticker": "SKC.AX",
+      "name": "SkyCity Entertainment Group Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "SKI.AX",
+      "name": "Spark Infrastructure Group",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "SLK.AX",
+      "name": "SeaLink Travel Group Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "SNZ.AX",
+      "name": "Summerset Group Holdings Ltd",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "SOL.AX",
+      "name": "Washington H Soul Pattinson & Company Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "SPK.AX",
+      "name": "Spark New Zealand Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "STO.AX",
+      "name": "Santos Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "STW.AX",
+      "name": "SPDR S&P/ASX 200 Fund",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "SUL.AX",
+      "name": "Super Retail Group Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "SUN.AX",
+      "name": "Suncorp Group Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "SVW.AX",
+      "name": "Seven Group Holdings Ltd",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "SYD.AX",
+      "name": "Sydney Airport",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "TAH.AX",
+      "name": "Tabcorp Holdings Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "TCL.AX",
+      "name": "Transurban Group",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "TLS.AX",
+      "name": "Telstra Corporation Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "TLT.AX",
+      "name": "Tilt Renewables Ltd",
+      "sector": "Utilities"
+    },
+    {
+      "ticker": "TNE.AX",
+      "name": "Technology One Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "TPG.AX",
+      "name": "TPG Telecom Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "TWE.AX",
+      "name": "Treasury Wine Estates Ltd",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "TYR.AX",
+      "name": "Tyro Payments Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "VAP.AX",
+      "name": "Vanguard Australian Property Securities Index ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "VAS.AX",
+      "name": "Vanguard Australian Shares Index ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "VCX.AX",
+      "name": "Vicinity Centres",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "VEA.AX",
+      "name": "Viva Energy Group Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "VEU.AX",
+      "name": "Vanguard All-World Ex-US Shares Index ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "VGS.AX",
+      "name": "Vanguard MSCI Index International Shares ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "VOC.AX",
+      "name": "Vocus Group Ltd",
+      "sector": "Communication Services"
+    },
+    {
+      "ticker": "VTS.AX",
+      "name": "Vanguard US Total Market Shares Index ETF",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "VUK.AX",
+      "name": "Virgin Money UK Plc",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "WAM.AX",
+      "name": "WAM Capital Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "WBC.AX",
+      "name": "Westpac Banking Corporation",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "WEB.AX",
+      "name": "Webjet Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "WES.AX",
+      "name": "Wesfarmers Ltd",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "WOR.AX",
+      "name": "Worley Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "WOW.AX",
+      "name": "Woolworths Group Ltd",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "WPL.AX",
+      "name": "Woodside Petroleum Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "WPR.AX",
+      "name": "Waypoint REIT",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "WTC.AX",
+      "name": "WiseTech Global Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "XRO.AX",
+      "name": "Xero Ltd",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "YAL.AX",
+      "name": "Yancoal Australia Ltd",
+      "sector": "Energy"
+    },
+    {
+      "ticker": "Z1P.AX",
+      "name": "Zip Co Ltd",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "ZIM.AX",
+      "name": "Zimplats Holdings Ltd",
+      "sector": "Materials"
+    }
+  ],
+  "last_updated": "2026-01-02T15:56:25.998139Z"
+}

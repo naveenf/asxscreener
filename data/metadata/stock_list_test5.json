@@ -1,0 +1,30 @@
+{
+  "stocks": [
+    {
+      "ticker": "CBA.AX",
+      "name": "Commonwealth Bank",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "BHP.AX",
+      "name": "BHP Group",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "NAB.AX",
+      "name": "National Australia Bank",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "WES.AX",
+      "name": "Wesfarmers",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "CSL.AX",
+      "name": "CSL Limited",
+      "sector": "Healthcare"
+    }
+  ],
+  "last_updated": "2026-01-02T00:00:00Z"
+}

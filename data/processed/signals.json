@@ -1,0 +1,561 @@
+{
+  "generated_at": "2026-01-02T16:06:03.602851",
+  "total_stocks": 197,
+  "signals_count": 20,
+  "signals": [
+    {
+      "ticker": "SGR.AX",
+      "name": "The Star Entertainment Group Ltd",
+      "signal": "BUY",
+      "score": 100.0,
+      "current_price": 0.17,
+      "indicators": {
+        "ADX": 51.9,
+        "DIPlus": 46.43,
+        "DIMinus": 6.73,
+        "SMA200": 0.11,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "NSR.AX",
+      "name": "National Storage REIT",
+      "signal": "BUY",
+      "score": 98.89,
+      "current_price": 2.74,
+      "indicators": {
+        "ADX": 63.35,
+        "DIPlus": 35.53,
+        "DIMinus": 7.75,
+        "SMA200": 2.32,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "FLT.AX",
+      "name": "Flight Centre Travel Group Ltd",
+      "signal": "BUY",
+      "score": 94.21,
+      "current_price": 15.02,
+      "indicators": {
+        "ADX": 61.49,
+        "DIPlus": 29.38,
+        "DIMinus": 10.97,
+        "SMA200": 12.72,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "RIO.AX",
+      "name": "Rio Tinto Ltd",
+      "signal": "BUY",
+      "score": 90.7,
+      "current_price": 147.64,
+      "indicators": {
+        "ADX": 45.88,
+        "DIPlus": 35.65,
+        "DIMinus": 13.95,
+        "SMA200": 119.13,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "ZIM.AX",
+      "name": "Zimplats Holdings Ltd",
+      "signal": "BUY",
+      "score": 83.06,
+      "current_price": 22.91,
+      "indicators": {
+        "ADX": 39.0,
+        "DIPlus": 35.04,
+        "DIMinus": 11.43,
+        "SMA200": 16.06,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "NIC.AX",
+      "name": "Nickel Mines Ltd",
+      "signal": "BUY",
+      "score": 82.39,
+      "current_price": 0.9,
+      "indicators": {
+        "ADX": 35.92,
+        "DIPlus": 44.09,
+        "DIMinus": 9.58,
+        "SMA200": 0.7,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "IGO.AX",
+      "name": "IGO Ltd",
+      "signal": "BUY",
+      "score": 80.1,
+      "current_price": 8.24,
+      "indicators": {
+        "ADX": 37.71,
+        "DIPlus": 35.69,
+        "DIMinus": 14.77,
+        "SMA200": 5.01,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "APX.AX",
+      "name": "Appen Ltd",
+      "signal": "BUY",
+      "score": 79.77,
+      "current_price": 0.86,
+      "indicators": {
+        "ADX": 41.93,
+        "DIPlus": 35.8,
+        "DIMinus": 6.09,
+        "SMA200": 0.92,
+        "above_sma200": false
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Technology"
+    },
+    {
+      "ticker": "BWP.AX",
+      "name": "BWP Trust",
+      "signal": "BUY",
+      "score": 78.27,
+      "current_price": 3.95,
+      "indicators": {
+        "ADX": 38.61,
+        "DIPlus": 23.33,
+        "DIMinus": 8.31,
+        "SMA200": 3.56,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "CCL.AX",
+      "name": "Coca-Cola Amatil Ltd",
+      "signal": "BUY",
+      "score": 76.09,
+      "current_price": 4.42,
+      "indicators": {
+        "ADX": 33.71,
+        "DIPlus": 32.36,
+        "DIMinus": 9.45,
+        "SMA200": 3.34,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Consumer Staples"
+    },
+    {
+      "ticker": "SCP.AX",
+      "name": "Shopping Centres Australasia Property Group",
+      "signal": "BUY",
+      "score": 75.84,
+      "current_price": 0.1,
+      "indicators": {
+        "ADX": 38.67,
+        "DIPlus": 53.9,
+        "DIMinus": 22.53,
+        "SMA200": 0.14,
+        "above_sma200": false
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2025-12-29T00:00:00+11:00",
+      "sector": "Real Estate"
+    },
+    {
+      "ticker": "ANZ.AX",
+      "name": "Australia and New Zealand Banking Group Ltd",
+      "signal": "BUY",
+      "score": 73.14,
+      "current_price": 36.49,
+      "indicators": {
+        "ADX": 34.38,
+        "DIPlus": 25.22,
+        "DIMinus": 9.89,
+        "SMA200": 31.47,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "SGM.AX",
+      "name": "Sims Ltd",
+      "signal": "BUY",
+      "score": 70.02,
+      "current_price": 18.12,
+      "indicators": {
+        "ADX": 32.76,
+        "DIPlus": 24.1,
+        "DIMinus": 10.95,
+        "SMA200": 15.13,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "CHN.AX",
+      "name": "Chalice Mining Ltd",
+      "signal": "BUY",
+      "score": 69.37,
+      "current_price": 2.14,
+      "indicators": {
+        "ADX": 30.34,
+        "DIPlus": 35.58,
+        "DIMinus": 17.7,
+        "SMA200": 1.67,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Materials"
+    },
+    {
+      "ticker": "NAB.AX",
+      "name": "National Australia Bank Ltd",
+      "signal": "BUY",
+      "score": 68.15,
+      "current_price": 42.44,
+      "indicators": {
+        "ADX": 31.01,
+        "DIPlus": 27.07,
+        "DIMinus": 13.29,
+        "SMA200": 39.0,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "AMP.AX",
+      "name": "AMP Ltd",
+      "signal": "BUY",
+      "score": 66.25,
+      "current_price": 1.83,
+      "indicators": {
+        "ADX": 32.13,
+        "DIPlus": 22.83,
+        "DIMinus": 15.67,
+        "SMA200": 1.53,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "AIA.AX",
+      "name": "Auckland International Airport Ltd",
+      "signal": "BUY",
+      "score": 65.75,
+      "current_price": 7.23,
+      "indicators": {
+        "ADX": 30.36,
+        "DIPlus": 21.24,
+        "DIMinus": 10.63,
+        "SMA200": 7.03,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Industrials"
+    },
+    {
+      "ticker": "CGF.AX",
+      "name": "Challenger Ltd",
+      "signal": "BUY",
+      "score": 64.03,
+      "current_price": 9.53,
+      "indicators": {
+        "ADX": 30.46,
+        "DIPlus": 19.26,
+        "DIMinus": 12.35,
+        "SMA200": 8.05,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Financials"
+    },
+    {
+      "ticker": "WEB.AX",
+      "name": "Webjet Ltd",
+      "signal": "BUY",
+      "score": 62.05,
+      "current_price": 4.8,
+      "indicators": {
+        "ADX": 31.46,
+        "DIPlus": 23.47,
+        "DIMinus": 23.02,
+        "SMA200": 4.45,
+        "above_sma200": true
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Consumer Discretionary"
+    },
+    {
+      "ticker": "REH.AX",
+      "name": "Reece Ltd",
+      "signal": "BUY",
+      "score": 61.34,
+      "current_price": 13.39,
+      "indicators": {
+        "ADX": 32.18,
+        "DIPlus": 27.52,
+        "DIMinus": 10.28,
+        "SMA200": 13.42,
+        "above_sma200": false
+      },
+      "entry_conditions": {
+        "adx_above_30": true,
+        "di_plus_above_di_minus": true,
+        "fresh_crossover": false
+      },
+      "timestamp": "2026-01-02T00:00:00+11:00",
+      "sector": "Industrials"
+    }
+  ],
+  "errors": [
+    {
+      "ticker": "ABC.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "ABP.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "ALU.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "AST.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "AWC.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "BIN.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "BKW.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "BLD.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "CIM.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "CSR.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "CWN.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "DEG.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "DHG.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "GXY.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "IPL.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "LNK.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "MGF.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "MLT.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "NCM.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "ORE.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "OSH.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "OZL.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "PDL.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "PTM.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "SKI.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "SLK.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "SVW.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "SYD.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "TLT.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "VOC.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "VUK.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "WPL.AX",
+      "error": "CSV file not found"
+    },
+    {
+      "ticker": "Z1P.AX",
+      "error": "CSV file not found"
+    }
+  ]
+}

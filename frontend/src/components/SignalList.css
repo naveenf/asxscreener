@@ -1,0 +1,103 @@
+.signal-list-container {
+  width: 100%;
+}
+
+.loading {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+}
+
+.no-signals {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  border: 3px solid var(--color-secondary);
+}
+
+.no-signals h2 {
+  font-family: var(--font-header);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.no-signals p {
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+}
+
+.filters {
+  background: var(--color-bg-card);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--spacing-lg);
+  border: 3px solid var(--color-primary-dark);
+}
+
+.filter-label {
+  font-family: var(--font-header);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.score-slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--gradient-slider);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.score-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.score-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  border: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.signal-count {
+  font-size: 1.1rem;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-header);
+  margin-bottom: var(--spacing-lg);
+  letter-spacing: 1px;
+}
+
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .signal-grid {
+    grid-template-columns: 1fr;
+  }
+}
