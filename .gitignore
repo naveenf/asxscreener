@@ -61,3 +61,11 @@ download_log_*.txt
 # Data (optional - uncomment if you don't want to commit data)
 # data/raw/*.csv
 # data/processed/*.json
+
+# Generated data and backtest results
+data/processed/signals.json
+data/backtest_results/
+
+# Debug and test scripts
+debug_exit.py
+test_mean_reversion.py
