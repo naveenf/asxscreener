@@ -81,6 +81,30 @@
   box-shadow: var(--shadow-sm);
 }
 
+.strategy-select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-bg-sand);
+  color: var(--color-text-primary);
+  border: 2px solid var(--color-primary-dark);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition-normal);
+  min-width: 250px;
+}
+
+.strategy-select:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-bg-card);
+}
+
+.strategy-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(221, 176, 140, 0.2);
+}
+
 .signal-count {
   font-size: 1.1rem;
   color: var(--color-text-primary);

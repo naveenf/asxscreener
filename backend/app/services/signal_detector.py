@@ -10,6 +10,8 @@ import numpy as np
 from typing import Dict, Optional
 from datetime import datetime
 
+from .indicators import TechnicalIndicators
+
 
 class SignalDetector:
     """Detect trading signals and calculate scores."""
@@ -18,7 +20,11 @@ class SignalDetector:
         self,
         adx_threshold: float = 30.0,
         profit_target: float = 0.15,  # 15%
-        sma_period: int = 200
+        sma_period: int = 200,
+        volume_filter_enabled: bool = False,
+        volume_multiplier: float = 1.5,
+        atr_filter_enabled: bool = False,
+        atr_min_pct: float = 3.0
     ):
         """
         Initialize signal detector.
@@ -27,11 +33,19 @@ class SignalDetector:
             adx_threshold: ADX must be above this for entry (default 30)
             profit_target: Profit target as decimal (default 0.15 = 15%)
             sma_period: SMA period for scoring bonus (default 200)
+            volume_filter_enabled: Enable volume filter (default False)
+            volume_multiplier: Volume must be > this * SMA(20) (default 1.5)
+            atr_filter_enabled: Enable ATR volatility filter (default False)
+            atr_min_pct: Minimum ATR percentage (default 3.0%)
         """
         self.adx_threshold = adx_threshold
         self.profit_target = profit_target
         self.sma_period = sma_period
         self.sma_column = f'SMA{sma_period}'
+        self.volume_filter_enabled = volume_filter_enabled
+        self.volume_multiplier = volume_multiplier
+        self.atr_filter_enabled = atr_filter_enabled
+        self.atr_min_pct = atr_min_pct
 
     def detect_entry_signal(self, df: pd.DataFrame) -> Dict:
         """
@@ -70,7 +84,19 @@ class SignalDetector:
                 now_above = latest['DIPlus'] > latest['DIMinus']
                 fresh_crossover = was_below and now_above
 
-        has_signal = adx_above_threshold and di_plus_above_di_minus
+        # Apply volume filter
+        volume_ok = self._check_volume(df)
+
+        # Apply ATR filter
+        atr_ok = self._check_atr(df)
+
+        # All conditions must be met for entry signal
+        has_signal = (
+            adx_above_threshold and
+            di_plus_above_di_minus and
+            volume_ok and
+            atr_ok
+        )
 
         return {
             'has_signal': has_signal,
@@ -133,29 +159,114 @@ class SignalDetector:
 
         return min(score, 100.0)
 
+    def _check_volume(self, df: pd.DataFrame) -> bool:
+        """
+        Check if current volume meets filter criteria.
+
+        Volume filter logic:
+        - Volume must be > volume_multiplier * Volume_SMA
+        - Ensures institutional participation (not just retail noise)
+        - Avoids isolated volume spikes (sustained above-average volume)
+
+        Args:
+            df: DataFrame with Volume and Volume_SMA columns
+
+        Returns:
+            True if volume filter passes (or disabled), False otherwise
+        """
+        if not self.volume_filter_enabled:
+            return True  # Filter disabled, always pass
+
+        if 'Volume' not in df.columns or 'Volume_SMA' not in df.columns:
+            # Missing required data, pass to avoid false negatives
+            return True
+
+        latest = df.iloc[-1]
+
+        # Check if volume data is valid
+        if pd.isna(latest['Volume']) or pd.isna(latest['Volume_SMA']):
+            return True  # Can't filter without data, pass
+
+        # Volume must be above threshold
+        volume_threshold = latest['Volume_SMA'] * self.volume_multiplier
+        current_volume_ok = latest['Volume'] > volume_threshold
+
+        # Check for isolated spike (volume spike without sustained increase)
+        # Look back 2 bars to ensure it's not just a one-bar anomaly
+        sustained_volume = True
+        if len(df) >= 3:
+            prev_bars = df.iloc[-3:-1]  # Last 2 bars before current
+            if 'Volume_SMA' in prev_bars.columns:
+                # At least one of the previous 2 bars should have elevated volume
+                prev_volumes = prev_bars['Volume']
+                prev_smas = prev_bars['Volume_SMA']
+                elevated_count = sum(prev_volumes > prev_smas * self.volume_multiplier)
+                sustained_volume = elevated_count >= 1
+
+        return current_volume_ok and sustained_volume
+
+    def _check_atr(self, df: pd.DataFrame) -> bool:
+        """
+        Check if current volatility (ATR) meets filter criteria.
+
+        ATR filter logic:
+        - ATR% must be > atr_min_pct (default 3.0%)
+        - Ensures sufficient price movement to reach 15% profit target
+        - Low ATR stocks (<3%) unlikely to move enough in reasonable timeframe
+        - Too high ATR (>8%) indicates excessive volatility/risk
+
+        Args:
+            df: DataFrame with ATR_PCT column
+
+        Returns:
+            True if ATR filter passes (or disabled), False otherwise
+        """
+        if not self.atr_filter_enabled:
+            return True  # Filter disabled, always pass
+
+        if 'ATR_PCT' not in df.columns:
+            # Missing ATR data, pass to avoid false negatives
+            return True
+
+        latest = df.iloc[-1]
+
+        # Check if ATR data is valid
+        if pd.isna(latest['ATR_PCT']):
+            return True  # Can't filter without data, pass
+
+        # ATR percentage must be above minimum threshold
+        # This ensures the stock has enough volatility to reach profit targets
+        return latest['ATR_PCT'] >= self.atr_min_pct
+
     def detect_exit_signal(
         self,
         df: pd.DataFrame,
         entry_price: float,
-        current_index: Optional[int] = None
+        current_index: Optional[int] = None,
+        entry_index: Optional[int] = None
     ) -> Dict:
         """
         Detect exit signal for an existing position.
 
         Exit conditions:
         1. Price >= entry_price * (1 + profit_target) [15% profit]
-        2. OR DI+ crosses below DI- [trend reversal]
+        2. OR DI+ crosses below DI- at ANY point after entry [trend reversal]
 
         Args:
             df: DataFrame with indicators
             entry_price: Entry price for the position
             current_index: Index to check (default: latest)
+            entry_index: Index where position was entered (for crossover detection)
 
         Returns:
             Dict with exit information
         """
         if current_index is None:
             current_index = len(df) - 1
+
+        # CRITICAL FIX: Convert negative index to positive
+        if current_index < 0:
+            current_index = len(df) + current_index
 
         if current_index < 0 or current_index >= len(df):
             return {'has_exit': False, 'reason': 'Invalid index'}
@@ -167,15 +278,37 @@ class SignalDetector:
         profit_pct = (current_price - entry_price) / entry_price
         profit_target_hit = profit_pct >= self.profit_target
 
-        # Check for DI+ crossing below DI- (trend reversal)
+        # Check for DI+ crossing below DI- at ANY point after entry
         trend_reversal = False
-        if current_index > 0:
-            prev = df.iloc[current_index - 1]
-            if not (pd.isna(prev['DIPlus']) or pd.isna(prev['DIMinus']) or
-                    pd.isna(current['DIPlus']) or pd.isna(current['DIMinus'])):
-                was_above = prev['DIPlus'] >= prev['DIMinus']
-                now_below = current['DIPlus'] < current['DIMinus']
-                trend_reversal = was_above and now_below
+        reversal_date = None
+
+        if entry_index is not None and entry_index >= 0:
+            # NEW LOGIC: Scan from entry to current for any crossunder
+            # Use TechnicalIndicators.detect_crossunder helper
+            df_slice = df.iloc[entry_index:current_index+1].copy()
+
+            if len(df_slice) > 1:
+                crossunders = TechnicalIndicators.detect_crossunder(
+                    df_slice['DIPlus'],
+                    df_slice['DIMinus']
+                )
+
+                # Check if any crossunder occurred
+                if crossunders.any():
+                    trend_reversal = True
+                    # Find first crossunder date
+                    crossunder_indices = crossunders[crossunders == True].index
+                    if len(crossunder_indices) > 0:
+                        reversal_date = crossunder_indices[0]
+        else:
+            # FALLBACK: Old logic if entry_index not provided (backward compatibility)
+            if current_index > 0:
+                prev = df.iloc[current_index - 1]
+                if not (pd.isna(prev['DIPlus']) or pd.isna(prev['DIMinus']) or
+                        pd.isna(current['DIPlus']) or pd.isna(current['DIMinus'])):
+                    was_above = prev['DIPlus'] >= prev['DIMinus']
+                    now_below = current['DIPlus'] < current['DIMinus']
+                    trend_reversal = was_above and now_below
 
         has_exit = profit_target_hit or trend_reversal
 
@@ -192,6 +325,7 @@ class SignalDetector:
             'profit_pct': float(profit_pct * 100),  # as percentage
             'profit_target_hit': profit_target_hit,
             'trend_reversal': trend_reversal,
+            'reversal_date': reversal_date,  # NEW - for debugging
             'date': current.name
         }
 
@@ -223,6 +357,7 @@ class SignalDetector:
             'ticker': ticker,
             'name': name or ticker,
             'signal': 'BUY',
+            'strategy': 'trend_following',
             'score': round(score, 2),
             'current_price': round(signal_info['close'], 2),
             'indicators': {

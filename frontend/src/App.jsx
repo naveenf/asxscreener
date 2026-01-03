@@ -16,6 +16,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [minScore, setMinScore] = useState(0);
+  const [strategyFilter, setStrategyFilter] = useState('all');
   const [error, setError] = useState(null);
 
   // Load data
@@ -64,6 +65,11 @@ function App() {
     return () => clearInterval(interval);
   }, [minScore]);
 
+  // Filter signals by strategy
+  const filteredSignals = strategyFilter === 'all'
+    ? signals
+    : signals.filter(signal => signal.strategy === strategyFilter);
+
   return (
     <div className="app">
       <Header
@@ -80,15 +86,17 @@ function App() {
         )}
 
         <SignalList
-          signals={signals}
+          signals={filteredSignals}
           loading={loading}
           minScore={minScore}
           onMinScoreChange={setMinScore}
+          strategyFilter={strategyFilter}
+          onStrategyFilterChange={setStrategyFilter}
         />
       </main>
 
       <footer className="footer">
-        <p>ASX Stock Screener - ADX/DI Strategy | Entry: ADX &gt; 30 &amp; DI+ &gt; DI- | Exit: 15% profit or DI+ &lt; DI-</p>
+        <p>ASX Stock Screener - Dual Strategy | 📈 Trend: ADX &gt; 30 &amp; DI+ &gt; DI- | 📉 Mean Rev: Price &gt; BB Upper &amp; RSI &gt; 70</p>
       </footer>
     </div>
   );

@@ -197,3 +197,36 @@
   background-color: var(--color-badge-primary-bg);
   color: var(--color-badge-primary-text);
 }
+
+.badge-warning {
+  background-color: #f59e0b;
+  color: #1a1a1a;
+}
+
+.badge-secondary {
+  background-color: #6b7280;
+  color: #f3f4f6;
+}
+
+/* Strategy Badge Styles */
+.strategy-badge {
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-header);
+  letter-spacing: 0.5px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  margin-left: var(--spacing-sm);
+}
+
+.strategy-badge.trend {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.strategy-badge.mean-rev {
+  background-color: #f59e0b;
+  color: #1a1a1a;
+}

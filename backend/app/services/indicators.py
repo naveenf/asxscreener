@@ -153,6 +153,145 @@ class TechnicalIndicators:
         return df[column].rolling(window=period).mean()
 
     @staticmethod
+    def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+        """
+        Calculate Average True Range (ATR) using Wilder's smoothing.
+
+        ATR measures volatility by considering the true range of price movement.
+        Essential for position trading to ensure sufficient price movement potential.
+
+        Args:
+            df: DataFrame with OHLC data
+            period: ATR period (default 14, Wilder's standard)
+
+        Returns:
+            Series with ATR values
+        """
+        # Calculate True Range (already have this method)
+        tr = TechnicalIndicators.calculate_true_range(df)
+
+        # Apply Wilder's smoothing (EMA with alpha = 1/period)
+        atr = tr.ewm(alpha=1/period, adjust=False).mean()
+
+        return atr
+
+    @staticmethod
+    def calculate_atr_percent(df: pd.DataFrame, period: int = 14) -> pd.Series:
+        """
+        Calculate ATR as percentage of price.
+
+        More useful for cross-stock comparison and filtering.
+
+        Args:
+            df: DataFrame with OHLC data
+            period: ATR period (default 14)
+
+        Returns:
+            Series with ATR percentage values
+        """
+        atr = TechnicalIndicators.calculate_atr(df, period)
+        atr_pct = (atr / df['Close']) * 100
+        return atr_pct
+
+    @staticmethod
+    def calculate_volume_sma(df: pd.DataFrame, period: int = 20) -> pd.Series:
+        """
+        Calculate Volume Simple Moving Average.
+
+        Used to identify above-average volume periods which indicate
+        institutional participation and more sustainable trends.
+
+        Args:
+            df: DataFrame with Volume column
+            period: Volume SMA period (default 20)
+
+        Returns:
+            Series with Volume SMA values
+        """
+        if 'Volume' not in df.columns:
+            raise ValueError("DataFrame must contain 'Volume' column")
+
+        return df['Volume'].rolling(window=period).mean()
+
+    @staticmethod
+    def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+        """
+        Calculate Relative Strength Index (RSI).
+
+        RSI measures the magnitude of recent price changes to evaluate
+        overbought or oversold conditions. Values range from 0-100.
+        - RSI > 70: Overbought (potential reversal down)
+        - RSI < 30: Oversold (potential reversal up)
+
+        Uses Wilder's smoothing method (same as ADX) for consistency.
+
+        Args:
+            df: DataFrame with Close column
+            period: RSI period (default 14)
+
+        Returns:
+            Series with RSI values (0-100)
+        """
+        if 'Close' not in df.columns:
+            raise ValueError("DataFrame must contain 'Close' column")
+
+        # Calculate price changes
+        delta = df['Close'].diff()
+
+        # Separate gains and losses
+        gain = delta.where(delta > 0, 0)
+        loss = -delta.where(delta < 0, 0)
+
+        # Use Wilder's smoothing (EMA with alpha=1/period)
+        avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()
+
+        # Calculate RS and RSI
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+
+        return rsi
+
+    @staticmethod
+    def calculate_bollinger_bands(
+        df: pd.DataFrame,
+        period: int = 20,
+        std_dev: float = 2.0
+    ) -> tuple[pd.Series, pd.Series, pd.Series]:
+        """
+        Calculate Bollinger Bands.
+
+        Bollinger Bands consist of:
+        - Middle Band: Simple Moving Average (SMA)
+        - Upper Band: Middle Band + (std_dev * standard deviation)
+        - Lower Band: Middle Band - (std_dev * standard deviation)
+
+        Price touching or exceeding bands indicates overbought/oversold conditions.
+
+        Args:
+            df: DataFrame with Close column
+            period: Period for middle band SMA (default 20)
+            std_dev: Number of standard deviations (default 2.0)
+
+        Returns:
+            Tuple of (middle_band, upper_band, lower_band) Series
+        """
+        if 'Close' not in df.columns:
+            raise ValueError("DataFrame must contain 'Close' column")
+
+        # Middle band is SMA
+        middle_band = df['Close'].rolling(window=period).mean()
+
+        # Standard deviation
+        rolling_std = df['Close'].rolling(window=period).std()
+
+        # Upper and lower bands
+        upper_band = middle_band + (rolling_std * std_dev)
+        lower_band = middle_band - (rolling_std * std_dev)
+
+        return middle_band, upper_band, lower_band
+
+    @staticmethod
     def detect_crossover(series1: pd.Series, series2: pd.Series) -> pd.Series:
         """
         Detect when series1 crosses above series2.
@@ -182,7 +321,12 @@ class TechnicalIndicators:
     def add_all_indicators(
         df: pd.DataFrame,
         adx_period: int = 14,
-        sma_period: int = 200
+        sma_period: int = 200,
+        atr_period: int = 14,
+        volume_period: int = 20,
+        rsi_period: int = 14,
+        bb_period: int = 20,
+        bb_std_dev: float = 2.0
     ) -> pd.DataFrame:
         """
         Add all indicators to DataFrame in one call.
@@ -191,9 +335,14 @@ class TechnicalIndicators:
             df: DataFrame with OHLC data
             adx_period: Period for ADX calculation (default 14)
             sma_period: Period for SMA calculation (default 200)
+            atr_period: Period for ATR calculation (default 14)
+            volume_period: Period for Volume SMA calculation (default 20)
+            rsi_period: Period for RSI calculation (default 14)
+            bb_period: Period for Bollinger Bands (default 20)
+            bb_std_dev: Standard deviations for Bollinger Bands (default 2.0)
 
         Returns:
-            DataFrame with ADX, DIPlus, DIMinus, SMA200 columns added
+            DataFrame with all technical indicators added
         """
         # Add ADX indicators
         df = TechnicalIndicators.calculate_adx(df, period=adx_period)
@@ -202,6 +351,24 @@ class TechnicalIndicators:
         df[f'SMA{sma_period}'] = TechnicalIndicators.calculate_sma(
             df, column='Close', period=sma_period
         )
+
+        # Add ATR indicators
+        df['ATR'] = TechnicalIndicators.calculate_atr(df, period=atr_period)
+        df['ATR_PCT'] = TechnicalIndicators.calculate_atr_percent(df, period=atr_period)
+
+        # Add Volume SMA
+        df['Volume_SMA'] = TechnicalIndicators.calculate_volume_sma(df, period=volume_period)
+
+        # Add RSI
+        df['RSI'] = TechnicalIndicators.calculate_rsi(df, period=rsi_period)
+
+        # Add Bollinger Bands
+        bb_middle, bb_upper, bb_lower = TechnicalIndicators.calculate_bollinger_bands(
+            df, period=bb_period, std_dev=bb_std_dev
+        )
+        df['BB_Middle'] = bb_middle
+        df['BB_Upper'] = bb_upper
+        df['BB_Lower'] = bb_lower
 
         return df
 

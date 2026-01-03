@@ -20,11 +20,29 @@ class Settings(BaseSettings):
 
     # Indicator settings
     ADX_PERIOD: int = 14
-    ADX_THRESHOLD: float = 30.0
+    ADX_THRESHOLD: float = 30.0  # OPTIMAL: Strong trend requirement
     SMA_PERIOD: int = 200
 
     # Trading parameters
-    PROFIT_TARGET: float = 0.15  # 15%
+    PROFIT_TARGET: float = 0.15  # 15% profit target
+
+    # Volume filter settings
+    VOLUME_FILTER_ENABLED: bool = False  # OPTIMAL: Disabled
+    VOLUME_MULTIPLIER: float = 1.5  # Volume must be > 1.5x SMA(20)
+    VOLUME_PERIOD: int = 20
+
+    # ATR (volatility) filter settings
+    ATR_FILTER_ENABLED: bool = True  # OPTIMAL: Enabled
+    ATR_MIN_PCT: float = 5.0  # OPTIMAL: 5% minimum volatility
+    ATR_PERIOD: int = 14
+
+    # Mean Reversion strategy settings
+    MEAN_REVERSION_ENABLED: bool = True
+    RSI_THRESHOLD: float = 70.0  # RSI must be > 70 for entry
+    RSI_PERIOD: int = 14
+    BB_PERIOD: int = 20  # Bollinger Bands period
+    BB_STD_DEV: float = 2.0  # Bollinger Bands standard deviations
+    MEAN_REVERSION_PROFIT_TARGET: float = 0.07  # 7% profit target
 
     # Data settings
     MIN_HISTORY_DAYS: int = 365
