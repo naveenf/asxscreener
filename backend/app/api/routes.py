@@ -13,8 +13,14 @@ from datetime import datetime
 from ..models.stock import SignalResponse, ScreenerStatus, SignalsListResponse
 from ..config import settings
 from ..services.screener import StockScreener
+from . import auth  # Import auth router
+from . import portfolio  # Import portfolio router
 
 router = APIRouter()
+
+# Include routers
+router.include_router(auth.router)
+router.include_router(portfolio.router)
 
 
 def load_signals() -> dict:

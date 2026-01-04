@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     API_DESCRIPTION: str = "ADX/DI based stock screening for ASX"
     API_VERSION: str = "1.0.0"
     CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000"]
+    
+    # Auth settings
+    GOOGLE_CLIENT_ID: str = ""  # Required for frontend-driven auth
 
     class Config:
         env_file = ".env"

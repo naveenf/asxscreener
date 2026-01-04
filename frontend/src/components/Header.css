@@ -92,6 +92,57 @@
   cursor: not-allowed;
 }
 
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-right: var(--spacing-sm);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.user-name {
+  font-size: 0.85rem;
+  color: var(--color-text-white);
+  font-weight: var(--font-weight-bold);
+}
+
+.logout-button {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.logout-button:hover {
+  color: var(--color-primary);
+}
+
+.portfolio-button {
+  background-color: var(--color-secondary);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: var(--transition-default);
+}
+
+.portfolio-button:hover {
+  background-color: #3d4a5c;
+  transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;

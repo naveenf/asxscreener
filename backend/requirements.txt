@@ -9,3 +9,9 @@ pydantic-settings>=2.1.0
 python-dotenv>=1.0.0
 pytest>=8.0.0
 python-multipart>=0.0.6
+SQLAlchemy>=2.0.0
+google-auth>=2.27.0
+requests>=2.31.0
+python-jose[cryptography]>=3.3.0
+firebase-admin>=6.4.0
+

@@ -5,9 +5,13 @@
  */
 
 import React from 'react';
+import { GoogleLogin } from '@react-oauth/google';
+import { useAuth } from '../context/AuthContext';
 import './Header.css';
 
-function Header({ status, onRefresh, refreshing }) {
+function Header({ status, onRefresh, refreshing, onShowPortfolio }) {
+  const { user, login, logout } = useAuth();
+
   return (
     <header className="header">
       <div className="header-content">
@@ -28,6 +32,27 @@ function Header({ status, onRefresh, refreshing }) {
                 <span className="value">{status.total_stocks}</span>
               </div>
             </div>
+          )}
+
+          {user ? (
+            <div className="user-profile">
+              <button className="portfolio-button" onClick={onShowPortfolio}>Portfolio</button>
+              <div className="user-info">
+                <span className="user-name">{user.name}</span>
+                <button className="logout-button" onClick={logout}>Logout</button>
+              </div>
+            </div>
+          ) : (
+            <GoogleLogin
+              onSuccess={credentialResponse => {
+                login(credentialResponse);
+              }}
+              onError={() => {
+                console.log('Login Failed');
+              }}
+              theme="filled_blue"
+              shape="pill"
+            />
           )}
 
           <button

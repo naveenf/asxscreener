@@ -1,0 +1,55 @@
+.add-modal {
+  max-width: 450px;
+}
+
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.form-group input, .form-group textarea {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-family: var(--font-body);
+}
+
+.form-group input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.submit-btn {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: var(--radius-pill);
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: var(--spacing-md);
+  transition: transform 0.2s;
+}
+
+.submit-btn:hover {
+  transform: scale(1.02);
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+}

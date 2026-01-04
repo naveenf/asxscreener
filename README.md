@@ -206,3 +206,22 @@ Base score: 50
 + Fresh crossover: 0
 Total: 67.63 ≈ 67.6
 ```
+
+## Cloud Sync & Portfolio (New)
+
+The application now supports user portfolios synchronized across devices using Google Firebase.
+
+### Setup Instructions
+
+1.  **Google OAuth**:
+    *   Set `GOOGLE_CLIENT_ID` in `backend/.env`.
+2.  **Firebase Database**:
+    *   Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com).
+    *   Enable **Firestore Database**.
+    *   Go to **Project Settings > Service Accounts** and generate a new private key.
+    *   Save the JSON file as `backend/serviceAccountKey.json`.
+
+### Features
+- **Persistent Portfolio**: Your stocks, buy dates, and transaction details are saved in the cloud.
+- **Cross-Device Sync**: Log in with the same Gmail on any computer to see your portfolio.
+- **Google Login**: Secure authentication without needing a new password.

@@ -6,9 +6,11 @@
  */
 
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import './SignalCard.css';
 
-function SignalCard({ signal }) {
+function SignalCard({ signal, onAdd }) {
+  const { user } = useAuth();
   const getScoreClass = (score) => {
     if (score >= 70) return 'score-high';
     if (score >= 50) return 'score-medium';
@@ -104,8 +106,11 @@ function SignalCard({ signal }) {
         <span className="strategy-badge active">
           {getStrategyName()}
         </span>
-        {/* Simplified Badges Logic could go here if needed, 
-            keeping it minimal for the Pro Look */}
+        {user && (
+          <button className="add-portfolio-btn" onClick={() => onAdd(signal)}>
+            + Portfolio
+          </button>
+        )}
       </div>
     </div>
   );

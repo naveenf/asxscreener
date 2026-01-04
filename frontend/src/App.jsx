@@ -8,6 +8,8 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import SignalList from './components/SignalList';
+import Portfolio from './components/Portfolio';
+import AddStockModal from './components/AddStockModal';
 import { fetchSignals, fetchStatus, triggerRefresh } from './services/api';
 import './App.css';
 
@@ -19,6 +21,10 @@ function App() {
   const [minScore, setMinScore] = useState(0);
   const [strategyFilter, setStrategyFilter] = useState('all');
   const [error, setError] = useState(null);
+  
+  // Modal states
+  const [showPortfolio, setShowPortfolio] = useState(false);
+  const [selectedStockToAdd, setSelectedStockToAdd] = useState(null);
 
   // Load data
   const loadData = async () => {
@@ -86,6 +92,7 @@ function App() {
         status={status}
         onRefresh={handleRefresh}
         refreshing={refreshing}
+        onShowPortfolio={() => setShowPortfolio(true)}
       />
 
       <main className="main-content">
@@ -102,8 +109,24 @@ function App() {
           onMinScoreChange={setMinScore}
           strategyFilter={strategyFilter}
           onStrategyFilterChange={setStrategyFilter}
+          onAddStock={(stock) => setSelectedStockToAdd(stock)}
         />
       </main>
+
+      {showPortfolio && (
+        <Portfolio onClose={() => setShowPortfolio(false)} />
+      )}
+
+      {selectedStockToAdd && (
+        <AddStockModal 
+          stock={selectedStockToAdd} 
+          onClose={() => setSelectedStockToAdd(null)}
+          onAdded={() => {
+            alert('Stock added to portfolio!');
+            setShowPortfolio(true);
+          }}
+        />
+      )}
 
       <footer className="footer">
         <p>ASX Stock Screener Pro</p>

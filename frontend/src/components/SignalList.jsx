@@ -9,7 +9,7 @@ import React from 'react';
 import SignalCard from './SignalCard';
 import './SignalList.css';
 
-function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilter, onStrategyFilterChange }) {
+function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilter, onStrategyFilterChange, onAddStock }) {
   if (loading) {
     return (
       <div className="signal-list-container">
@@ -69,7 +69,11 @@ function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilt
       ) : (
         <div className="signal-grid">
           {signals.map((signal) => (
-            <SignalCard key={`${signal.ticker}-${signal.strategy}`} signal={signal} />
+            <SignalCard 
+              key={`${signal.ticker}-${signal.strategy}`} 
+              signal={signal} 
+              onAdd={onAddStock}
+            />
           ))}
         </div>
       )}
