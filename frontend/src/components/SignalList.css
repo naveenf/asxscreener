@@ -5,7 +5,6 @@
 .loading {
   text-align: center;
   padding: var(--spacing-2xl);
-  font-size: 1.2rem;
   color: var(--color-text-secondary);
 }
 
@@ -13,114 +12,114 @@
   text-align: center;
   padding: var(--spacing-2xl);
   background: var(--color-bg-card);
+  border: var(--border-card);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  border: 3px solid var(--color-secondary);
-}
-
-.no-signals h2 {
-  font-family: var(--font-header);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-sm);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-
-.no-signals p {
   color: var(--color-text-secondary);
-  font-size: 1rem;
 }
 
+/* Filters Panel - Dark Container from Reference */
 .filters {
-  background: var(--color-bg-card);
-  padding: var(--spacing-lg);
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-secondary); /* Cocoa border */
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  margin-bottom: var(--spacing-lg);
-  border: 3px solid var(--color-primary-dark);
+  padding: 24px 32px;
+  margin-bottom: var(--spacing-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-width: 300px;
 }
 
 .filter-label {
-  font-family: var(--font-header);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 1px;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-bold);
 }
 
+/* Custom Slider - Reference Style */
 .score-slider {
   width: 100%;
-  height: 8px;
-  border-radius: 4px;
-  background: var(--gradient-slider);
+  height: 6px;
+  background: #3D3030; /* Darker track */
+  border-radius: var(--radius-pill);
   outline: none;
   -webkit-appearance: none;
+  cursor: pointer;
 }
 
 .score-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  appearance: none;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
+  background: var(--color-text-primary); /* Latte/White Thumb */
   border-radius: 50%;
-  background: var(--color-primary);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  cursor: grab;
+  box-shadow: 0 0 0 4px var(--color-bg-panel); /* Fake spacing */
+  transition: transform 0.1s;
 }
 
-.score-slider::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+.score-slider::-webkit-slider-thumb:active {
+  transform: scale(1.1);
   background: var(--color-primary);
-  cursor: pointer;
-  border: none;
-  box-shadow: var(--shadow-sm);
 }
 
+/* Dropdown - Dark Style */
 .strategy-select {
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--color-bg-sand);
+  background-color: #0A0808; /* Near Black */
   color: var(--color-text-primary);
-  border: 2px solid var(--color-primary-dark);
+  border: 1px solid var(--color-secondary);
+  padding: 10px 16px;
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: var(--transition-normal);
-  min-width: 250px;
-}
-
-.strategy-select:hover {
-  border-color: var(--color-primary);
-  background-color: var(--color-bg-card);
+  outline: none;
 }
 
 .strategy-select:focus {
-  outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(221, 176, 140, 0.2);
+}
+
+/* Section Header */
+.section-header {
+  margin-bottom: var(--spacing-lg);
 }
 
 .signal-count {
-  font-size: 1.1rem;
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-bold);
-  font-family: var(--font-header);
-  margin-bottom: var(--spacing-lg);
+  font-family: var(--font-brand);
+  color: var(--color-primary); /* Rust Orange */
+  font-size: 1.5rem;
+  text-transform: uppercase;
   letter-spacing: 1px;
+  margin: 0;
 }
 
 .signal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: var(--spacing-lg);
 }
 
 @media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--spacing-md);
+  }
+  
   .signal-grid {
     grid-template-columns: 1fr;
   }

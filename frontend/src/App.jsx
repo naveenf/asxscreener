@@ -2,6 +2,7 @@
  * Main App Component
  *
  * Root component for the ASX Stock Screener application.
+ * Updated for "Dark Mode Pro" layout.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -70,6 +71,15 @@ function App() {
     ? signals
     : signals.filter(signal => signal.strategy === strategyFilter);
 
+  const formatLastUpdated = (dateString) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   return (
     <div className="app">
       <Header
@@ -96,7 +106,15 @@ function App() {
       </main>
 
       <footer className="footer">
-        <p>ASX Stock Screener - Dual Strategy | 📈 Trend: ADX &gt; 30 &amp; DI+ &gt; DI- | 📉 Mean Rev: Price &gt; BB Upper &amp; RSI &gt; 70</p>
+        <p>ASX Stock Screener Pro</p>
+        <p style={{ fontSize: '0.8rem', marginTop: '4px', color: 'var(--color-text-muted)' }}>
+          Strategies: Trend (ADX &gt; 30) • Mean Reversion (RSI &gt; 70)
+        </p>
+        {status?.last_updated && (
+          <p style={{ marginTop: '8px', fontFamily: 'var(--font-body)' }}>
+            Last Updated: {formatLastUpdated(status.last_updated)}
+          </p>
+        )}
       </footer>
     </div>
   );

@@ -66,6 +66,7 @@ download_log_*.txt
 # Generated data and backtest results
 data/processed/signals.json
 data/backtest_results/
+data/raw/
 
 # Debug and test scripts
 debug_exit.py
