@@ -7,10 +7,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import axios from 'axios';
 import Header from './components/Header';
 import SignalList from './components/SignalList';
 import Portfolio from './components/Portfolio';
 import AddStockModal from './components/AddStockModal';
+import Toast from './components/Toast';
 import { fetchSignals, fetchStatus, triggerRefresh } from './services/api';
 import './App.css';
 
@@ -22,12 +24,33 @@ function App() {
   const [minScore, setMinScore] = useState(0);
   const [strategyFilter, setStrategyFilter] = useState('all');
   const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
   
   // Modal states
   const [selectedStockToAdd, setSelectedStockToAdd] = useState(null);
   
   // Key to force refresh of Portfolio component when stock is added
   const [portfolioKey, setPortfolioKey] = useState(0);
+
+  const handleAddToWatchlist = async (signal) => {
+    try {
+      const token = localStorage.getItem('google_token');
+      if (!token) {
+        setToast({ message: 'Please login to add to watchlist', type: 'error' });
+        return;
+      }
+      await axios.post('/api/watchlist', { 
+        ticker: signal.ticker,
+        notes: `Added from screener: ${signal.strategy}`
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setToast({ message: `${signal.ticker} added to watchlist!`, type: 'success' });
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Failed to add to watchlist';
+      setToast({ message: msg, type: 'error' });
+    }
+  };
 
   // Load data
   const loadData = async () => {
@@ -83,7 +106,11 @@ function App() {
   const formatLastUpdated = (dateString) => {
     if (!dateString) return '';
     try {
-      return new Date(dateString).toLocaleString();
+      return new Date(dateString).toLocaleString('en-AU', {
+        timeZone: 'Australia/Sydney',
+        dateStyle: 'short',
+        timeStyle: 'medium'
+      });
     } catch (e) {
       return dateString;
     }
@@ -114,12 +141,14 @@ function App() {
               strategyFilter={strategyFilter}
               onStrategyFilterChange={setStrategyFilter}
               onAddStock={(stock) => setSelectedStockToAdd(stock)}
+              onAddWatchlist={handleAddToWatchlist}
             />
           } />
           <Route path="/portfolio" element={
             <Portfolio 
               key={portfolioKey} 
-              onAddStock={() => setSelectedStockToAdd({})} 
+              onAddStock={(stock) => setSelectedStockToAdd(stock)} 
+              onShowToast={setToast}
             />
           } />
         </Routes>
@@ -129,10 +158,20 @@ function App() {
         <AddStockModal 
           stock={selectedStockToAdd} 
           onClose={() => setSelectedStockToAdd(null)}
-          onAdded={() => {
-            alert('Stock added to portfolio!');
+          onAdded={(msg) => {
+            setToast({ message: msg || 'Stock added to portfolio!', type: 'success' });
             setPortfolioKey(prev => prev + 1);
           }}
+          onError={(msg) => setToast({ message: msg, type: 'error' })}
+        />
+      )}
+
+      {toast && (
+        <Toast 
+          key={Date.now()}
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
         />
       )}
 

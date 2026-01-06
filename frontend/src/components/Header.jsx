@@ -51,16 +51,19 @@ function Header({ status, onRefresh, refreshing }) {
               </div>
             </div>
           ) : (
-            <GoogleLogin
-              onSuccess={credentialResponse => {
-                login(credentialResponse);
-              }}
-              onError={(error) => {
-                console.error('Google Login Failed:', error);
-              }}
-              theme="filled_blue"
-              shape="pill"
-            />
+            <div className="guest-login">
+              <span className="login-hint">Log in to track Portfolio & Watchlist</span>
+              <GoogleLogin
+                onSuccess={credentialResponse => {
+                  login(credentialResponse);
+                }}
+                onError={(error) => {
+                  console.error('Google Login Failed:', error);
+                }}
+                theme="filled_blue"
+                shape="pill"
+              />
+            </div>
           )}
 
           <button

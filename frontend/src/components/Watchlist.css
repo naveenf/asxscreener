@@ -1,0 +1,102 @@
+.watchlist-section {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 2px solid rgba(255, 255, 255, 0.05);
+}
+
+.watchlist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.watchlist-header h2 {
+  font-family: var(--font-brand);
+  color: var(--color-primary);
+  margin: 0;
+  letter-spacing: 2px;
+  font-size: 1.5rem;
+}
+
+.add-watchlist-btn {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-bold);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: var(--transition-default);
+}
+
+.add-watchlist-btn:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.watchlist-table-container {
+  overflow-x: auto;
+  background-color: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-secondary);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.watchlist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+
+.watchlist-table th {
+  text-align: left;
+  padding: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.watchlist-table td {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--color-text-white);
+  vertical-align: middle;
+}
+
+.watchlist-table .ticker {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.change-cell {
+  font-weight: bold;
+}
+
+.change-cell.positive { color: #4cd964; }
+.change-cell.negative { color: #ff3b30; }
+
+.change-cell .percent {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  font-weight: normal;
+}
+
+.days-cell {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.empty-watchlist {
+  text-align: center;
+  padding: 30px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}

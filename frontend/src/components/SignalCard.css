@@ -141,6 +141,28 @@
   align-items: center;
 }
 
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.add-watchlist-btn-small {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-watchlist-btn-small:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
 .add-portfolio-btn {
   background-color: transparent;
   color: var(--color-success);

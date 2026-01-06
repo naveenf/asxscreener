@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './AddStockModal.css';
 
-const AddStockModal = ({ stock, onClose, onAdded }) => {
+const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
   const isEditing = stock && stock.id; // Check if we are editing an existing item
   const isManual = !stock || (!stock.ticker && !stock.id); // Check if we are adding manually (no stock info passed)
 
@@ -48,16 +48,18 @@ const AddStockModal = ({ stock, onClose, onAdded }) => {
 
       if (isEditing) {
         await axios.put(`/api/portfolio/${stock.id}`, payload, config);
-        alert('Stock updated!');
+        onAdded(`${ticker.toUpperCase()} updated!`);
       } else {
         await axios.post('/api/portfolio', payload, config);
-        // Alert handled by parent or just removed
+        onAdded(`${ticker.toUpperCase()} added to portfolio!`);
       }
       
-      onAdded(); // Trigger refresh
       onClose();
     } catch (err) {
-      alert(`Failed to ${isEditing ? 'update' : 'add'} stock`);
+      const msg = err.response?.data?.detail || `Failed to ${isEditing ? 'update' : 'add'} stock`;
+      if (onError) {
+        onError(msg);
+      }
       console.error(err);
     } finally {
       setSubmitting(false);

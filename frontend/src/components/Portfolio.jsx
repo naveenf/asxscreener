@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import Watchlist from './Watchlist';
+import ConfirmModal from './ConfirmModal';
 import './Portfolio.css';
 
-const Portfolio = ({ onAddStock }) => {
+const Portfolio = ({ onAddStock, onShowToast }) => {
   const { user } = useAuth();
   const [portfolio, setPortfolio] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // stores {id, ticker}
 
   const fetchPortfolio = async () => {
     try {
@@ -30,16 +33,27 @@ const Portfolio = ({ onAddStock }) => {
     fetchPortfolio();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to remove this stock?')) return;
+  const handleDelete = (item) => {
+    setDeleteConfirm(item);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteConfirm.id;
     try {
       const token = localStorage.getItem('google_token');
       await axios.delete(`/api/portfolio/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPortfolio(portfolio.filter(item => item.id !== id));
+      if (onShowToast) {
+        onShowToast({ message: 'Stock removed from portfolio', type: 'success' });
+      }
     } catch (err) {
-      alert('Delete failed');
+      if (onShowToast) {
+        onShowToast({ message: 'Delete failed', type: 'error' });
+      }
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -140,7 +154,7 @@ const Portfolio = ({ onAddStock }) => {
                     </td>
                     <td className="actions-cell">
                       <button className="edit-btn" onClick={() => onAddStock(item)}>Edit</button>
-                      <button className="delete-btn" onClick={() => handleDelete(item.id)}>Remove</button>
+                      <button className="delete-btn" onClick={() => handleDelete(item)}>Remove</button>
                     </td>
                   </tr>
                 ))}
@@ -148,6 +162,16 @@ const Portfolio = ({ onAddStock }) => {
             </table>
           </div>
         )}
+      <Watchlist onShowToast={onShowToast} />
+
+      {deleteConfirm && (
+        <ConfirmModal 
+          title="REMOVE STOCK"
+          message={`Are you sure you want to remove ${deleteConfirm.ticker} from your portfolio?`}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
     </div>
   );
 };

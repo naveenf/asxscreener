@@ -9,13 +9,12 @@ from typing import List, Dict
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from datetime import datetime
-import yfinance as yf
-import pandas as pd
 import math
 
 from ..firebase_setup import db
 from ..models.portfolio_schema import PortfolioItemCreate, PortfolioItemResponse
 from ..config import settings
+from ..services.market_data import get_current_prices, validate_and_get_price
 
 router = APIRouter(prefix="/api/portfolio")
 
@@ -37,86 +36,6 @@ async def get_current_user_email(authorization: str = Header(...)) -> str:
         return email
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-def normalize_ticker(ticker: str) -> str:
-    """Ensure ticker has .AX suffix for ASX stocks."""
-    ticker = ticker.upper().strip()
-    if not ticker.endswith(".AX"):
-        return f"{ticker}.AX"
-    return ticker
-
-def get_current_prices(tickers: List[str]) -> Dict[str, float]:
-    """
-    Fetch current prices for a list of tickers using yfinance.
-    Returns a dict {ticker_input: current_price}
-    """
-    if not tickers:
-        return {}
-    
-    # Map input ticker to yfinance ticker
-    ticker_map = {t: normalize_ticker(t) for t in tickers}
-    yf_tickers = list(ticker_map.values())
-    
-    try:
-        # Fetch data for all tickers
-        # Use grouping='ticker' to ensure consistent structure for single/multi tickers
-        data = yf.download(yf_tickers, period="1d", progress=False, group_by='ticker')
-        
-        prices = {}
-        
-        if data.empty:
-            return prices
-
-        for original_ticker, yf_ticker in ticker_map.items():
-            try:
-                # Handle DataFrame structure variations based on number of tickers
-                if len(yf_tickers) == 1:
-                    # If single ticker, data columns are 'Open', 'High', 'Low', 'Close', ...
-                    # Or it might be multi-index depending on yfinance version.
-                    # With group_by='ticker', accessing the ticker column might be needed if multi-index.
-                    # But if 1 ticker, it often just gives the OHLCV cols directly or under the ticker level.
-                    # Let's try to access safe check.
-                    
-                    if isinstance(data.columns, pd.MultiIndex):
-                        # data[yf_ticker]['Close']
-                        last_price = data[yf_ticker]['Close'].iloc[-1]
-                    else:
-                        last_price = data['Close'].iloc[-1]
-                else:
-                    # Multi-ticker: data[yf_ticker]['Close']
-                    last_price = data[yf_ticker]['Close'].iloc[-1]
-                
-                prices[original_ticker] = float(last_price)
-            except Exception:
-                # Price not found for this ticker
-                continue
-                
-        return prices
-    except Exception as e:
-        print(f"Error fetching prices: {e}")
-        return {}
-
-def validate_and_get_price(ticker: str) -> float:
-    """
-    Check if ticker is valid and return current price.
-    Raises HTTPException if invalid.
-    """
-    yf_ticker = normalize_ticker(ticker)
-    try:
-        t = yf.Ticker(yf_ticker)
-        # Try fast_info first
-        price = t.fast_info.last_price
-        if price is not None:
-            return float(price)
-        
-        # Fallback to history
-        hist = t.history(period="1d")
-        if not hist.empty:
-            return float(hist['Close'].iloc[-1])
-            
-        raise Exception("No data found")
-    except Exception:
-         raise HTTPException(status_code=400, detail=f"Invalid ticker symbol: {ticker}")
 
 def calculate_metrics(item_data, current_price):
     """Calculate gain/loss and annualized return."""

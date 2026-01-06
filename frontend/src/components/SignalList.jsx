@@ -6,10 +6,13 @@
  */
 
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import SignalCard from './SignalCard';
 import './SignalList.css';
 
-function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilter, onStrategyFilterChange, onAddStock }) {
+function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilter, onStrategyFilterChange, onAddStock, onAddWatchlist }) {
+  const { user } = useAuth();
+  
   if (loading) {
     return (
       <div className="signal-list-container">
@@ -25,6 +28,23 @@ function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilt
   
   return (
     <div className="signal-list-container">
+      {!user && (
+        <div className="guest-banner">
+          <div className="banner-content">
+            <span className="banner-icon">💹</span>
+            <div className="banner-text">
+              <h3>Unlock Full Potential</h3>
+              <p>Log in to track these signals in your <strong>Personal Portfolio</strong> and <strong>Watchlist</strong>.</p>
+            </div>
+          </div>
+          <div className="banner-features">
+            <span className="feature-pill">Real-time Tracking</span>
+            <span className="feature-pill">Profit/Loss Analytics</span>
+            <span className="feature-pill">Custom Watchlists</span>
+          </div>
+        </div>
+      )}
+
       {/* Filters Section */}
       <div className="filters">
         <div className="filter-group">
@@ -73,6 +93,7 @@ function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilt
               key={`${signal.ticker}-${signal.strategy}`} 
               signal={signal} 
               onAdd={onAddStock}
+              onWatchlist={onAddWatchlist}
             />
           ))}
         </div>

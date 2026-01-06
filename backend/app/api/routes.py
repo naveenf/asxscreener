@@ -15,12 +15,14 @@ from ..config import settings
 from ..services.screener import StockScreener
 from . import auth  # Import auth router
 from . import portfolio  # Import portfolio router
+from . import watchlist  # Import watchlist router
 
 router = APIRouter()
 
 # Include routers
 router.include_router(auth.router)
 router.include_router(portfolio.router)
+router.include_router(watchlist.router)
 
 
 def load_signals() -> dict:

@@ -9,7 +9,7 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import './SignalCard.css';
 
-function SignalCard({ signal, onAdd }) {
+function SignalCard({ signal, onAdd, onWatchlist }) {
   const { user } = useAuth();
   const getScoreClass = (score) => {
     if (score >= 70) return 'score-high';
@@ -107,9 +107,14 @@ function SignalCard({ signal, onAdd }) {
           {getStrategyName()}
         </span>
         {user && (
-          <button className="add-portfolio-btn" onClick={() => onAdd(signal)}>
-            + Portfolio
-          </button>
+          <div className="card-actions">
+            <button className="add-watchlist-btn-small" onClick={() => onWatchlist(signal)}>
+              + Watch
+            </button>
+            <button className="add-portfolio-btn" onClick={() => onAdd(signal)}>
+              + Portfolio
+            </button>
+          </div>
         )}
       </div>
     </div>
