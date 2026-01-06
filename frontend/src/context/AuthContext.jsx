@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { credential } = credentialResponse;
       // Send token to backend to verify and get/create user
-      const response = await axios.post('http://localhost:8000/auth/google', {
+      const response = await axios.post('/auth/google', {
         credential
       });
 
@@ -31,7 +31,10 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       return userData;
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Login process failed:', error);
+      if (error.response) {
+        console.error('Backend response:', error.response.status, error.response.data);
+      }
       throw error;
     }
   };

@@ -47,8 +47,8 @@ function Header({ status, onRefresh, refreshing, onShowPortfolio }) {
               onSuccess={credentialResponse => {
                 login(credentialResponse);
               }}
-              onError={() => {
-                console.log('Login Failed');
+              onError={(error) => {
+                console.error('Google Login Failed:', error);
               }}
               theme="filled_blue"
               shape="pill"

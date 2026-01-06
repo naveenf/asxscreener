@@ -272,13 +272,8 @@ def wait_for_backend():
 
     Polls /health endpoint until successful response or timeout.
     """
-    try:
-        import requests
-    except ImportError:
-        print_error("'requests' library not found. Installing...")
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'requests'])
-        import requests
-
+    import urllib.request
+    import urllib.error
     start_time = time.time()
     attempt = 0
 
@@ -291,11 +286,11 @@ def wait_for_backend():
             sys.exit(1)
 
         try:
-            response = requests.get(BACKEND_HEALTH_URL, timeout=2)
-            if response.status_code == 200:
-                print_success(f"Backend ready on http://localhost:{BACKEND_PORT}")
-                break
-        except requests.exceptions.RequestException:
+            with urllib.request.urlopen(BACKEND_HEALTH_URL, timeout=2) as response:
+                if response.status == 200:
+                    print_success(f"Backend ready on http://localhost:{BACKEND_PORT}")
+                    break
+        except (urllib.error.URLError, OSError):
             pass
 
         attempt += 1
@@ -343,11 +338,8 @@ def wait_for_frontend():
 
     Polls the frontend URL until successful response or timeout.
     """
-    try:
-        import requests
-    except ImportError:
-        import requests
-
+    import urllib.request
+    import urllib.error
     start_time = time.time()
     attempt = 0
 
@@ -362,11 +354,11 @@ def wait_for_frontend():
             sys.exit(1)
 
         try:
-            response = requests.get(FRONTEND_URL, timeout=2)
-            if response.status_code == 200:
-                print_success(f"Frontend ready on {FRONTEND_URL}")
-                break
-        except requests.exceptions.RequestException:
+            with urllib.request.urlopen(FRONTEND_URL, timeout=2) as response:
+                if response.status == 200:
+                    print_success(f"Frontend ready on {FRONTEND_URL}")
+                    break
+        except (urllib.error.URLError, OSError):
             pass
 
         attempt += 1

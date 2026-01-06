@@ -12,7 +12,7 @@ const Portfolio = ({ onClose }) => {
   const fetchPortfolio = async () => {
     try {
       const token = localStorage.getItem('google_token');
-      const response = await axios.get('http://localhost:8000/api/portfolio', {
+      const response = await axios.get('/api/portfolio', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPortfolio(response.data);
@@ -31,7 +31,7 @@ const Portfolio = ({ onClose }) => {
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem('google_token');
-      await axios.delete(`http://localhost:8000/api/portfolio/${id}`, {
+      await axios.delete(`/api/portfolio/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPortfolio(portfolio.filter(item => item.id !== id));

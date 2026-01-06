@@ -54,12 +54,14 @@ Thumbs.db
 *.log
 download_log_*.txt
 
-# Environment variables
+# Environment variables and keys
 .env
-.env.local
-.env.production
+.env.*
+*.env
 serviceAccountKey.json
 backend/serviceAccountKey.json
+frontend/.env
+frontend/.env.*
 
 # Data (optional - uncomment if you don't want to commit data)
 # data/raw/*.csv
