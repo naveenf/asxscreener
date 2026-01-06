@@ -1,28 +1,8 @@
-.portfolio-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.85);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(5px);
-}
-
-.portfolio-modal {
-  background-color: var(--color-bg-panel);
-  border: 1px solid var(--color-secondary);
-  border-radius: var(--radius-lg);
-  width: 90%;
-  max-width: 800px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
+.portfolio-page {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: var(--spacing-xl);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.3s ease-out;
 }
 
 .portfolio-header {
@@ -32,6 +12,14 @@
   margin-bottom: var(--spacing-xl);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .portfolio-header h2 {
@@ -41,23 +29,60 @@
   letter-spacing: 2px;
 }
 
-.close-button {
-  background: none;
-  border: none;
+.portfolio-summary {
+  display: flex;
+  gap: var(--spacing-lg);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  flex-wrap: wrap;
+}
+
+.summary-item .val {
+  color: var(--color-text-white);
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+.summary-item .val-percent {
+  font-size: 0.8rem;
+  margin-left: 4px;
+  font-weight: normal;
+}
+
+.summary-item .val.positive, .summary-item .val-percent.positive { color: #4cd964; }
+.summary-item .val.negative, .summary-item .val-percent.negative { color: #ff3b30; }
+
+.add-stock-btn {
+  background-color: var(--color-primary);
   color: white;
-  font-size: 2rem;
+  border: none;
+  padding: 8px 24px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-bold);
+  font-size: 0.9rem;
   cursor: pointer;
-  line-height: 1;
+  transition: var(--transition-default);
+}
+
+.add-stock-btn:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-2px);
 }
 
 .portfolio-table-container {
-  overflow-y: auto;
+  overflow-x: auto;
+  background-color: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-secondary);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .portfolio-table {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-body);
+  white-space: nowrap;
 }
 
 .portfolio-table th {
@@ -67,12 +92,14 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 1px;
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 .portfolio-table td {
   padding: var(--spacing-md);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--color-text-white);
+  vertical-align: middle;
 }
 
 .portfolio-table .ticker {
@@ -81,17 +108,58 @@
 }
 
 .portfolio-table .value {
-  color: #4cd964;
+  font-weight: bold;
+}
+
+.gain-loss {
+  font-weight: bold;
+}
+
+.gain-loss.positive { color: #4cd964; }
+.gain-loss.negative { color: #ff3b30; }
+
+.gain-loss .percent {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  font-weight: normal;
+}
+
+.annualized-return {
+  font-weight: bold;
+}
+.annualized-return.positive { color: #4cd964; }
+.annualized-return.negative { color: #ff3b30; }
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn {
+  background: rgba(0, 122, 255, 0.2);
+  color: #0a84ff;
+  border: 1px solid #0a84ff;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+}
+
+.edit-btn:hover {
+  background: #0a84ff;
+  color: white;
 }
 
 .delete-btn {
   background: rgba(255, 59, 48, 0.2);
   color: #ff3b30;
   border: 1px solid #ff3b30;
-  padding: 4px 8px;
+  padding: 4px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 0.75rem;
+  transition: all 0.2s;
 }
 
 .delete-btn:hover {
@@ -103,4 +171,16 @@
   text-align: center;
   padding: var(--spacing-xl);
   color: var(--color-text-secondary);
+}
+
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

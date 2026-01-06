@@ -1,32 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './AddStockModal.css';
 
 const AddStockModal = ({ stock, onClose, onAdded }) => {
+  const isEditing = stock && stock.id; // Check if we are editing an existing item
+  const isManual = !stock || (!stock.ticker && !stock.id); // Check if we are adding manually (no stock info passed)
+
+  const [ticker, setTicker] = useState('');
   const [buyDate, setBuyDate] = useState(new Date().toISOString().split('T')[0]);
-  const [buyPrice, setBuyPrice] = useState(stock.current_price || 0);
+  const [buyPrice, setBuyPrice] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (stock) {
+      setTicker(stock.ticker || '');
+      // If editing, use the stock's existing data
+      if (stock.id) {
+        setBuyDate(stock.buy_date ? new Date(stock.buy_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+        setBuyPrice(stock.buy_price || '');
+        setQuantity(stock.quantity || 1);
+        setNotes(stock.notes || '');
+      } else {
+        // Adding from screener (pre-fill price and ticker)
+        setBuyPrice(stock.current_price || '');
+      }
+    }
+  }, [stock]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       const token = localStorage.getItem('google_token');
-      await axios.post('http://localhost:8000/api/portfolio', {
-        ticker: stock.ticker,
+      const payload = {
+        ticker: ticker.toUpperCase(),
         buy_date: buyDate,
         buy_price: parseFloat(buyPrice),
         quantity: parseFloat(quantity),
         notes: notes
-      }, {
+      };
+
+      const config = {
         headers: { Authorization: `Bearer ${token}` }
-      });
-      onAdded();
+      };
+
+      if (isEditing) {
+        await axios.put(`/api/portfolio/${stock.id}`, payload, config);
+        alert('Stock updated!');
+      } else {
+        await axios.post('/api/portfolio', payload, config);
+        // Alert handled by parent or just removed
+      }
+      
+      onAdded(); // Trigger refresh
       onClose();
     } catch (err) {
-      alert('Failed to add stock');
+      alert(`Failed to ${isEditing ? 'update' : 'add'} stock`);
       console.error(err);
     } finally {
       setSubmitting(false);
@@ -37,11 +68,25 @@ const AddStockModal = ({ stock, onClose, onAdded }) => {
     <div className="portfolio-overlay">
       <div className="portfolio-modal add-modal">
         <div className="portfolio-header">
-          <h2>ADD {stock.ticker} TO PORTFOLIO</h2>
+          <h2>{isEditing ? `EDIT ${ticker}` : `ADD ${isManual ? 'STOCK' : ticker}`}</h2>
           <button className="close-button" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="add-form">
+          {isManual && !isEditing && (
+            <div className="form-group">
+              <label>Ticker Symbol</label>
+              <input 
+                type="text" 
+                value={ticker} 
+                onChange={(e) => setTicker(e.target.value.toUpperCase())} 
+                placeholder="e.g. BHP"
+                required 
+                autoFocus
+              />
+            </div>
+          )}
+
           <div className="form-group">
             <label>Buy Date</label>
             <input type="date" value={buyDate} onChange={(e) => setBuyDate(e.target.value)} required />
@@ -63,7 +108,7 @@ const AddStockModal = ({ stock, onClose, onAdded }) => {
           </div>
 
           <button type="submit" className="submit-btn" disabled={submitting}>
-            {submitting ? 'Adding...' : 'Add to Portfolio'}
+            {submitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Add to Portfolio')}
           </button>
         </form>
       </div>

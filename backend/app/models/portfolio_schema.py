@@ -20,6 +20,11 @@ class PortfolioItemResponse(BaseModel):
     buy_price: float
     quantity: float
     notes: Optional[str] = None
+    current_price: Optional[float] = None
+    current_value: Optional[float] = None
+    gain_loss: Optional[float] = None
+    gain_loss_percent: Optional[float] = None
+    annualized_gain: Optional[float] = None
 
     class Config:
         from_attributes = True

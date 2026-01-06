@@ -126,21 +126,43 @@
   color: var(--color-primary);
 }
 
-.portfolio-button {
-  background-color: var(--color-secondary);
-  color: white;
-  border: none;
-  padding: 8px 16px;
+.nav-links {
+  display: flex;
+  gap: var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
   border-radius: var(--radius-pill);
-  font-size: 0.85rem;
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: var(--transition-default);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.portfolio-button:hover {
-  background-color: #3d4a5c;
-  transform: translateY(-2px);
+.nav-link {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  padding: 10px 24px;
+  border-radius: var(--radius-pill);
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-bold);
+  transition: all 0.2s ease;
+  border: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.nav-link:hover {
+  color: var(--color-text-white);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.active {
+  background-color: var(--color-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.nav-link.active:hover {
+  background-color: var(--color-primary-hover);
+  transform: none;
 }
 
 @media (max-width: 768px) {

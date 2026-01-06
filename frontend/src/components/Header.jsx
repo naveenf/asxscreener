@@ -5,11 +5,12 @@
  */
 
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import './Header.css';
 
-function Header({ status, onRefresh, refreshing, onShowPortfolio }) {
+function Header({ status, onRefresh, refreshing }) {
   const { user, login, logout } = useAuth();
 
   return (
@@ -36,7 +37,14 @@ function Header({ status, onRefresh, refreshing, onShowPortfolio }) {
 
           {user ? (
             <div className="user-profile">
-              <button className="portfolio-button" onClick={onShowPortfolio}>Portfolio</button>
+              <nav className="nav-links">
+                <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                  Screener
+                </NavLink>
+                <NavLink to="/portfolio" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                  Portfolio
+                </NavLink>
+              </nav>
               <div className="user-info">
                 <span className="user-name">{user.name}</span>
                 <button className="logout-button" onClick={logout}>Logout</button>

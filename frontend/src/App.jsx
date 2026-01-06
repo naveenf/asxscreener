@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import SignalList from './components/SignalList';
 import Portfolio from './components/Portfolio';
@@ -23,8 +24,10 @@ function App() {
   const [error, setError] = useState(null);
   
   // Modal states
-  const [showPortfolio, setShowPortfolio] = useState(false);
   const [selectedStockToAdd, setSelectedStockToAdd] = useState(null);
+  
+  // Key to force refresh of Portfolio component when stock is added
+  const [portfolioKey, setPortfolioKey] = useState(0);
 
   // Load data
   const loadData = async () => {
@@ -92,7 +95,6 @@ function App() {
         status={status}
         onRefresh={handleRefresh}
         refreshing={refreshing}
-        onShowPortfolio={() => setShowPortfolio(true)}
       />
 
       <main className="main-content">
@@ -102,20 +104,26 @@ function App() {
           </div>
         )}
 
-        <SignalList
-          signals={filteredSignals}
-          loading={loading}
-          minScore={minScore}
-          onMinScoreChange={setMinScore}
-          strategyFilter={strategyFilter}
-          onStrategyFilterChange={setStrategyFilter}
-          onAddStock={(stock) => setSelectedStockToAdd(stock)}
-        />
+        <Routes>
+          <Route path="/" element={
+            <SignalList
+              signals={filteredSignals}
+              loading={loading}
+              minScore={minScore}
+              onMinScoreChange={setMinScore}
+              strategyFilter={strategyFilter}
+              onStrategyFilterChange={setStrategyFilter}
+              onAddStock={(stock) => setSelectedStockToAdd(stock)}
+            />
+          } />
+          <Route path="/portfolio" element={
+            <Portfolio 
+              key={portfolioKey} 
+              onAddStock={() => setSelectedStockToAdd({})} 
+            />
+          } />
+        </Routes>
       </main>
-
-      {showPortfolio && (
-        <Portfolio onClose={() => setShowPortfolio(false)} />
-      )}
 
       {selectedStockToAdd && (
         <AddStockModal 
@@ -123,7 +131,7 @@ function App() {
           onClose={() => setSelectedStockToAdd(null)}
           onAdded={() => {
             alert('Stock added to portfolio!');
-            setShowPortfolio(true);
+            setPortfolioKey(prev => prev + 1);
           }}
         />
       )}
