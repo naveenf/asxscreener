@@ -389,6 +389,12 @@ def load_and_calculate_indicators(
     Returns:
         DataFrame with all indicators calculated
     """
-    df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
+    df = pd.read_csv(csv_path)
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'], utc=True)
+        df.set_index('Date', inplace=True)
+        df.index = df.index.tz_localize(None).floor('D')
+    
+    df.sort_index(inplace=True)
     df = TechnicalIndicators.add_all_indicators(df, adx_period, sma_period)
     return df

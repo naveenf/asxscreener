@@ -29,7 +29,7 @@ from datetime import datetime
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).parent.absolute()
-DATA_FRESHNESS_DAYS = 7
+DATA_FRESHNESS_DAYS = 1
 BACKEND_PORT = 8000
 FRONTEND_PORT = 5173
 BACKEND_HEALTH_URL = f"http://localhost:{BACKEND_PORT}/health"

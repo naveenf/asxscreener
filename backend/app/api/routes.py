@@ -13,6 +13,7 @@ from datetime import datetime
 from ..models.stock import SignalResponse, ScreenerStatus, SignalsListResponse
 from ..config import settings
 from ..services.screener import StockScreener
+from ..services.market_data import update_all_stocks_data
 from . import auth  # Import auth router
 from . import portfolio  # Import portfolio router
 from . import watchlist  # Import watchlist router
@@ -93,12 +94,14 @@ async def refresh_data():
     Trigger data refresh and re-run screener.
 
     This will:
-    1. Re-calculate indicators for all stocks
-    2. Detect new signals
-    3. Update signals.json
+    1. Download latest daily data for all stocks
+    2. Re-calculate indicators for all stocks
+    3. Detect new signals
+    4. Update signals.json
     """
     try:
-        # Create and run screener
+        print(f"Starting manual refresh at {datetime.now()}")
+        # Create screener to get stock list
         screener = StockScreener(
             data_dir=settings.RAW_DATA_DIR,
             metadata_dir=settings.METADATA_DIR,
@@ -107,9 +110,20 @@ async def refresh_data():
             sma_period=settings.SMA_PERIOD,
             adx_threshold=settings.ADX_THRESHOLD
         )
+        
+        # 1. Update data from yfinance
+        stocks = screener.load_stock_list()
+        tickers = [s['ticker'] for s in stocks]
+        print(f"Updating data for {len(tickers)} tickers...")
+        update_results = update_all_stocks_data(tickers, settings.RAW_DATA_DIR)
+        success_count = sum(1 for r in update_results.values() if r)
+        print(f"Successfully updated {success_count}/{len(tickers)} CSV files")
 
+        # 2. Run screener
+        print("Running screener...")
         results = screener.screen_all_stocks()
         screener.save_signals(results)
+        print(f"Refresh complete. Found {results['signals_count']} signals.")
 
         return {
             "status": "success",
@@ -119,6 +133,7 @@ async def refresh_data():
         }
 
     except Exception as e:
+        print(f"Refresh failed: {e}")
         raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}")
 
 

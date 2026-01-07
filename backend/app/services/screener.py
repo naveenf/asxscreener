@@ -122,7 +122,16 @@ class StockScreener:
                 return result
 
             # Load raw data
-            df = pd.read_csv(csv_path, parse_dates=['Date'], index_col='Date')
+            df = pd.read_csv(csv_path)
+            if 'Date' in df.columns:
+                # Use utc=True to handle mixed offsets, then strip TZ if necessary
+                df['Date'] = pd.to_datetime(df['Date'], utc=True)
+                df.set_index('Date', inplace=True)
+                # Strip timezone to match our normalized CSVs
+                df.index = df.index.tz_localize(None).floor('D')
+            
+            # Sort to be absolutely sure latest is at the bottom
+            df.sort_index(inplace=True)
 
             # Add all indicators (ADX, SMA, ATR, RSI, BB)
             df = TechnicalIndicators.add_all_indicators(
