@@ -11,14 +11,16 @@ from typing import Optional, List
 
 class IndicatorValues(BaseModel):
     """Indicator values for a stock - supports multiple strategies."""
-    # Trend following indicators (optional)
-    ADX: Optional[float] = None
-    DIPlus: Optional[float] = Field(None, alias="DIPlus")
-    DIMinus: Optional[float] = Field(None, alias="DIMinus")
+    # Triple Trend Confirmation indicators
+    Fib_Pos: Optional[int] = None
+    PP_Trend: Optional[int] = None
+    PP_TrailingSL: Optional[float] = None
+    IT_Trend: Optional[float] = None
+    IT_Trigger: Optional[float] = None
     SMA200: Optional[float] = None
     above_sma200: Optional[bool] = None
 
-    # Mean reversion indicators (optional)
+    # Mean reversion indicators
     RSI: Optional[float] = None
     BB_Upper: Optional[float] = None
     BB_Middle: Optional[float] = None
@@ -26,17 +28,23 @@ class IndicatorValues(BaseModel):
     BB_Distance_PCT: Optional[float] = None
     below_sma200: Optional[bool] = None
 
+    # Legacy (kept for safety)
+    ADX: Optional[float] = None
+    DIPlus: Optional[float] = None
+    DIMinus: Optional[float] = None
+
 
 class EntryConditions(BaseModel):
     """Entry condition checks - flexible for multiple strategies."""
-    # Trend following conditions
-    adx_above_30: Optional[bool] = None
-    di_plus_above_di_minus: Optional[bool] = None
-    fresh_crossover: Optional[bool] = None
+    # Triple Trend conditions
+    fib_structure_bullish: Optional[bool] = None
+    supertrend_bullish: Optional[bool] = None
+    it_trend_bullish: Optional[bool] = None
 
     # Mean reversion conditions
-    price_above_upper_bb: Optional[bool] = None
-    rsi_overbought: Optional[bool] = None
+    rsi_oversold: Optional[bool] = None
+    price_below_lower_bb: Optional[bool] = None
+    above_sma200: Optional[bool] = None
 
 
 class SignalResponse(BaseModel):

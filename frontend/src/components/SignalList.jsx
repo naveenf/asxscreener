@@ -68,8 +68,8 @@ function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilt
             className="strategy-select"
           >
             <option value="all">All Strategies</option>
-            <option value="trend_following">Trend Following</option>
-            <option value="mean_reversion">Mean Reversion</option>
+            <option value="trend_following">Triple Trend Confirmation</option>
+            <option value="mean_reversion">Mean Reversion (RSI 30)</option>
           </select>
         </div>
       </div>

@@ -116,9 +116,11 @@ const Portfolio = ({ onAddStock, onShowToast }) => {
               <thead>
                 <tr>
                   <th>Ticker</th>
+                  <th>Strategy</th>
                   <th>Date</th>
                   <th>Buy Price</th>
                   <th>Current Price</th>
+                  <th>Trend</th>
                   <th>Qty</th>
                   <th>Market Value</th>
                   <th>Gain/Loss</th>
@@ -129,6 +131,11 @@ const Portfolio = ({ onAddStock, onShowToast }) => {
                 {portfolio.map(item => (
                   <tr key={item.id}>
                     <td className="ticker">{item.ticker}</td>
+                    <td className="strategy-cell">
+                      <span className={`strategy-badge ${item.strategy_type}`}>
+                        {item.strategy_type === 'triple_trend' ? 'Trend' : 'Mean Rev'}
+                      </span>
+                    </td>
                     <td>{new Date(item.buy_date).toLocaleDateString()}</td>
                     <td>${item.buy_price.toFixed(2)}</td>
                     <td>
@@ -136,6 +143,14 @@ const Portfolio = ({ onAddStock, onShowToast }) => {
                         ? `$${item.current_price.toFixed(2)}` 
                         : <span className="loading-dots">...</span>
                       }
+                    </td>
+                    <td className="trend-cell">
+                      <div className={`trend-signal ${item.trend_signal}`}>
+                        {item.trend_signal}
+                      </div>
+                      {item.exit_reason && (
+                        <div className="trend-reason">{item.exit_reason}</div>
+                      )}
                     </td>
                     <td>{item.quantity}</td>
                     <td className="value">
@@ -153,8 +168,10 @@ const Portfolio = ({ onAddStock, onShowToast }) => {
                       ) : '-'}
                     </td>
                     <td className="actions-cell">
-                      <button className="edit-btn" onClick={() => onAddStock(item)}>Edit</button>
-                      <button className="delete-btn" onClick={() => handleDelete(item)}>Remove</button>
+                      <div className="actions-wrapper">
+                        <button className="edit-btn" onClick={() => onAddStock(item)}>✏️</button>
+                        <button className="bin-btn" onClick={() => handleDelete(item)}>🗑</button>
+                      </div>
                     </td>
                   </tr>
                 ))}

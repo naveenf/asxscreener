@@ -123,7 +123,7 @@ const Watchlist = ({ onShowToast }) => {
                   </td>
                   <td className="days-cell">{item.days_in_watchlist} days</td>
                   <td>
-                    <button className="delete-btn" onClick={() => handleRemove(item)}>Remove</button>
+                    <button className="bin-btn" onClick={() => handleRemove(item)}>🗑</button>
                   </td>
                 </tr>
               ))}

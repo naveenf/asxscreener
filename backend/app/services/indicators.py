@@ -253,43 +253,128 @@ class TechnicalIndicators:
         return rsi
 
     @staticmethod
-    def calculate_bollinger_bands(
-        df: pd.DataFrame,
-        period: int = 20,
-        std_dev: float = 2.0
-    ) -> tuple[pd.Series, pd.Series, pd.Series]:
+    def calculate_ehlers_instant_trend(df: pd.DataFrame, alpha: float = 0.07) -> pd.DataFrame:
         """
-        Calculate Bollinger Bands.
-
-        Bollinger Bands consist of:
-        - Middle Band: Simple Moving Average (SMA)
-        - Upper Band: Middle Band + (std_dev * standard deviation)
-        - Lower Band: Middle Band - (std_dev * standard deviation)
-
-        Price touching or exceeding bands indicates overbought/oversold conditions.
-
-        Args:
-            df: DataFrame with Close column
-            period: Period for middle band SMA (default 20)
-            std_dev: Number of standard deviations (default 2.0)
-
-        Returns:
-            Tuple of (middle_band, upper_band, lower_band) Series
+        Calculate Ehler's Instantaneous Trend.
+        A recursive filter that identifies short-term momentum triggers.
         """
-        if 'Close' not in df.columns:
-            raise ValueError("DataFrame must contain 'Close' column")
+        src = (df['High'] + df['Low']) / 2
+        it = np.zeros(len(df))
+        
+        # Initial values
+        for i in range(min(3, len(df))):
+            it[i] = src.iloc[i]
+            
+        # Recursive calculation
+        a2 = alpha * alpha
+        for i in range(2, len(df)):
+            it[i] = (alpha - a2 / 4.0) * src.iloc[i] + \
+                    0.5 * a2 * src.iloc[i-1] - \
+                    (alpha - 0.75 * a2) * src.iloc[i-2] + \
+                    2 * (1 - alpha) * it[i-1] - \
+                    (1 - alpha) * (1 - alpha) * it[i-2]
+                    
+        df = df.copy()
+        df['IT_Trend'] = it
+        # lag = 2.0*it - nz(it[2])
+        df['IT_Trigger'] = 2.0 * df['IT_Trend'] - df['IT_Trend'].shift(2)
+        return df
 
-        # Middle band is SMA
-        middle_band = df['Close'].rolling(window=period).mean()
+    @staticmethod
+    def calculate_pivot_supertrend(df: pd.DataFrame, prd: int = 2, factor: float = 3.0, period: int = 10) -> pd.DataFrame:
+        """
+        Calculate Pivot Point Supertrend.
+        Uses local pivots to establish a center line for ATR-based bands.
+        """
+        df = df.copy()
+        
+        # Calculate Pivot Highs and Lows
+        df['ph'] = df['High'].rolling(window=prd*2+1, center=True).apply(lambda x: x.iloc[prd] if all(x.iloc[prd] >= i for i in x) else np.nan)
+        df['pl'] = df['Low'].rolling(window=prd*2+1, center=True).apply(lambda x: x.iloc[prd] if all(x.iloc[prd] <= i for i in x) else np.nan)
+        
+        # Calculate Center Line
+        center = np.nan
+        centers = []
+        for i in range(len(df)):
+            last_pp = df['ph'].iloc[i] if not pd.isna(df['ph'].iloc[i]) else (df['pl'].iloc[i] if not pd.isna(df['pl'].iloc[i]) else np.nan)
+            if not pd.isna(last_pp):
+                if pd.isna(center):
+                    center = last_pp
+                else:
+                    center = (center * 2 + last_pp) / 3.0
+            centers.append(center)
+        df['PP_Center'] = centers
+        
+        # Bands
+        atr = TechnicalIndicators.calculate_atr(df, period)
+        df['PP_Up'] = df['PP_Center'] - (factor * atr)
+        df['PP_Dn'] = df['PP_Center'] + (factor * atr)
+        
+        # Trend tracking
+        trend = 1
+        t_up = np.zeros(len(df))
+        t_dn = np.zeros(len(df))
+        trends = []
+        
+        for i in range(1, len(df)):
+            # TUp := close[1] > TUp[1] ? max(Up, TUp[1]) : Up
+            t_up[i] = max(df['PP_Up'].iloc[i], t_up[i-1]) if df['Close'].iloc[i-1] > t_up[i-1] else df['PP_Up'].iloc[i]
+            # TDown := close[1] < TDown[1] ? min(Dn, TDown[1]) : Dn
+            t_dn[i] = min(df['PP_Dn'].iloc[i], t_dn[i-1]) if df['Close'].iloc[i-1] < t_dn[i-1] else df['PP_Dn'].iloc[i]
+            
+            # Trend := close > TDown[1] ? 1: close < TUp[1]? -1: nz(Trend[1], 1)
+            if df['Close'].iloc[i] > t_dn[i-1]:
+                trend = 1
+            elif df['Close'].iloc[i] < t_up[i-1]:
+                trend = -1
+            trends.append(trend)
+            
+        df['PP_Trend'] = [1] + trends
+        df['PP_TrailingSL'] = [t_up[i] if trends[i-1] == 1 else t_dn[i] for i in range(len(df))]
+        return df
 
-        # Standard deviation
-        rolling_std = df['Close'].rolling(window=period).std()
-
-        # Upper and lower bands
-        upper_band = middle_band + (rolling_std * std_dev)
-        lower_band = middle_band - (rolling_std * std_dev)
-
-        return middle_band, upper_band, lower_band
+    @staticmethod
+    def calculate_fibonacci_structure_trend(df: pd.DataFrame, period: int = 50, fib: float = 0.382) -> pd.DataFrame:
+        """
+        Calculate Fibonacci Structure Trend.
+        Tracks high/low structure over a rolling window.
+        """
+        df = df.copy()
+        hi = df['High'].rolling(window=period).max()
+        lo = df['Low'].rolling(window=period).min()
+        
+        pos = 0
+        poss = []
+        retrace = 0.0
+        retraces = []
+        
+        current_hi = df['High'].iloc[0]
+        current_lo = df['Low'].iloc[0]
+        
+        for i in range(len(df)):
+            if pos >= 0:
+                if df['High'].iloc[i] > current_hi:
+                    current_hi = df['High'].iloc[i]
+                    retrace = current_hi - (current_hi - current_lo) * fib
+                if df['High'].iloc[i] < retrace:
+                    pos = -1
+                    current_lo = df['Low'].iloc[i]
+                    retrace = current_lo + (current_hi - current_lo) * fib
+            else: # pos <= 0
+                if df['Low'].iloc[i] < current_lo:
+                    current_lo = df['Low'].iloc[i]
+                    retrace = current_lo + (current_hi - current_lo) * fib
+                if df['Low'].iloc[i] > retrace:
+                    pos = 1
+                    current_hi = df['High'].iloc[i]
+                    retrace = current_hi - (current_hi - current_lo) * fib
+            
+            poss.append(pos)
+            retraces.append(retrace)
+            
+        df['Fib_Pos'] = poss
+        df['Fib_Retrace'] = retraces
+        return df
 
     @staticmethod
     def detect_crossover(series1: pd.Series, series2: pd.Series) -> pd.Series:
@@ -318,6 +403,30 @@ class TechnicalIndicators:
         return prev_above & now_below
 
     @staticmethod
+    def calculate_bollinger_bands(
+        df: pd.DataFrame,
+        period: int = 20,
+        std_dev: float = 2.0
+    ) -> tuple[pd.Series, pd.Series, pd.Series]:
+        """
+        Calculate Bollinger Bands.
+        """
+        if 'Close' not in df.columns:
+            raise ValueError("DataFrame must contain 'Close' column")
+
+        # Middle band is SMA
+        middle_band = df['Close'].rolling(window=period).mean()
+
+        # Standard deviation
+        rolling_std = df['Close'].rolling(window=period).std()
+
+        # Upper and lower bands
+        upper_band = middle_band + (rolling_std * std_dev)
+        lower_band = middle_band - (rolling_std * std_dev)
+
+        return middle_band, upper_band, lower_band
+
+    @staticmethod
     def add_all_indicators(
         df: pd.DataFrame,
         adx_period: int = 14,
@@ -326,23 +435,14 @@ class TechnicalIndicators:
         volume_period: int = 20,
         rsi_period: int = 14,
         bb_period: int = 20,
-        bb_std_dev: float = 2.0
+        bb_std_dev: float = 2.0,
+        fib_period: int = 50,
+        st_prd: int = 2,
+        st_factor: float = 3.0,
+        it_alpha: float = 0.07
     ) -> pd.DataFrame:
         """
         Add all indicators to DataFrame in one call.
-
-        Args:
-            df: DataFrame with OHLC data
-            adx_period: Period for ADX calculation (default 14)
-            sma_period: Period for SMA calculation (default 200)
-            atr_period: Period for ATR calculation (default 14)
-            volume_period: Period for Volume SMA calculation (default 20)
-            rsi_period: Period for RSI calculation (default 14)
-            bb_period: Period for Bollinger Bands (default 20)
-            bb_std_dev: Standard deviations for Bollinger Bands (default 2.0)
-
-        Returns:
-            DataFrame with all technical indicators added
         """
         # Add ADX indicators
         df = TechnicalIndicators.calculate_adx(df, period=adx_period)
@@ -369,6 +469,11 @@ class TechnicalIndicators:
         df['BB_Middle'] = bb_middle
         df['BB_Upper'] = bb_upper
         df['BB_Lower'] = bb_lower
+
+        # Add Triple Trend Indicators
+        df = TechnicalIndicators.calculate_fibonacci_structure_trend(df, period=fib_period)
+        df = TechnicalIndicators.calculate_pivot_supertrend(df, prd=st_prd, factor=st_factor)
+        df = TechnicalIndicators.calculate_ehlers_instant_trend(df, alpha=it_alpha)
 
         return df
 

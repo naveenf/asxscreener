@@ -11,6 +11,7 @@ class PortfolioItemCreate(BaseModel):
     buy_date: date
     buy_price: float
     quantity: float
+    strategy_type: Optional[str] = "triple_trend" # Default to triple_trend
     notes: Optional[str] = None
 
 class PortfolioItemResponse(BaseModel):
@@ -19,6 +20,9 @@ class PortfolioItemResponse(BaseModel):
     buy_date: date
     buy_price: float
     quantity: float
+    strategy_type: Optional[str] = "triple_trend"
+    trend_signal: Optional[str] = "HOLD" # BUY, HOLD, EXIT
+    exit_reason: Optional[str] = None
     notes: Optional[str] = None
     current_price: Optional[float] = None
     current_value: Optional[float] = None

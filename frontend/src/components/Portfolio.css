@@ -1,7 +1,7 @@
 .portfolio-page {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl);
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -9,9 +9,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
   flex-wrap: wrap;
   gap: var(--spacing-md);
 }
@@ -83,20 +83,21 @@
   border-collapse: collapse;
   font-family: var(--font-body);
   white-space: nowrap;
+  font-size: 0.8rem;
 }
 
 .portfolio-table th {
   text-align: left;
-  padding: var(--spacing-md);
+  padding: 10px 8px;
   color: var(--color-text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   background-color: rgba(0, 0, 0, 0.2);
 }
 
 .portfolio-table td {
-  padding: var(--spacing-md);
+  padding: 10px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--color-text-white);
   vertical-align: middle;
@@ -105,6 +106,7 @@
 .portfolio-table .ticker {
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
+  font-size: 0.85rem;
 }
 
 .portfolio-table .value {
@@ -124,6 +126,47 @@
   font-weight: normal;
 }
 
+.strategy-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.strategy-badge.triple_trend {
+  background: rgba(0, 122, 255, 0.2);
+  color: #0a84ff;
+  border: 1px solid rgba(0, 122, 255, 0.4);
+}
+
+.strategy-badge.mean_reversion {
+  background: rgba(175, 82, 222, 0.2);
+  color: #bf5af2;
+  border: 1px solid rgba(175, 82, 222, 0.4);
+}
+
+.trend-cell {
+  min-width: 80px;
+}
+
+.trend-signal {
+  font-weight: bold;
+  font-size: 0.75rem;
+  margin-bottom: 1px;
+}
+
+.trend-signal.BUY { color: #4cd964; }
+.trend-signal.HOLD { color: #ffcc00; }
+.trend-signal.EXIT { color: #ff3b30; }
+
+.trend-reason {
+  font-size: 0.65rem;
+  color: var(--color-text-secondary);
+  white-space: normal;
+  line-height: 1.1;
+}
+
 .annualized-return {
   font-weight: bold;
 }
@@ -131,35 +174,57 @@
 .annualized-return.negative { color: #ff3b30; }
 
 .actions-cell {
+  width: 80px;
+  min-width: 80px;
+  padding-right: 4px !important;
+}
+
+.actions-wrapper {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
 }
 
 .edit-btn {
-  background: rgba(0, 122, 255, 0.2);
-  color: #0a84ff;
-  border: 1px solid #0a84ff;
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
+  background: rgba(184, 92, 56, 0.15);
+  color: var(--color-primary);
+  border: 1px solid rgba(184, 92, 56, 0.3);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   transition: all 0.2s;
 }
 
 .edit-btn:hover {
-  background: #0a84ff;
+  background: var(--color-primary);
   color: white;
+  transform: scale(1.05);
 }
 
-.delete-btn {
-  background: rgba(255, 59, 48, 0.2);
-  color: #ff3b30;
-  border: 1px solid #ff3b30;
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
+.bin-btn {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 1rem;
   transition: all 0.2s;
+}
+
+.bin-btn:hover {
+  background: var(--color-danger);
+  color: white;
+  transform: scale(1.05);
 }
 
 .delete-btn:hover {

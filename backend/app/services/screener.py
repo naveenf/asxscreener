@@ -17,7 +17,7 @@ from typing import List, Dict
 import sys
 
 from .indicators import load_and_calculate_indicators, TechnicalIndicators
-from .signal_detector import SignalDetector
+from .triple_trend_detector import TripleTrendDetector
 from .mean_reversion_detector import MeanReversionDetector
 from ..config import settings
 
@@ -42,9 +42,9 @@ class StockScreener:
             data_dir: Directory with CSV files
             metadata_dir: Directory with stock_list.json
             output_dir: Directory for output files
-            adx_period: ADX calculation period
+            adx_period: ADX calculation period (LEGACY - kept for compat)
             sma_period: SMA calculation period
-            adx_threshold: ADX threshold for entry signals
+            adx_threshold: ADX threshold (LEGACY - kept for compat)
             enable_mean_reversion: Enable mean reversion strategy
         """
         self.data_dir = Path(data_dir)
@@ -55,15 +55,14 @@ class StockScreener:
         self.adx_threshold = adx_threshold
         self.enable_mean_reversion = enable_mean_reversion
 
-        # Initialize trend following detector
-        self.trend_detector = SignalDetector(
-            adx_threshold=settings.ADX_THRESHOLD,
+        # Initialize Triple Trend Confirmation detector
+        self.trend_detector = TripleTrendDetector(
+            fib_period=50,
+            st_factor=3.0,
+            it_alpha=0.07,
             profit_target=settings.PROFIT_TARGET,
-            sma_period=settings.SMA_PERIOD,
-            volume_filter_enabled=settings.VOLUME_FILTER_ENABLED,
-            volume_multiplier=settings.VOLUME_MULTIPLIER,
-            atr_filter_enabled=settings.ATR_FILTER_ENABLED,
-            atr_min_pct=settings.ATR_MIN_PCT
+            stop_loss=settings.TREND_FOLLOWING_STOP_LOSS,
+            time_limit=settings.TREND_FOLLOWING_TIME_LIMIT
         )
 
         # Initialize mean reversion detector (if enabled)
@@ -133,7 +132,7 @@ class StockScreener:
             # Sort to be absolutely sure latest is at the bottom
             df.sort_index(inplace=True)
 
-            # Add all indicators (ADX, SMA, ATR, RSI, BB)
+            # Add all indicators (ADX, SMA, ATR, RSI, BB + Triple Trend)
             df = TechnicalIndicators.add_all_indicators(
                 df,
                 adx_period=settings.ADX_PERIOD,
@@ -142,7 +141,11 @@ class StockScreener:
                 volume_period=settings.VOLUME_PERIOD,
                 rsi_period=settings.RSI_PERIOD,
                 bb_period=settings.BB_PERIOD,
-                bb_std_dev=settings.BB_STD_DEV
+                bb_std_dev=settings.BB_STD_DEV,
+                fib_period=50,
+                st_prd=2,
+                st_factor=3.0,
+                it_alpha=0.07
             )
 
             if len(df) == 0:
@@ -297,9 +300,9 @@ class StockScreener:
 
                 # Display strategy-specific indicators
                 if strategy == 'trend_following':
-                    print(f"   ADX: {signal['indicators']['ADX']:.1f}")
-                    print(f"   DI+: {signal['indicators']['DIPlus']:.1f}")
-                    print(f"   DI-: {signal['indicators']['DIMinus']:.1f}")
+                    print(f"   Fib Pos: {'BULL' if signal['indicators']['Fib_Pos'] == 1 else 'BEAR'}")
+                    print(f"   Supertrend: {'BULL' if signal['indicators']['PP_Trend'] == 1 else 'BEAR'}")
+                    print(f"   IT Trigger: {signal['indicators']['IT_Trigger']:.2f} (Trend: {signal['indicators']['IT_Trend']:.2f})")
                     if signal['indicators'].get('above_sma200'):
                         print(f"   ✓ Above 200 SMA")
                 elif strategy == 'mean_reversion':

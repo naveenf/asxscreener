@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Indicator settings
     ADX_PERIOD: int = 14
-    ADX_THRESHOLD: float = 30.0  # OPTIMAL: Strong trend requirement
+    ADX_THRESHOLD: float = 30.0  # OPTIMAL: Early trend entry
     SMA_PERIOD: int = 200
 
     # Trading parameters
@@ -33,16 +33,20 @@ class Settings(BaseSettings):
 
     # ATR (volatility) filter settings
     ATR_FILTER_ENABLED: bool = True  # OPTIMAL: Enabled
-    ATR_MIN_PCT: float = 5.0  # OPTIMAL: 5% minimum volatility
+    ATR_MIN_PCT: float = 2.5  # OPTIMAL: 2.5% minimum volatility
     ATR_PERIOD: int = 14
 
     # Mean Reversion strategy settings
     MEAN_REVERSION_ENABLED: bool = True
-    RSI_THRESHOLD: float = 70.0  # RSI must be > 70 for entry
+    RSI_THRESHOLD: float = 30.0  # RSI must be < 30 for entry
     RSI_PERIOD: int = 14
     BB_PERIOD: int = 20  # Bollinger Bands period
     BB_STD_DEV: float = 2.0  # Bollinger Bands standard deviations
-    MEAN_REVERSION_PROFIT_TARGET: float = 0.07  # 7% profit target
+    MEAN_REVERSION_PROFIT_TARGET: float = 0.20  # 20% profit target
+    MEAN_REVERSION_STOP_LOSS: float = 0.07      # 7% stop loss
+    MEAN_REVERSION_TIME_LIMIT: int = 90         # 90 days max hold
+    TREND_FOLLOWING_STOP_LOSS: float = 0.10     # 10% hard stop
+    TREND_FOLLOWING_TIME_LIMIT: int = 90        # 90 days max hold
 
     # Data settings
     MIN_HISTORY_DAYS: int = 365

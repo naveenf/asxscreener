@@ -28,26 +28,28 @@ function SignalCard({ signal, onAdd, onWatchlist }) {
       return (
         <>
           <div className="indicator">
-            <span className="indicator-label">ADX</span>
-            <span className="indicator-value">{signal.indicators.ADX?.toFixed(1)}</span>
+            <span className="indicator-label">Fib Pos</span>
+            <span className={`indicator-value ${signal.indicators.Fib_Pos > 0 ? 'positive' : 'negative'}`}>
+              {signal.indicators.Fib_Pos > 0 ? 'BULL' : 'BEAR'}
+            </span>
           </div>
 
           <div className="indicator">
-            <span className="indicator-label">DI+</span>
-            <span className="indicator-value positive">{signal.indicators.DIPlus?.toFixed(1)}</span>
+            <span className="indicator-label">Supertrend</span>
+            <span className={`indicator-value ${signal.indicators.PP_Trend === 1 ? 'positive' : 'negative'}`}>
+              {signal.indicators.PP_Trend === 1 ? 'BULL' : 'BEAR'}
+            </span>
           </div>
 
           <div className="indicator">
-            <span className="indicator-label">DI-</span>
-            <span className="indicator-value negative">{signal.indicators.DIMinus?.toFixed(1)}</span>
+            <span className="indicator-label">IT Trigger</span>
+            <span className="indicator-value">{signal.indicators.IT_Trigger?.toFixed(2)}</span>
           </div>
 
-          {signal.indicators.SMA200 && (
-            <div className="indicator">
-              <span className="indicator-label">SMA200</span>
-              <span className="indicator-value">{signal.indicators.SMA200.toFixed(2)}</span>
-            </div>
-          )}
+          <div className="indicator">
+            <span className="indicator-label">IT Trend</span>
+            <span className="indicator-value">{signal.indicators.IT_Trend?.toFixed(2)}</span>
+          </div>
         </>
       );
     } else if (strategy === 'mean_reversion') {

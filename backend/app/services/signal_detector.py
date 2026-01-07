@@ -49,40 +49,38 @@ class SignalDetector:
 
     def detect_entry_signal(self, df: pd.DataFrame) -> Dict:
         """
-        Detect current entry signal.
+        Detect current entry signal with improved trend logic.
 
         Entry conditions:
-        1. ADX > 30
+        1. ADX > threshold (default 25)
         2. DI+ > DI- (bullish trend)
-
-        Args:
-            df: DataFrame with indicators (must have ADX, DIPlus, DIMinus)
-
-        Returns:
-            Dict with signal information
+        3. ADX is rising (ADX[-1] > ADX[-2]) - Momentum confirmation
+        4. Price > BB_Middle (SMA20) - Short-term momentum
         """
-        if len(df) == 0:
-            return {'has_signal': False, 'reason': 'No data'}
+        if len(df) < 2:
+            return {'has_signal': False, 'reason': 'Insufficient data'}
 
-        # Get latest row
+        # Get latest rows
         latest = df.iloc[-1]
+        prev = df.iloc[-2]
 
         # Check if we have valid indicator values
-        if pd.isna(latest['ADX']) or pd.isna(latest['DIPlus']) or pd.isna(latest['DIMinus']):
+        required = ['ADX', 'DIPlus', 'DIMinus', 'Close', 'BB_Middle']
+        if any(pd.isna(latest[col]) for col in required):
             return {'has_signal': False, 'reason': 'Insufficient data for indicators'}
 
         # Check entry conditions
         adx_above_threshold = latest['ADX'] > self.adx_threshold
         di_plus_above_di_minus = latest['DIPlus'] > latest['DIMinus']
+        adx_rising = latest['ADX'] > prev['ADX']
+        above_sma20 = latest['Close'] > latest['BB_Middle']
 
-        # Check for fresh crossover (DI+ just crossed above DI-)
+        # Check for fresh crossover
         fresh_crossover = False
-        if len(df) >= 2:
-            prev = df.iloc[-2]
-            if not pd.isna(prev['DIPlus']) and not pd.isna(prev['DIMinus']):
-                was_below = prev['DIPlus'] <= prev['DIMinus']
-                now_above = latest['DIPlus'] > latest['DIMinus']
-                fresh_crossover = was_below and now_above
+        if not pd.isna(prev['DIPlus']) and not pd.isna(prev['DIMinus']):
+            was_below = prev['DIPlus'] <= prev['DIMinus']
+            now_above = latest['DIPlus'] > latest['DIMinus']
+            fresh_crossover = was_below and now_above
 
         # Apply volume filter
         volume_ok = self._check_volume(df)
@@ -94,6 +92,8 @@ class SignalDetector:
         has_signal = (
             adx_above_threshold and
             di_plus_above_di_minus and
+            adx_rising and
+            above_sma20 and
             volume_ok and
             atr_ok
         )
@@ -106,53 +106,43 @@ class SignalDetector:
             'close': float(latest['Close']),
             'adx_above_threshold': adx_above_threshold,
             'di_plus_above_di_minus': di_plus_above_di_minus,
+            'adx_rising': adx_rising,
+            'above_sma20': above_sma20,
             'fresh_crossover': fresh_crossover,
             'date': latest.name
         }
 
     def calculate_score(self, signal_info: Dict, df: pd.DataFrame) -> float:
         """
-        Calculate signal score (0-100).
-
-        Scoring algorithm:
-        - Base score: 50
-        - ADX strength bonus: 0-25 (higher ADX = stronger trend)
-        - DI spread bonus: 0-15 (bigger difference = clearer signal)
-        - Above SMA200 bonus: +10
-        - Fresh crossover bonus: +5
-
-        Args:
-            signal_info: Signal information from detect_entry_signal()
-            df: DataFrame with price and indicator data
-
-        Returns:
-            Score from 0-100
+        Calculate improved signal score.
         """
         if not signal_info.get('has_signal'):
             return 0.0
 
-        score = 50.0  # Base score
+        score = 40.0  # Base score
 
-        # ADX strength bonus (0-25 points)
-        # ADX from 30 to 50+ gives 0 to 25 points
+        # ADX strength (0-25 points)
         adx = signal_info['adx']
         if adx >= self.adx_threshold:
-            adx_bonus = min((adx - self.adx_threshold) * 1.25, 25.0)
+            adx_bonus = min((adx - self.adx_threshold) * 1.5, 25.0)
             score += adx_bonus
 
-        # DI spread bonus (0-15 points)
-        # Bigger spread between DI+ and DI- = clearer trend
+        # DI spread (0-15 points)
         di_spread = signal_info['di_plus'] - signal_info['di_minus']
         if di_spread > 0:
-            spread_bonus = min(di_spread * 0.5, 15.0)
+            spread_bonus = min(di_spread * 0.6, 15.0)
             score += spread_bonus
 
-        # Above SMA200 bonus (+10 points)
+        # Trend alignment (SMA200) (+10 points)
         latest = df.iloc[-1]
         if self.sma_column in latest and not pd.isna(latest[self.sma_column]):
             if latest['Close'] > latest[self.sma_column]:
                 score += 10.0
 
+        # ADX Momentum (+5 points if rising strongly)
+        if signal_info.get('adx_rising'):
+            score += 5.0
+            
         # Fresh crossover bonus (+5 points)
         if signal_info.get('fresh_crossover'):
             score += 5.0

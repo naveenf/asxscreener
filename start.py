@@ -34,7 +34,7 @@ BACKEND_PORT = 8000
 FRONTEND_PORT = 5173
 BACKEND_HEALTH_URL = f"http://localhost:{BACKEND_PORT}/health"
 FRONTEND_URL = f"http://localhost:{FRONTEND_PORT}"
-HEALTH_CHECK_TIMEOUT = 30  # seconds
+HEALTH_CHECK_TIMEOUT = 60  # seconds
 HEALTH_CHECK_INTERVAL = 1  # seconds
 
 
@@ -203,6 +203,7 @@ def download_data():
         venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'bin' / 'python3'
 
     try:
+        # Use full path to python and script
         result = subprocess.run(
             [str(venv_python), str(download_script)],
             cwd=str(PROJECT_ROOT),
@@ -225,6 +226,46 @@ def download_data():
 # ============================================================
 # BACKEND SERVER MANAGEMENT
 # ============================================================
+
+def run_screener():
+    """
+    Run the stock screener to generate fresh signals.
+    """
+    print_info("Running stock screener to generate fresh signals...")
+    
+    # Get venv python path
+    if sys.platform == 'win32':
+        venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'Scripts' / 'python.exe'
+    else:
+        venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'bin' / 'python3'
+        
+    # Step 1: Update stock list from our ASX 300 source
+    print_info("Updating ASX 300 stock list...")
+    list_generator = PROJECT_ROOT / 'scripts' / 'generate_asx300_list.py'
+    try:
+        subprocess.run([str(venv_python), str(list_generator)], check=True)
+    except Exception as e:
+        print_warning(f"Could not update stock list: {e}")
+
+    screener_script = PROJECT_ROOT / 'backend' / 'app' / 'services' / 'screener.py'
+    
+    try:
+        # Run the screener module as a module (-m), not a script
+        # This allows relative imports like 'from .indicators' to work
+        env = os.environ.copy()
+        env['PYTHONPATH'] = str(PROJECT_ROOT / 'backend')
+        
+        result = subprocess.run(
+            [str(venv_python), '-m', 'app.services.screener'],
+            cwd=str(PROJECT_ROOT / 'backend'),
+            env=env,
+            check=True
+        )
+        print_success("Screener completed successfully")
+    except subprocess.CalledProcessError as e:
+        print_error(f"Screener failed: {e}")
+    except Exception as e:
+        print_error(f"Error running screener: {e}")
 
 def start_backend():
     """
@@ -510,6 +551,9 @@ def main():
         oldest_file = min(csv_files, key=lambda f: f.stat().st_mtime)
         age_days = int((time.time() - oldest_file.stat().st_mtime) / 86400)
         print_success(f"Data is fresh (last updated: {age_days} day{'s' if age_days != 1 else ''} ago)")
+
+    # Step 2.5: Run screener
+    run_screener()
 
     # Step 3: Start backend
     print("\n3. Starting backend server...")

@@ -101,14 +101,11 @@ async def refresh_data():
     """
     try:
         print(f"Starting manual refresh at {datetime.now()}")
-        # Create screener to get stock list
+        # Create screener (new detectors are initialized inside StockScreener)
         screener = StockScreener(
             data_dir=settings.RAW_DATA_DIR,
             metadata_dir=settings.METADATA_DIR,
-            output_dir=settings.PROCESSED_DATA_DIR,
-            adx_period=settings.ADX_PERIOD,
-            sma_period=settings.SMA_PERIOD,
-            adx_threshold=settings.ADX_THRESHOLD
+            output_dir=settings.PROCESSED_DATA_DIR
         )
         
         # 1. Update data from yfinance

@@ -10,6 +10,7 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
   const [buyDate, setBuyDate] = useState(new Date().toISOString().split('T')[0]);
   const [buyPrice, setBuyPrice] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [strategyType, setStrategyType] = useState('triple_trend');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -21,10 +22,17 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
         setBuyDate(stock.buy_date ? new Date(stock.buy_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
         setBuyPrice(stock.buy_price || '');
         setQuantity(stock.quantity || 1);
+        setStrategyType(stock.strategy_type || 'triple_trend');
         setNotes(stock.notes || '');
       } else {
         // Adding from screener (pre-fill price and ticker)
         setBuyPrice(stock.current_price || '');
+        // Map incoming strategy to schema strategy_type
+        if (stock.strategy === 'mean_reversion') {
+          setStrategyType('mean_reversion');
+        } else {
+          setStrategyType('triple_trend');
+        }
       }
     }
   }, [stock]);
@@ -39,6 +47,7 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
         buy_date: buyDate,
         buy_price: parseFloat(buyPrice),
         quantity: parseFloat(quantity),
+        strategy_type: strategyType,
         notes: notes
       };
 
@@ -102,6 +111,14 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
           <div className="form-group">
             <label>Quantity</label>
             <input type="number" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+          </div>
+
+          <div className="form-group">
+            <label>Strategy Type</label>
+            <select value={strategyType} onChange={(e) => setStrategyType(e.target.value)}>
+              <option value="triple_trend">Triple Trend Confirmation</option>
+              <option value="mean_reversion">Mean Reversion (RSI 30)</option>
+            </select>
           </div>
 
           <div className="form-group">

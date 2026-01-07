@@ -8,15 +8,97 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import List, Dict
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from datetime import datetime
+from datetime import datetime, date
 import math
+import pandas as pd
 
 from ..firebase_setup import db
 from ..models.portfolio_schema import PortfolioItemCreate, PortfolioItemResponse
 from ..config import settings
-from ..services.market_data import get_current_prices, validate_and_get_price
+from ..services.market_data import get_current_prices, validate_and_get_price, normalize_ticker
+from ..services.indicators import TechnicalIndicators
+from ..services.triple_trend_detector import TripleTrendDetector
+from ..services.mean_reversion_detector import MeanReversionDetector
 
 router = APIRouter(prefix="/api/portfolio")
+
+def calculate_trend_signal(ticker: str, buy_price: float, buy_date: date, strategy_type: str) -> tuple[str, str]:
+    """
+    Calculate current trend/action for a stock in portfolio.
+    Returns (signal, reason)
+    """
+    try:
+        yf_ticker = normalize_ticker(ticker)
+        csv_path = settings.RAW_DATA_DIR / f"{yf_ticker}.csv"
+        
+        if not csv_path.exists():
+            return "HOLD", "No history data"
+            
+        df = pd.read_csv(csv_path, index_col='Date', parse_dates=True)
+        if df.empty:
+            return "HOLD", "Empty history"
+            
+        # Standardize index: timezone-naive and floored to midnight
+        df.index = pd.to_datetime(df.index, utc=True)
+        df.index = df.index.tz_localize(None)
+        df.index = df.index.normalize()
+            
+        # Add indicators
+        df = TechnicalIndicators.add_all_indicators(
+            df,
+            adx_period=settings.ADX_PERIOD,
+            sma_period=settings.SMA_PERIOD,
+            atr_period=settings.ATR_PERIOD,
+            volume_period=settings.VOLUME_PERIOD,
+            rsi_period=settings.RSI_PERIOD,
+            bb_period=settings.BB_PERIOD,
+            bb_std_dev=settings.BB_STD_DEV
+        )
+        
+        # Instantiate correct detector
+        if strategy_type == 'mean_reversion':
+            detector = MeanReversionDetector(
+                rsi_threshold=settings.RSI_THRESHOLD,
+                profit_target=settings.MEAN_REVERSION_PROFIT_TARGET,
+                bb_period=settings.BB_PERIOD,
+                bb_std_dev=settings.BB_STD_DEV,
+                rsi_period=settings.RSI_PERIOD,
+                time_limit=settings.MEAN_REVERSION_TIME_LIMIT
+            )
+        else: # Default to triple_trend
+            detector = TripleTrendDetector(
+                profit_target=settings.PROFIT_TARGET,
+                stop_loss=settings.TREND_FOLLOWING_STOP_LOSS,
+                time_limit=settings.TREND_FOLLOWING_TIME_LIMIT
+            )
+            
+        # Find entry index based on buy_date
+        entry_idx = None
+        target_date = pd.Timestamp(buy_date).replace(tzinfo=None).floor('D')
+        if target_date in df.index:
+            entry_idx = df.index.get_loc(target_date)
+        else:
+            # Find closest date after buy_date
+            future_dates = df.index[df.index >= target_date]
+            if not future_dates.empty:
+                entry_idx = df.index.get_loc(future_dates[0])
+        
+        # 1. Check for EXIT signal first
+        exit_info = detector.detect_exit_signal(df, buy_price, current_index=-1, entry_index=entry_idx)
+        if exit_info.get('has_exit'):
+            reason = exit_info.get('exit_reason', 'Unknown')
+            return "EXIT", reason.replace('_', ' ').title()
+            
+        # 2. Check for fresh BUY signal (add to position)
+        entry_info = detector.detect_entry_signal(df)
+        if entry_info.get('has_signal'):
+            return "BUY", "Fresh Signal"
+            
+        return "HOLD", "Strong Trend"
+        
+    except Exception as e:
+        print(f"Error calculating trend for {ticker}: {e}")
+        return "HOLD", "Error"
 
 async def get_current_user_email(authorization: str = Header(...)) -> str:
     """
@@ -108,6 +190,7 @@ async def list_portfolio(email: str = Depends(get_current_user_email)):
                 'buy_date': buy_date,
                 'buy_price': data.get('buy_price'),
                 'quantity': data.get('quantity'),
+                'strategy_type': data.get('strategy_type', 'triple_trend'),
                 'notes': data.get('notes')
             }
             raw_items.append(item)
@@ -117,12 +200,17 @@ async def list_portfolio(email: str = Depends(get_current_user_email)):
         # Batch fetch current prices
         current_prices = get_current_prices(list(set(tickers_to_fetch)))
         
-        # Enrich items
+        # Enrichment items
         for item in raw_items:
             ticker = item['ticker']
             current_price = current_prices.get(ticker)
             
             current_value, gain_loss, gain_loss_percent, annualized_gain = calculate_metrics(item, current_price)
+            
+            # Calculate Trend Signal
+            trend_signal, exit_reason = calculate_trend_signal(
+                ticker, item['buy_price'], item['buy_date'], item['strategy_type']
+            )
             
             items.append(PortfolioItemResponse(
                 id=item['id'],
@@ -130,6 +218,9 @@ async def list_portfolio(email: str = Depends(get_current_user_email)):
                 buy_date=item['buy_date'],
                 buy_price=item['buy_price'],
                 quantity=item['quantity'],
+                strategy_type=item['strategy_type'],
+                trend_signal=trend_signal,
+                exit_reason=exit_reason,
                 notes=item['notes'],
                 current_price=current_price,
                 current_value=current_value,
@@ -160,6 +251,7 @@ async def add_to_portfolio(
             'buy_date': item.buy_date.isoformat(),
             'buy_price': item.buy_price,
             'quantity': item.quantity,
+            'strategy_type': item.strategy_type or 'triple_trend',
             'notes': item.notes,
             'created_at': datetime.utcnow()
         }
@@ -178,6 +270,7 @@ async def add_to_portfolio(
             buy_date=item.buy_date,
             buy_price=item.buy_price,
             quantity=item.quantity,
+            strategy_type=item.strategy_type or 'triple_trend',
             notes=item.notes,
             current_price=current_price,
             current_value=current_value,
@@ -233,6 +326,7 @@ async def update_portfolio_item(
             'buy_date': item.buy_date.isoformat(),
             'buy_price': item.buy_price,
             'quantity': item.quantity,
+            'strategy_type': item.strategy_type or 'triple_trend',
             'notes': item.notes,
             'updated_at': datetime.utcnow()
         }
@@ -248,6 +342,7 @@ async def update_portfolio_item(
             buy_date=item.buy_date,
             buy_price=item.buy_price,
             quantity=item.quantity,
+            strategy_type=item.strategy_type or 'triple_trend',
             notes=item.notes,
             current_price=current_price,
             current_value=current_value,

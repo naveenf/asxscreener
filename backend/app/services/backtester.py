@@ -91,6 +91,7 @@ class Backtester:
         max_positions: int = 5,           # Max concurrent positions
         slippage_pct: float = 0.001,      # 0.1% slippage
         commission: float = 10.0,         # $10 per trade
+        fixed_position_size: Optional[float] = None # Fixed dollar amount
     ):
         """
         Initialize backtester.
@@ -104,6 +105,7 @@ class Backtester:
             max_positions: Maximum concurrent positions
             slippage_pct: Slippage as decimal (0.001 = 0.1%)
             commission: Commission per trade in dollars
+            fixed_position_size: Optional fixed dollar amount per trade
         """
         self.detector = detector
         self.start_date = pd.to_datetime(start_date)
@@ -113,6 +115,7 @@ class Backtester:
         self.max_positions = max_positions
         self.slippage_pct = slippage_pct
         self.commission = commission
+        self.fixed_position_size = fixed_position_size
 
         # State tracking
         self.current_capital = initial_capital
@@ -329,11 +332,12 @@ class Backtester:
             entry_indicators['DIPlus'] = signal['signal_info']['di_plus']
             entry_indicators['DIMinus'] = signal['signal_info']['di_minus']
 
-        # Mean reversion indicators
-        if 'rsi' in signal['signal_info']:
-            entry_indicators['RSI'] = signal['signal_info']['rsi']
-            entry_indicators['BB_Upper'] = signal['signal_info']['bb_upper']
-            entry_indicators['BB_Middle'] = signal['signal_info']['bb_middle']
+        # Triple Trend indicators
+        if 'fib_pos' in signal['signal_info']:
+            entry_indicators['Fib_Pos'] = signal['signal_info']['fib_pos']
+            entry_indicators['PP_Trend'] = signal['signal_info']['st_trend']
+            entry_indicators['IT_Trend'] = signal['signal_info']['it_trend']
+            entry_indicators['IT_Trigger'] = signal['signal_info']['it_trigger']
 
         position = Position(
             ticker=ticker,
@@ -427,26 +431,29 @@ class Backtester:
 
     def _calculate_position_size(self, price: float) -> int:
         """
-        Calculate number of shares to buy based on position_size_pct.
-
-        Args:
-            price: Stock price
-
-        Returns:
-            Number of shares (integer)
+        Calculate number of shares to buy.
         """
         available_capital = self.current_capital
-        target_value = available_capital * self.position_size_pct
+        
+        if self.fixed_position_size:
+            target_value = self.fixed_position_size
+        else:
+            target_value = available_capital * self.position_size_pct
 
         # Account for slippage and commission
         fill_price = price * (1 + self.slippage_pct)
+        
+        if target_value - self.commission <= 0:
+            return 0
+            
         shares = int((target_value - self.commission) / fill_price)
 
         # Ensure we have enough capital
-        cost = self._execute_trade(price, shares, 'BUY')
-        if cost > available_capital:
-            # Reduce shares
-            shares = int(available_capital / (fill_price + self.commission / shares))
+        if shares > 0:
+            cost = self._execute_trade(price, shares, 'BUY')
+            if cost > available_capital:
+                # Reduce shares to what we can afford
+                shares = int((available_capital - self.commission) / fill_price)
 
         return max(shares, 0)
 
