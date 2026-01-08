@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './StockSearchModal.css';
 
@@ -7,35 +7,71 @@ const StockSearchModal = ({ onClose, onAddStock }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [analysis, setAnalysis] = useState(null);
+    const [suggestions, setSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const searchRef = useRef(null);
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!ticker) return;
+    // Debounced search for suggestions
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (ticker && ticker.length >= 1 && !analysis) {
+                try {
+                    const response = await axios.get(`/api/stocks/search?q=${ticker}`);
+                    setSuggestions(response.data);
+                    setShowSuggestions(true);
+                } catch (err) {
+                    console.error("Failed to fetch suggestions:", err);
+                }
+            } else {
+                setSuggestions([]);
+                setShowSuggestions(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [ticker, analysis]);
+
+    // Close suggestions when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSearch = async (e, selectedTicker = null) => {
+        if (e) e.preventDefault();
         
-        // Ensure ticker has .AX suffix if it's purely letters and likely ASX
-        let searchTicker = ticker.toUpperCase();
-        if (/^[A-Z]{3,4}$/.test(searchTicker)) {
-             // Optional: Assume .AX if not provided? 
-             // Better to let user type it or just try both?
-             // For now let's assume if user types 'CBA' they mean 'CBA.AX'
-             searchTicker += '.AX'; 
-        }
-
+        const finalTicker = (selectedTicker || ticker).toUpperCase();
+        if (!finalTicker) return;
+        
         setLoading(true);
         setError(null);
         setAnalysis(null);
+        setShowSuggestions(false);
 
         try {
             const token = localStorage.getItem('google_token');
-            const response = await axios.get(`/api/analyze/${searchTicker}`, {
+            const response = await axios.get(`/api/analyze/${finalTicker}`, {
                  headers: token ? { Authorization: `Bearer ${token}` } : {}
             });
             setAnalysis(response.data);
+            setTicker(response.data.ticker); // Use normalized ticker from backend
         } catch (err) {
             setError(err.response?.data?.detail || "Failed to analyze stock. Check ticker symbol.");
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSelectSuggestion = (suggestion) => {
+        setTicker(suggestion.ticker);
+        setSuggestions([]);
+        setShowSuggestions(false);
+        handleSearch(null, suggestion.ticker);
     };
 
     const handleAddToPortfolio = (strategy) => {
@@ -63,15 +99,34 @@ const StockSearchModal = ({ onClose, onAddStock }) => {
                 </div>
                 
                 <form onSubmit={handleSearch} className="search-form">
-                    <div className="input-wrapper">
+                    <div className="input-wrapper" ref={searchRef}>
                         <input 
                             type="text" 
                             value={ticker}
-                            onChange={(e) => setTicker(e.target.value)}
-                            placeholder="Enter Ticker (e.g. CBA.AX, TSLA)"
+                            onChange={(e) => {
+                                setTicker(e.target.value);
+                                setAnalysis(null); // Reset analysis when typing new ticker
+                            }}
+                            placeholder="Search by Name or Ticker (e.g. Treasury, BHP)"
                             autoFocus
+                            autoComplete="off"
                         />
-                        <small className="input-hint">Tip: Use .AX for Australian stocks if not in ASX 300</small>
+                        <small className="input-hint">Search ASX listed stocks for instant analysis</small>
+                        
+                        {showSuggestions && suggestions.length > 0 && (
+                            <ul className="suggestions-list">
+                                {suggestions.map((s) => (
+                                    <li 
+                                        key={s.ticker} 
+                                        className="suggestion-item"
+                                        onClick={() => handleSelectSuggestion(s)}
+                                    >
+                                        <span className="suggestion-ticker">{s.ticker}</span>
+                                        <span className="suggestion-name">{s.name}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
                     <button type="submit" disabled={loading}>
                         {loading ? 'Analyzing...' : 'Analyze'}

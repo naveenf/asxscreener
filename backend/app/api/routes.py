@@ -18,6 +18,7 @@ from . import auth  # Import auth router
 from . import portfolio  # Import portfolio router
 from . import watchlist  # Import watchlist router
 from . import analysis   # Import analysis router
+from . import stocks     # Import stocks router
 
 router = APIRouter()
 
@@ -26,6 +27,7 @@ router.include_router(auth.router)
 router.include_router(portfolio.router)
 router.include_router(watchlist.router)
 router.include_router(analysis.router)
+router.include_router(stocks.router)
 
 
 def load_signals() -> dict:
