@@ -10,6 +10,7 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
   const [buyDate, setBuyDate] = useState(new Date().toISOString().split('T')[0]);
   const [buyPrice, setBuyPrice] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [brokerage, setBrokerage] = useState(0);
   const [strategyType, setStrategyType] = useState('triple_trend');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -22,6 +23,7 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
         setBuyDate(stock.buy_date ? new Date(stock.buy_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
         setBuyPrice(stock.buy_price || '');
         setQuantity(stock.quantity || 1);
+        setBrokerage(stock.brokerage || 0);
         setStrategyType(stock.strategy_type || 'triple_trend');
         setNotes(stock.notes || '');
       } else {
@@ -47,6 +49,7 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
         buy_date: buyDate,
         buy_price: parseFloat(buyPrice),
         quantity: parseFloat(quantity),
+        brokerage: parseFloat(brokerage),
         strategy_type: strategyType,
         notes: notes
       };
@@ -98,19 +101,28 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
             </div>
           )}
 
-          <div className="form-group">
-            <label>Buy Date</label>
-            <input type="date" value={buyDate} onChange={(e) => setBuyDate(e.target.value)} required />
-          </div>
-          
-          <div className="form-group">
-            <label>Buy Price ($)</label>
-            <input type="number" step="0.01" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} required />
+          <div className="form-row">
+            <div className="form-group half">
+              <label>Buy Date</label>
+              <input type="date" value={buyDate} onChange={(e) => setBuyDate(e.target.value)} required />
+            </div>
+            
+            <div className="form-group half">
+              <label>Buy Price ($)</label>
+              <input type="number" step="0.01" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} required />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Quantity</label>
-            <input type="number" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+          <div className="form-row">
+            <div className="form-group half">
+              <label>Quantity</label>
+              <input type="number" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+            </div>
+            
+            <div className="form-group half">
+              <label>Brokerage ($)</label>
+              <input type="number" step="0.01" value={brokerage} onChange={(e) => setBrokerage(e.target.value)} />
+            </div>
           </div>
 
           <div className="form-group">

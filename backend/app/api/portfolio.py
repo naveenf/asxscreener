@@ -13,7 +13,7 @@ import math
 import pandas as pd
 
 from ..firebase_setup import db
-from ..models.portfolio_schema import PortfolioItemCreate, PortfolioItemResponse
+from ..models.portfolio_schema import PortfolioItemCreate, PortfolioItemResponse, PortfolioItemSell
 from ..config import settings
 from ..services.market_data import get_current_prices, validate_and_get_price, normalize_ticker
 from ..services.indicators import TechnicalIndicators
@@ -120,43 +120,67 @@ async def get_current_user_email(authorization: str = Header(...)) -> str:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 def calculate_metrics(item_data, current_price):
-    """Calculate gain/loss and annualized return."""
-    if not current_price:
-        return None, None, None, None
-        
-    quantity = item_data['quantity']
-    buy_price = item_data['buy_price']
+    """
+    Calculate gain/loss and annualized return.
+    Handles both OPEN (unrealized) and CLOSED (realized) positions.
+    """
+    quantity = item_data.get('quantity', 0)
+    buy_price = item_data.get('buy_price', 0)
+    brokerage = item_data.get('brokerage', 0.0) or 0.0
+    status = item_data.get('status', 'OPEN')
     
-    # Simple Metrics
-    current_value = current_price * quantity
-    cost_basis = buy_price * quantity
-    gain_loss = current_value - cost_basis
+    # Cost Basis = (Buy Price * Quantity) + Buy Brokerage
+    cost_basis = (buy_price * quantity) + brokerage
+
+    current_value = 0.0
+    gain_loss = 0.0
+    
+    if status == 'CLOSED':
+        # For closed items, use sell data
+        sell_price = item_data.get('sell_price', 0)
+        sell_brokerage = item_data.get('sell_brokerage', 0.0) or 0.0
+        
+        # Net Proceeds = (Sell Price * Quantity) - Sell Brokerage
+        net_proceeds = (sell_price * quantity) - sell_brokerage
+        
+        current_value = net_proceeds # "Value" is what we got back
+        gain_loss = net_proceeds - cost_basis
+        
+        # Use sell_date for time calculation
+        end_date = item_data.get('sell_date')
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+            
+    else:
+        # For OPEN items, use current price
+        if not current_price:
+            return None, None, None, None
+            
+        # Current Market Value = (Current Price * Quantity) - (Estimated Sell Brokerage? No, usually gross value)
+        # Standard practice: Current Value = Price * Qty. Gain/Loss accounts for entry costs.
+        current_value = current_price * quantity
+        gain_loss = current_value - cost_basis
+        end_date = datetime.utcnow().date()
+
+    # Gain Loss Percent
     gain_loss_percent = (gain_loss / cost_basis * 100) if cost_basis > 0 else 0
     
     # Annualized Gain Calculation
-    # CAGR = (End Value / Start Value) ^ (365 / Days) - 1
-    # If held for less than a year, simple return is often used, or we just show the extrapolated annual rate.
-    # To avoid huge numbers for very short durations (e.g. 1 day 1% = huge annual), 
-    # we can cap it or just return it raw.
-    # Let's return raw but handle the 'days=0' case.
-    
     buy_date = item_data['buy_date']
     if isinstance(buy_date, str):
-        # Should be date object by now usually, but safe check
         buy_date = datetime.strptime(buy_date, "%Y-%m-%d").date()
         
-    days_held = (datetime.utcnow().date() - buy_date).days
+    days_held = (end_date - buy_date).days
     
     annualized_gain = 0.0
     
-    if cost_basis > 0:
+    if cost_basis > 0 and current_value > 0:
         total_return_ratio = current_value / cost_basis
         
         if days_held < 1:
             days_held = 1 # Avoid division by zero
             
         # Only calculate Annualized Gain (CAGR) if held for more than 1 year (365 days)
-        # Short-term annualized compounding produces unrealistic numbers (e.g. 50 billion %)
         if days_held > 365:
             try:
                 annualized_gain = (pow(total_return_ratio, (365.0 / days_held)) - 1) * 100
@@ -183,6 +207,10 @@ async def list_portfolio(email: str = Depends(get_current_user_email)):
             buy_date = data.get('buy_date')
             if isinstance(buy_date, str):
                 buy_date = datetime.strptime(buy_date, "%Y-%m-%d").date()
+                
+            sell_date = data.get('sell_date')
+            if isinstance(sell_date, str):
+                sell_date = datetime.strptime(sell_date, "%Y-%m-%d").date()
             
             item = {
                 'id': doc.id,
@@ -190,27 +218,42 @@ async def list_portfolio(email: str = Depends(get_current_user_email)):
                 'buy_date': buy_date,
                 'buy_price': data.get('buy_price'),
                 'quantity': data.get('quantity'),
+                'brokerage': data.get('brokerage', 0.0),
                 'strategy_type': data.get('strategy_type', 'triple_trend'),
-                'notes': data.get('notes')
+                'notes': data.get('notes'),
+                'status': data.get('status', 'OPEN'),
+                'sell_date': sell_date,
+                'sell_price': data.get('sell_price'),
+                'sell_brokerage': data.get('sell_brokerage'),
+                'realized_gain': data.get('realized_gain')
             }
             raw_items.append(item)
-            if item['ticker']:
+            if item['ticker'] and item['status'] == 'OPEN':
                 tickers_to_fetch.append(item['ticker'])
         
-        # Batch fetch current prices
+        # Batch fetch current prices (only for OPEN positions)
         current_prices = get_current_prices(list(set(tickers_to_fetch)))
         
         # Enrichment items
         for item in raw_items:
             ticker = item['ticker']
+            # For CLOSED items, current_price isn't needed for metrics, but nice to show "last known" or "current market"
+            # We'll use current market price if available, else 0 or sell_price
             current_price = current_prices.get(ticker)
             
             current_value, gain_loss, gain_loss_percent, annualized_gain = calculate_metrics(item, current_price)
             
-            # Calculate Trend Signal
-            trend_signal, exit_reason = calculate_trend_signal(
-                ticker, item['buy_price'], item['buy_date'], item['strategy_type']
-            )
+            # Calculate Trend Signal (Only for OPEN positions)
+            trend_signal = "CLOSED"
+            exit_reason = None
+            
+            if item['status'] == 'OPEN':
+                trend_signal, exit_reason = calculate_trend_signal(
+                    ticker, item['buy_price'], item['buy_date'], item['strategy_type']
+                )
+            elif item['status'] == 'CLOSED':
+                trend_signal = "SOLD"
+                exit_reason = "Position Closed"
             
             items.append(PortfolioItemResponse(
                 id=item['id'],
@@ -218,6 +261,12 @@ async def list_portfolio(email: str = Depends(get_current_user_email)):
                 buy_date=item['buy_date'],
                 buy_price=item['buy_price'],
                 quantity=item['quantity'],
+                brokerage=item['brokerage'],
+                status=item['status'],
+                sell_date=item['sell_date'],
+                sell_price=item['sell_price'],
+                sell_brokerage=item['sell_brokerage'],
+                realized_gain=gain_loss if item['status'] == 'CLOSED' else None, # Use calculated gain
                 strategy_type=item['strategy_type'],
                 trend_signal=trend_signal,
                 exit_reason=exit_reason,
@@ -251,16 +300,18 @@ async def add_to_portfolio(
             'buy_date': item.buy_date.isoformat(),
             'buy_price': item.buy_price,
             'quantity': item.quantity,
+            'brokerage': item.brokerage or 0.0,
             'strategy_type': item.strategy_type or 'triple_trend',
             'notes': item.notes,
+            'status': 'OPEN',
             'created_at': datetime.utcnow()
         }
         
         update_time, doc_ref = portfolio_ref.add(doc_data)
         
-        # Calculate initial metrics (pass dict that looks like item)
-        item_dict = item.model_dump() # Pydantic v2
-        # fix buy_date to be date object if it isn't
+        # Calculate initial metrics
+        item_dict = item.model_dump()
+        item_dict['status'] = 'OPEN'
         
         current_value, gain_loss, gain_loss_percent, annualized_gain = calculate_metrics(item_dict, current_price)
         
@@ -270,6 +321,8 @@ async def add_to_portfolio(
             buy_date=item.buy_date,
             buy_price=item.buy_price,
             quantity=item.quantity,
+            brokerage=item.brokerage,
+            status='OPEN',
             strategy_type=item.strategy_type or 'triple_trend',
             notes=item.notes,
             current_price=current_price,
@@ -283,6 +336,135 @@ async def add_to_portfolio(
     except Exception as e:
         print(f"Portfolio Add Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to add item")
+
+@router.post("/{item_id}/sell", response_model=PortfolioItemResponse)
+async def sell_portfolio_item(
+    item_id: str,
+    sell_data: PortfolioItemSell,
+    email: str = Depends(get_current_user_email)
+):
+    """
+    Sell a portfolio item (partial or full).
+    If partial, creates a new CLOSED document for the sold portion and updates the original.
+    If full, marks the original document as CLOSED.
+    """
+    try:
+        portfolio_ref = db.collection('users').document(email).collection('portfolio')
+        doc_ref = portfolio_ref.document(item_id)
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Item not found")
+            
+        data = doc.to_dict()
+        
+        if data.get('status') == 'CLOSED':
+            raise HTTPException(status_code=400, detail="Item is already closed")
+            
+        current_qty = data.get('quantity', 0)
+        original_brokerage = data.get('brokerage', 0.0) or 0.0
+        
+        if sell_data.quantity > current_qty:
+            raise HTTPException(status_code=400, detail="Sell quantity exceeds current holding")
+            
+        # Determine if Full or Partial Sell
+        is_full_sell = (sell_data.quantity == current_qty)
+        
+        if is_full_sell:
+            # Update existing doc to CLOSED
+            update_data = {
+                'status': 'CLOSED',
+                'sell_date': sell_data.sell_date.isoformat(),
+                'sell_price': sell_data.sell_price,
+                'sell_brokerage': sell_data.brokerage,
+                'updated_at': datetime.utcnow()
+            }
+            doc_ref.update(update_data)
+            
+            # Return updated object
+            data.update(update_data)
+            # Add implicit fields for response
+            data['id'] = item_id
+            
+        else:
+            # Partial Sell
+            # 1. Calculate proportional buy brokerage for the sold portion
+            # If we sell 30%, we attribute 30% of the original brokerage to this sale
+            sell_ratio = sell_data.quantity / current_qty
+            proportional_buy_brokerage = original_brokerage * sell_ratio
+            remaining_buy_brokerage = original_brokerage - proportional_buy_brokerage
+            
+            # 2. Create NEW document for the Sold portion
+            sold_doc_data = data.copy()
+            sold_doc_data.update({
+                'quantity': sell_data.quantity,
+                'brokerage': proportional_buy_brokerage, # Adjusted buy cost
+                'status': 'CLOSED',
+                'sell_date': sell_data.sell_date.isoformat(),
+                'sell_price': sell_data.sell_price,
+                'sell_brokerage': sell_data.brokerage, # Fee for selling
+                'created_at': datetime.utcnow(),
+                'original_ref_id': item_id, # Optional: track origin
+                'notes': f"Sold from original position. {data.get('notes', '')}"
+            })
+            # Remove updated_at if it exists from copy
+            if 'updated_at' in sold_doc_data:
+                del sold_doc_data['updated_at']
+                
+            portfolio_ref.add(sold_doc_data)
+            
+            # 3. Update ORIGINAL document (Remaining portion)
+            remaining_qty = current_qty - sell_data.quantity
+            update_data = {
+                'quantity': remaining_qty,
+                'brokerage': remaining_buy_brokerage,
+                'updated_at': datetime.utcnow()
+            }
+            doc_ref.update(update_data)
+            
+            # Return updated original object
+            data.update(update_data)
+            data['id'] = item_id
+
+        # Calculate metrics for response
+        # Note: current_price isn't strictly needed for the response of a sell action, 
+        # but we can fetch it if we want the 'current_value' to reflect the remaining part correctly.
+        current_price = validate_and_get_price(data['ticker'])
+        
+        # fix dates
+        if isinstance(data['buy_date'], str):
+             data['buy_date'] = datetime.strptime(data['buy_date'], "%Y-%m-%d").date()
+        if 'sell_date' in data and isinstance(data['sell_date'], str):
+             data['sell_date'] = datetime.strptime(data['sell_date'], "%Y-%m-%d").date()
+
+        current_value, gain_loss, gain_loss_percent, annualized_gain = calculate_metrics(data, current_price)
+        
+        return PortfolioItemResponse(
+            id=data['id'],
+            ticker=data['ticker'],
+            buy_date=data['buy_date'],
+            buy_price=data['buy_price'],
+            quantity=data['quantity'],
+            brokerage=data.get('brokerage'),
+            status=data.get('status', 'OPEN'),
+            sell_date=data.get('sell_date'),
+            sell_price=data.get('sell_price'),
+            sell_brokerage=data.get('sell_brokerage'),
+            strategy_type=data.get('strategy_type'),
+            trend_signal="HOLD", # simplified
+            notes=data.get('notes'),
+            current_price=current_price,
+            current_value=current_value,
+            gain_loss=gain_loss,
+            gain_loss_percent=gain_loss_percent,
+            annualized_gain=annualized_gain
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Portfolio Sell Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process sale")
 
 @router.delete("/{item_id}")
 async def remove_from_portfolio(
@@ -326,6 +508,7 @@ async def update_portfolio_item(
             'buy_date': item.buy_date.isoformat(),
             'buy_price': item.buy_price,
             'quantity': item.quantity,
+            'brokerage': item.brokerage or 0.0,
             'strategy_type': item.strategy_type or 'triple_trend',
             'notes': item.notes,
             'updated_at': datetime.utcnow()
@@ -342,6 +525,7 @@ async def update_portfolio_item(
             buy_date=item.buy_date,
             buy_price=item.buy_price,
             quantity=item.quantity,
+            brokerage=item.brokerage,
             strategy_type=item.strategy_type or 'triple_trend',
             notes=item.notes,
             current_price=current_price,
