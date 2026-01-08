@@ -71,11 +71,16 @@ class TripleTrendDetector:
         # 4. Price Filter
         price_ok = latest['Close'] >= 1.0
 
-        # All conditions must align
+        # All conditions must align for a signal
+        # Note: has_signal is specifically for the FRESH crossover
         has_signal = fib_bullish and st_bullish and it_crossover and price_ok
+        
+        # is_bullish tracks if we are in the zone, regardless of crossover
+        is_bullish = fib_bullish and st_bullish and (latest['IT_Trigger'] > latest['IT_Trend']) and price_ok
 
         return {
             'has_signal': has_signal,
+            'is_bullish': is_bullish,
             'fib_pos': int(latest['Fib_Pos']),
             'st_trend': int(latest['PP_Trend']),
             'it_trend': float(latest['IT_Trend']),
@@ -87,26 +92,39 @@ class TripleTrendDetector:
     def calculate_score(self, signal_info: Dict, df: pd.DataFrame) -> float:
         """
         Calculate signal score.
-        Higher score for signals where price is closer to the Supertrend line
-        (better risk/reward).
+        Granular scoring:
+        - 20 pts for Fibonacci Bullish
+        - 20 pts for Supertrend Bullish
+        - 20 pts for Momentum Bullish (Trigger > Trend)
+        - 10 pts Bonus for fresh Triple Confirmation (Crossover)
+        - Up to 30 pts for risk/reward (distance to stop loss)
         """
-        if not signal_info.get('has_signal'):
-            return 0.0
-
-        score = 60.0 # Base score is high because triple confirmation is rare
-        
         latest = df.iloc[-1]
-        if 'PP_TrailingSL' in latest and not pd.isna(latest['PP_TrailingSL']):
-            # Distance from stop loss (lower is better for entry)
-            dist_pct = (latest['Close'] - latest['PP_TrailingSL']) / latest['Close']
-            # Bonus of up to 20 points if within 5% of the stop
-            dist_bonus = max(0, (0.05 - dist_pct) / 0.05 * 20.0)
-            score += dist_bonus
+        score = 0.0
 
-        # Bonus for fresh Fibonacci trend
-        if len(df) >= 5:
-            if all(df['Fib_Pos'].iloc[-5:] > 0) and any(df['Fib_Pos'].iloc[-10:-5] <= 0):
-                score += 10.0
+        # 1. Fibonacci (20 pts)
+        if latest['Fib_Pos'] > 0:
+            score += 20.0
+        
+        # 2. Supertrend (20 pts)
+        if latest['PP_Trend'] == 1:
+            score += 20.0
+            
+        # 3. Momentum State (20 pts)
+        if latest['IT_Trigger'] > latest['IT_Trend']:
+            score += 20.0
+
+        # 4. Fresh Crossover Bonus (10 pts)
+        if signal_info.get('has_signal'):
+            score += 10.0
+
+        # 5. Risk/Reward Bonus (Up to 30 pts)
+        # ONLY apply if Supertrend is Bullish
+        if latest['PP_Trend'] == 1 and 'PP_TrailingSL' in latest and not pd.isna(latest['PP_TrailingSL']):
+            dist_pct = (latest['Close'] - latest['PP_TrailingSL']) / latest['Close']
+            # Bonus of up to 30 points if within 5% of the stop
+            dist_bonus = max(0, (0.05 - dist_pct) / 0.05 * 30.0)
+            score += min(dist_bonus, 30.0)
 
         return min(score, 100.0)
 

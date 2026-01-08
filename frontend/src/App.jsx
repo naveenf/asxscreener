@@ -12,6 +12,7 @@ import Header from './components/Header';
 import SignalList from './components/SignalList';
 import Portfolio from './components/Portfolio';
 import AddStockModal from './components/AddStockModal';
+import StockSearchModal from './components/StockSearchModal';
 import Toast from './components/Toast';
 import { fetchSignals, fetchStatus, triggerRefresh } from './services/api';
 import './App.css';
@@ -28,6 +29,7 @@ function App() {
   
   // Modal states
   const [selectedStockToAdd, setSelectedStockToAdd] = useState(null);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   
   // Key to force refresh of Portfolio component when stock is added
   const [portfolioKey, setPortfolioKey] = useState(0);
@@ -122,6 +124,7 @@ function App() {
         status={status}
         onRefresh={handleRefresh}
         refreshing={refreshing}
+        onSearch={() => setShowSearchModal(true)}
       />
 
       <main className="main-content">
@@ -153,6 +156,13 @@ function App() {
           } />
         </Routes>
       </main>
+
+      {showSearchModal && (
+        <StockSearchModal 
+          onClose={() => setShowSearchModal(false)}
+          onAddStock={(stock) => setSelectedStockToAdd(stock)}
+        />
+      )}
 
       {selectedStockToAdd && (
         <AddStockModal 

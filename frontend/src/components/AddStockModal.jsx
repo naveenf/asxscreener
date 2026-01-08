@@ -27,10 +27,13 @@ const AddStockModal = ({ stock, onClose, onAdded, onError }) => {
         setStrategyType(stock.strategy_type || 'triple_trend');
         setNotes(stock.notes || '');
       } else {
-        // Adding from screener (pre-fill price and ticker)
-        setBuyPrice(stock.current_price || '');
+        // Adding from screener or analysis (pre-fill price and ticker)
+        setBuyPrice(stock.buy_price || stock.current_price || '');
+        
         // Map incoming strategy to schema strategy_type
-        if (stock.strategy === 'mean_reversion') {
+        if (stock.strategy_type) {
+          setStrategyType(stock.strategy_type);
+        } else if (stock.strategy === 'mean_reversion') {
           setStrategyType('mean_reversion');
         } else {
           setStrategyType('triple_trend');

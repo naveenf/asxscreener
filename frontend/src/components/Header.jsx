@@ -10,7 +10,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import './Header.css';
 
-function Header({ status, onRefresh, refreshing }) {
+function Header({ status, onRefresh, refreshing, onSearch }) {
   const { user, login, logout } = useAuth();
 
   return (
@@ -34,6 +34,10 @@ function Header({ status, onRefresh, refreshing }) {
               </div>
             </div>
           )}
+          
+          <button className="search-trigger-btn" onClick={onSearch}>
+            🔍 Analyze
+          </button>
 
           {user ? (
             <div className="user-profile">

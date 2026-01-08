@@ -102,29 +102,41 @@ class MeanReversionDetector:
     def calculate_score(self, signal_info: Dict, df: pd.DataFrame) -> float:
         """
         Calculate signal score (0-100).
+        Granular Scoring:
+        - Up to 40 pts: RSI (40 pts if <= 30, 30 if <= 40, 20 if <= 50, 10 if <= 60)
+        - Up to 30 pts: BB Position (30 pts if below Lower BB, 15 if below Middle BB)
+        - 20 pts: Trend alignment (Price > SMA200)
+        - Up to 10 pts: BB Distance bonus
         """
-        if not signal_info.get('has_signal'):
-            return 0.0
-
-        score = 50.0  # Base score
-
-        # RSI extremeness bonus (0-20 points)
-        rsi = signal_info['rsi']
-        if rsi <= self.rsi_threshold:
-            rsi_bonus = min((self.rsi_threshold - rsi) / self.rsi_threshold * 20, 20.0)
-            score += rsi_bonus
-
-        # BB distance bonus (0-20 points)
-        bb_distance = signal_info['bb_distance_pct']
-        if bb_distance > 0:
-            distance_bonus = min(bb_distance * 2, 20.0)
-            score += distance_bonus
-
-        # Trend alignment (price above SMA200 already required, but calculate strength)
         latest = df.iloc[-1]
-        if 'SMA200' in latest and not pd.isna(latest['SMA200']):
-            if latest['Close'] > latest['SMA200'] * 1.05: # Extra points for strong trend
-                score += 10.0
+        score = 0.0
+
+        # 1. RSI Component (Max 40)
+        rsi = latest['RSI']
+        if rsi <= self.rsi_threshold: # 30
+            score += 40.0
+        elif rsi <= 40:
+            score += 30.0
+        elif rsi <= 50:
+            score += 20.0
+        elif rsi <= 60:
+            score += 10.0
+
+        # 2. Bollinger Band Position (30)
+        if latest['Close'] < latest['BB_Lower']:
+            score += 30.0
+        elif latest['Close'] < latest['BB_Middle']:
+            score += 15.0
+
+        # 3. Trend Alignment (20)
+        if latest['Close'] > latest['SMA200']:
+            score += 20.0
+
+        # 4. BB Distance Bonus (Up to 10)
+        # Only if below lower band
+        bb_distance = ((latest['BB_Lower'] - latest['Close']) / latest['BB_Lower']) * 100
+        if bb_distance > 0:
+            score += min(bb_distance * 2, 10.0)
 
         return min(score, 100.0)
 
