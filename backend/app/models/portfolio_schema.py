@@ -35,6 +35,12 @@ class PortfolioItemResponse(BaseModel):
     sell_price: Optional[float] = None
     sell_brokerage: Optional[float] = None
     realized_gain: Optional[float] = None
+    
+    # Tax fields
+    financial_year: Optional[str] = None
+    holding_period_days: Optional[int] = None
+    is_long_term: Optional[bool] = None # > 12 months
+    taxable_gain: Optional[float] = None # After CGT discount if applicable
 
     strategy_type: Optional[str] = "triple_trend"
     trend_signal: Optional[str] = "HOLD" # BUY, HOLD, EXIT
@@ -48,3 +54,15 @@ class PortfolioItemResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TaxSummaryItem(BaseModel):
+    financial_year: str
+    total_profit: float
+    total_brokerage: float
+    total_taxable_gain: float
+    items: List[PortfolioItemResponse]
+
+class TaxSummaryResponse(BaseModel):
+    summary: List[TaxSummaryItem]
+    lifetime_profit: float
+    lifetime_brokerage: float

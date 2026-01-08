@@ -147,32 +147,52 @@ def check_prerequisites():
 # DATA MANAGEMENT
 # ============================================================
 
+def get_active_tickers():
+    """Load current tickers from stock_list.json."""
+    stock_list_file = PROJECT_ROOT / 'data' / 'metadata' / 'stock_list.json'
+    if not stock_list_file.exists():
+        return set()
+    try:
+        import json
+        with open(stock_list_file, 'r') as f:
+            data = json.load(f)
+            return {s['ticker'] for s in data.get('stocks', [])}
+    except Exception:
+        return set()
+
+def get_relevant_csv_files():
+    """Get CSV files in raw data directory that belong to the active stock list."""
+    data_dir = PROJECT_ROOT / 'data' / 'raw'
+    if not data_dir.exists():
+        return []
+    
+    active_tickers = get_active_tickers()
+    csv_files = list(data_dir.glob('*.csv'))
+    
+    if not active_tickers:
+        return csv_files
+        
+    return [f for f in csv_files if f.stem in active_tickers]
+
 def check_data_freshness():
     """
     Check if stock data needs updating.
 
     Returns True if:
     - Data directory doesn't exist
-    - No CSV files found
-    - Data is older than DATA_FRESHNESS_DAYS
+    - No relevant CSV files found
+    - Data for any active stock is older than DATA_FRESHNESS_DAYS
 
     Returns:
         bool: True if data needs updating, False otherwise
     """
-    data_dir = PROJECT_ROOT / 'data' / 'raw'
-
-    # Check if directory exists
-    if not data_dir.exists():
+    relevant_files = get_relevant_csv_files()
+    if not relevant_files:
         return True
 
-    # Check if any CSV files exist
-    csv_files = list(data_dir.glob('*.csv'))
-    if not csv_files:
-        return True
-
-    # Check age of oldest file
+    # Check age of oldest relevant file
     try:
-        oldest_file = min(csv_files, key=lambda f: f.stat().st_mtime)
+        oldest_file = min(relevant_files, key=lambda f: f.stat().st_mtime)
         age_seconds = time.time() - oldest_file.stat().st_mtime
         age_days = age_seconds / 86400
 
@@ -473,13 +493,12 @@ def print_startup_summary():
     Print final startup summary with all relevant information.
     """
     # Get data stats
-    data_dir = PROJECT_ROOT / 'data' / 'raw'
-    csv_count = len(list(data_dir.glob('*.csv'))) if data_dir.exists() else 0
+    relevant_files = get_relevant_csv_files()
+    csv_count = len(relevant_files)
 
     # Get last update time
     if csv_count > 0:
-        csv_files = list(data_dir.glob('*.csv'))
-        oldest_file = min(csv_files, key=lambda f: f.stat().st_mtime)
+        oldest_file = min(relevant_files, key=lambda f: f.stat().st_mtime)
         age_seconds = time.time() - oldest_file.stat().st_mtime
         age_days = int(age_seconds / 86400)
         data_age = f"{age_days} day{'s' if age_days != 1 else ''} ago"
@@ -534,23 +553,20 @@ def main():
     print("\n2. Checking data freshness...")
     needs_update = check_data_freshness()
 
+    relevant_files = get_relevant_csv_files()
     if needs_update:
-        data_dir = PROJECT_ROOT / 'data' / 'raw'
-        if not data_dir.exists() or not list(data_dir.glob('*.csv')):
-            print_warning("No data found")
+        if not relevant_files:
+            print_warning("No active stock data found")
         else:
-            csv_files = list(data_dir.glob('*.csv'))
-            oldest_file = min(csv_files, key=lambda f: f.stat().st_mtime)
+            oldest_file = min(relevant_files, key=lambda f: f.stat().st_mtime)
             age_days = int((time.time() - oldest_file.stat().st_mtime) / 86400)
-            print_warning(f"Data is outdated (last updated: {age_days} days ago)")
+            print_warning(f"Active stock data is outdated (last updated: {age_days} days ago)")
 
         download_data()
     else:
-        data_dir = PROJECT_ROOT / 'data' / 'raw'
-        csv_files = list(data_dir.glob('*.csv'))
-        oldest_file = min(csv_files, key=lambda f: f.stat().st_mtime)
+        oldest_file = min(relevant_files, key=lambda f: f.stat().st_mtime)
         age_days = int((time.time() - oldest_file.stat().st_mtime) / 86400)
-        print_success(f"Data is fresh (last updated: {age_days} day{'s' if age_days != 1 else ''} ago)")
+        print_success(f"Active stock data is fresh (last updated: {age_days} day{'s' if age_days != 1 else ''} ago)")
 
     # Step 2.5: Run screener
     run_screener()

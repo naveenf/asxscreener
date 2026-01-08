@@ -77,7 +77,7 @@ function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilt
       {/* Section Header with Bungee Spice */}
       <div className="section-header">
         <h2 className="signal-count">
-          SHOWING {signals.length} SIGNAL{signals.length !== 1 ? 'S' : ''}
+          SHOWING {signals.length} ASX 300 SIGNAL{signals.length !== 1 ? 'S' : ''}
         </h2>
       </div>
 

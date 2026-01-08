@@ -18,7 +18,7 @@ function Header({ status, onRefresh, refreshing }) {
       <div className="header-content">
         <div className="header-left">
           <h1>ASX STOCK SCREENER</h1>
-          <p className="subtitle">Pro Dashboard</p>
+          <p className="subtitle">ASX 300 Pro Dashboard</p>
         </div>
 
         <div className="header-right">
@@ -52,7 +52,6 @@ function Header({ status, onRefresh, refreshing }) {
             </div>
           ) : (
             <div className="guest-login">
-              <span className="login-hint">Log in to track Portfolio & Watchlist</span>
               <GoogleLogin
                 onSuccess={credentialResponse => {
                   login(credentialResponse);

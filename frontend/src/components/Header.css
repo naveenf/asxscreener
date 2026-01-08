@@ -133,15 +133,6 @@
   margin-right: var(--spacing-sm);
 }
 
-.login-hint {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
-  font-style: italic;
-  max-width: 120px;
-  text-align: right;
-  line-height: 1.2;
-}
-
 .nav-links {
   display: flex;
   gap: var(--spacing-sm);

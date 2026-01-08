@@ -75,3 +75,6 @@ data/raw/
 # Debug and test scripts
 debug_exit.py
 test_mean_reversion.py
+jan4_stocks.txt
+current_tickers.txt
+existing_files.txt

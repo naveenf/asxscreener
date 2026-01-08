@@ -13,7 +13,7 @@ import math
 import pandas as pd
 
 from ..firebase_setup import db
-from ..models.portfolio_schema import PortfolioItemCreate, PortfolioItemResponse, PortfolioItemSell
+from ..models.portfolio_schema import PortfolioItemCreate, PortfolioItemResponse, PortfolioItemSell, TaxSummaryResponse, TaxSummaryItem
 from ..config import settings
 from ..services.market_data import get_current_prices, validate_and_get_price, normalize_ticker
 from ..services.indicators import TechnicalIndicators
@@ -119,10 +119,26 @@ async def get_current_user_email(authorization: str = Header(...)) -> str:
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
+def get_australian_fy(date_obj: date) -> str:
+    """
+    Get Australian Financial Year for a given date.
+    FY ends on June 30.
+    e.g., 2023-06-30 -> FY2022-23
+          2023-07-01 -> FY2023-24
+    """
+    year = date_obj.year
+    if date_obj.month > 6:
+        # After June, it's the start of next FY
+        return f"FY{year}-{str(year+1)[2:]}"
+    else:
+        # Before or in June, it's end of current FY
+        return f"FY{year-1}-{str(year)[2:]}"
+
 def calculate_metrics(item_data, current_price):
     """
     Calculate gain/loss and annualized return.
     Handles both OPEN (unrealized) and CLOSED (realized) positions.
+    Returns a dict with all metrics including tax info.
     """
     quantity = item_data.get('quantity', 0)
     buy_price = item_data.get('buy_price', 0)
@@ -134,6 +150,10 @@ def calculate_metrics(item_data, current_price):
 
     current_value = 0.0
     gain_loss = 0.0
+    financial_year = None
+    is_long_term = False
+    holding_period_days = 0
+    taxable_gain = None
     
     if status == 'CLOSED':
         # For closed items, use sell data
@@ -150,14 +170,20 @@ def calculate_metrics(item_data, current_price):
         end_date = item_data.get('sell_date')
         if isinstance(end_date, str):
             end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        
+        if end_date:
+            financial_year = get_australian_fy(end_date)
             
     else:
         # For OPEN items, use current price
         if not current_price:
-            return None, None, None, None
+            return {
+                "current_value": None, "gain_loss": None, "gain_loss_percent": None, 
+                "annualized_gain": None, "holding_period_days": None, "is_long_term": None,
+                "financial_year": None, "taxable_gain": None
+            }
             
-        # Current Market Value = (Current Price * Quantity) - (Estimated Sell Brokerage? No, usually gross value)
-        # Standard practice: Current Value = Price * Qty. Gain/Loss accounts for entry costs.
+        # Current Market Value = (Current Price * Quantity)
         current_value = current_price * quantity
         gain_loss = current_value - cost_basis
         end_date = datetime.utcnow().date()
@@ -165,31 +191,51 @@ def calculate_metrics(item_data, current_price):
     # Gain Loss Percent
     gain_loss_percent = (gain_loss / cost_basis * 100) if cost_basis > 0 else 0
     
-    # Annualized Gain Calculation
-    buy_date = item_data['buy_date']
+    # Annualized Gain Calculation and Holding Period
+    buy_date = item_data.get('buy_date')
     if isinstance(buy_date, str):
         buy_date = datetime.strptime(buy_date, "%Y-%m-%d").date()
         
-    days_held = (end_date - buy_date).days
+    if buy_date and end_date:
+        holding_period_days = (end_date - buy_date).days
+        is_long_term = holding_period_days >= 365 # 12 months rule
     
     annualized_gain = 0.0
     
     if cost_basis > 0 and current_value > 0:
         total_return_ratio = current_value / cost_basis
         
-        if days_held < 1:
-            days_held = 1 # Avoid division by zero
+        days_held_calc = holding_period_days if holding_period_days > 0 else 1
             
         # Only calculate Annualized Gain (CAGR) if held for more than 1 year (365 days)
-        if days_held > 365:
+        if days_held_calc > 365:
             try:
-                annualized_gain = (pow(total_return_ratio, (365.0 / days_held)) - 1) * 100
+                annualized_gain = (pow(total_return_ratio, (365.0 / days_held_calc)) - 1) * 100
             except Exception:
                 annualized_gain = None
         else:
             annualized_gain = None
 
-    return current_value, gain_loss, gain_loss_percent, annualized_gain
+    # Calculate Taxable Gain for Closed positions
+    if status == 'CLOSED':
+        # CGT Event: If gain > 0 and held > 12 months, 50% discount applies
+        # Note: Capital losses are just losses, no discount logic applied to reduce them, 
+        # but they offset other gains. Here we just show the "assessable" amount.
+        if gain_loss > 0 and is_long_term:
+            taxable_gain = gain_loss * 0.5
+        else:
+            taxable_gain = gain_loss
+
+    return {
+        "current_value": current_value,
+        "gain_loss": gain_loss,
+        "gain_loss_percent": gain_loss_percent,
+        "annualized_gain": annualized_gain,
+        "holding_period_days": holding_period_days,
+        "is_long_term": is_long_term,
+        "financial_year": financial_year,
+        "taxable_gain": taxable_gain
+    }
 
 @router.get("", response_model=List[PortfolioItemResponse])
 async def list_portfolio(email: str = Depends(get_current_user_email)):
@@ -241,7 +287,7 @@ async def list_portfolio(email: str = Depends(get_current_user_email)):
             # We'll use current market price if available, else 0 or sell_price
             current_price = current_prices.get(ticker)
             
-            current_value, gain_loss, gain_loss_percent, annualized_gain = calculate_metrics(item, current_price)
+            metrics = calculate_metrics(item, current_price)
             
             # Calculate Trend Signal (Only for OPEN positions)
             trend_signal = "CLOSED"
@@ -266,22 +312,111 @@ async def list_portfolio(email: str = Depends(get_current_user_email)):
                 sell_date=item['sell_date'],
                 sell_price=item['sell_price'],
                 sell_brokerage=item['sell_brokerage'],
-                realized_gain=gain_loss if item['status'] == 'CLOSED' else None, # Use calculated gain
+                realized_gain=metrics['gain_loss'] if item['status'] == 'CLOSED' else None,
+                financial_year=metrics['financial_year'],
+                holding_period_days=metrics['holding_period_days'],
+                is_long_term=metrics['is_long_term'],
+                taxable_gain=metrics['taxable_gain'],
                 strategy_type=item['strategy_type'],
                 trend_signal=trend_signal,
                 exit_reason=exit_reason,
                 notes=item['notes'],
                 current_price=current_price,
-                current_value=current_value,
-                gain_loss=gain_loss,
-                gain_loss_percent=gain_loss_percent,
-                annualized_gain=annualized_gain
+                current_value=metrics['current_value'],
+                gain_loss=metrics['gain_loss'],
+                gain_loss_percent=metrics['gain_loss_percent'],
+                annualized_gain=metrics['annualized_gain']
             ))
             
         return items
     except Exception as e:
         print(f"Portfolio List Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch portfolio")
+
+@router.get("/tax-summary", response_model=TaxSummaryResponse)
+async def get_tax_summary(email: str = Depends(get_current_user_email)):
+    """Get portfolio tax summary grouped by Financial Year."""
+    try:
+        portfolio_ref = db.collection('users').document(email).collection('portfolio')
+        docs = portfolio_ref.where('status', '==', 'CLOSED').stream()
+        
+        all_items = []
+        
+        for doc in docs:
+            data = doc.to_dict()
+            buy_date = data.get('buy_date')
+            if isinstance(buy_date, str):
+                buy_date = datetime.strptime(buy_date, "%Y-%m-%d").date()
+                
+            sell_date = data.get('sell_date')
+            if isinstance(sell_date, str):
+                sell_date = datetime.strptime(sell_date, "%Y-%m-%d").date()
+            
+            # Use calculate_metrics to get tax fields
+            metrics = calculate_metrics(data, current_price=None)
+            
+            item_response = PortfolioItemResponse(
+                id=doc.id,
+                ticker=data.get('ticker'),
+                buy_date=buy_date,
+                buy_price=data.get('buy_price'),
+                quantity=data.get('quantity'),
+                brokerage=data.get('brokerage', 0.0),
+                status='CLOSED',
+                sell_date=sell_date,
+                sell_price=data.get('sell_price'),
+                sell_brokerage=data.get('sell_brokerage'),
+                realized_gain=metrics['gain_loss'],
+                financial_year=metrics['financial_year'],
+                holding_period_days=metrics['holding_period_days'],
+                is_long_term=metrics['is_long_term'],
+                taxable_gain=metrics['taxable_gain'],
+                strategy_type=data.get('strategy_type', 'triple_trend'),
+                trend_signal="SOLD",
+                exit_reason="Position Closed",
+                notes=data.get('notes'),
+                current_price=None,
+                current_value=metrics['current_value'],
+                gain_loss=metrics['gain_loss'],
+                gain_loss_percent=metrics['gain_loss_percent'],
+                annualized_gain=metrics['annualized_gain']
+            )
+            all_items.append(item_response)
+            
+        # Group by Financial Year
+        groups = {}
+        for item in all_items:
+            fy = item.financial_year or "Unknown"
+            if fy not in groups:
+                groups[fy] = {
+                    'financial_year': fy,
+                    'items': [],
+                    'total_profit': 0.0,
+                    'total_brokerage': 0.0,
+                    'total_taxable_gain': 0.0
+                }
+            groups[fy]['items'].append(item)
+            groups[fy]['total_profit'] += (item.gain_loss or 0.0)
+            groups[fy]['total_brokerage'] += ((item.brokerage or 0.0) + (item.sell_brokerage or 0.0))
+            groups[fy]['total_taxable_gain'] += (item.taxable_gain or 0.0)
+            
+        # Convert groups to list and sort by FY descending
+        summary_list = [TaxSummaryItem(**g) for g in groups.values()]
+        summary_list.sort(key=lambda x: x.financial_year, reverse=True)
+        
+        # Calculate Lifetime totals
+        lifetime_profit = sum(g.total_profit for g in summary_list)
+        lifetime_brokerage = sum(g.total_brokerage for g in summary_list)
+        
+        return TaxSummaryResponse(
+            summary=summary_list,
+            lifetime_profit=lifetime_profit,
+            lifetime_brokerage=lifetime_brokerage
+        )
+
+    except Exception as e:
+        print(f"Tax Summary Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch tax summary")
 
 @router.post("", response_model=PortfolioItemResponse)
 async def add_to_portfolio(
@@ -313,7 +448,7 @@ async def add_to_portfolio(
         item_dict = item.model_dump()
         item_dict['status'] = 'OPEN'
         
-        current_value, gain_loss, gain_loss_percent, annualized_gain = calculate_metrics(item_dict, current_price)
+        metrics = calculate_metrics(item_dict, current_price)
         
         return PortfolioItemResponse(
             id=doc_ref.id,
@@ -326,10 +461,14 @@ async def add_to_portfolio(
             strategy_type=item.strategy_type or 'triple_trend',
             notes=item.notes,
             current_price=current_price,
-            current_value=current_value,
-            gain_loss=gain_loss,
-            gain_loss_percent=gain_loss_percent,
-            annualized_gain=annualized_gain
+            current_value=metrics['current_value'],
+            gain_loss=metrics['gain_loss'],
+            gain_loss_percent=metrics['gain_loss_percent'],
+            annualized_gain=metrics['annualized_gain'],
+            holding_period_days=metrics['holding_period_days'],
+            is_long_term=metrics['is_long_term'],
+            financial_year=metrics['financial_year'],
+            taxable_gain=metrics['taxable_gain']
         )
     except HTTPException:
         raise
@@ -437,7 +576,7 @@ async def sell_portfolio_item(
         if 'sell_date' in data and isinstance(data['sell_date'], str):
              data['sell_date'] = datetime.strptime(data['sell_date'], "%Y-%m-%d").date()
 
-        current_value, gain_loss, gain_loss_percent, annualized_gain = calculate_metrics(data, current_price)
+        metrics = calculate_metrics(data, current_price)
         
         return PortfolioItemResponse(
             id=data['id'],
@@ -454,10 +593,14 @@ async def sell_portfolio_item(
             trend_signal="HOLD", # simplified
             notes=data.get('notes'),
             current_price=current_price,
-            current_value=current_value,
-            gain_loss=gain_loss,
-            gain_loss_percent=gain_loss_percent,
-            annualized_gain=annualized_gain
+            current_value=metrics['current_value'],
+            gain_loss=metrics['gain_loss'],
+            gain_loss_percent=metrics['gain_loss_percent'],
+            annualized_gain=metrics['annualized_gain'],
+            holding_period_days=metrics['holding_period_days'],
+            is_long_term=metrics['is_long_term'],
+            financial_year=metrics['financial_year'],
+            taxable_gain=metrics['taxable_gain']
         )
 
     except HTTPException:
@@ -517,7 +660,7 @@ async def update_portfolio_item(
         doc_ref.update(doc_data)
         
         item_dict = item.model_dump()
-        current_value, gain_loss, gain_loss_percent, annualized_gain = calculate_metrics(item_dict, current_price)
+        metrics = calculate_metrics(item_dict, current_price)
         
         return PortfolioItemResponse(
             id=item_id,
@@ -529,10 +672,14 @@ async def update_portfolio_item(
             strategy_type=item.strategy_type or 'triple_trend',
             notes=item.notes,
             current_price=current_price,
-            current_value=current_value,
-            gain_loss=gain_loss,
-            gain_loss_percent=gain_loss_percent,
-            annualized_gain=annualized_gain
+            current_value=metrics['current_value'],
+            gain_loss=metrics['gain_loss'],
+            gain_loss_percent=metrics['gain_loss_percent'],
+            annualized_gain=metrics['annualized_gain'],
+            holding_period_days=metrics['holding_period_days'],
+            is_long_term=metrics['is_long_term'],
+            financial_year=metrics['financial_year'],
+            taxable_gain=metrics['taxable_gain']
         )
     except HTTPException:
         raise
