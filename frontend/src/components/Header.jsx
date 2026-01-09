@@ -39,19 +39,22 @@ function Header({ status, onRefresh, refreshing, onSearch }) {
             🔍 Analyze
           </button>
 
+          <nav className="nav-links">
+            <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+              Screener
+            </NavLink>
+            {user && (
+              <NavLink to="/portfolio" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                Portfolio
+              </NavLink>
+            )}
+            <NavLink to="/insider-trades" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+              Insider Trades
+            </NavLink>
+          </nav>
+
           {user ? (
             <div className="user-profile">
-              <nav className="nav-links">
-                <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-                  Screener
-                </NavLink>
-                <NavLink to="/portfolio" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-                  Portfolio
-                </NavLink>
-                <NavLink to="/insider-trades" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-                  Insider Trades
-                </NavLink>
-              </nav>
               <div className="user-info">
                 <span className="user-name">{user.name}</span>
                 <button className="logout-button" onClick={logout}>Logout</button>
