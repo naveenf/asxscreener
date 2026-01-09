@@ -63,15 +63,13 @@ backend/serviceAccountKey.json
 frontend/.env
 frontend/.env.*
 
-# Data (optional - uncomment if you don't want to commit data)
-# data/raw/*.csv
-# data/processed/*.json
-
-# Generated data and backtest results
-data/processed/signals.json
-data/processed/insider_trades.json
-data/backtest_results/
+# Data
 data/raw/
+data/forex_raw/
+data/processed/
+data/app.db
+data/metadata/stock_list_backup_*.json
+data/metadata/stock_list_test*.json
 
 # Debug and test scripts
 debug_exit.py
