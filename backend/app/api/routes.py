@@ -19,6 +19,8 @@ from . import portfolio  # Import portfolio router
 from . import watchlist  # Import watchlist router
 from . import analysis   # Import analysis router
 from . import stocks     # Import stocks router
+from . import insider_trades # Import insider trades router
+from ..services.insider_trades import InsiderTradesService
 
 router = APIRouter()
 
@@ -28,6 +30,7 @@ router.include_router(portfolio.router)
 router.include_router(watchlist.router)
 router.include_router(analysis.router)
 router.include_router(stocks.router)
+router.include_router(insider_trades.router)
 
 
 def load_signals() -> dict:
@@ -124,6 +127,12 @@ async def refresh_data():
         print("Running screener...")
         results = screener.screen_all_stocks()
         screener.save_signals(results)
+        
+        # 3. Update Insider Trades
+        print("Updating insider trades...")
+        insider_service = InsiderTradesService(settings.PROCESSED_DATA_DIR / 'insider_trades.json')
+        insider_service.scrape_and_update()
+        
         print(f"Refresh complete. Found {results['signals_count']} signals.")
 
         return {

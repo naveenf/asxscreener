@@ -11,6 +11,7 @@ import axios from 'axios';
 import Header from './components/Header';
 import SignalList from './components/SignalList';
 import Portfolio from './components/Portfolio';
+import InsiderTrades from './components/InsiderTrades';
 import AddStockModal from './components/AddStockModal';
 import StockSearchModal from './components/StockSearchModal';
 import Toast from './components/Toast';
@@ -152,6 +153,15 @@ function App() {
               key={portfolioKey} 
               onAddStock={(stock) => setSelectedStockToAdd(stock)} 
               onShowToast={setToast}
+            />
+          } />
+          <Route path="/insider-trades" element={
+            <InsiderTrades 
+              onAnalyze={(ticker) => {
+                setShowSearchModal(true);
+                // We'll need to pass the ticker to StockSearchModal, 
+                // but for now, we'll just open it as requested.
+              }}
             />
           } />
         </Routes>

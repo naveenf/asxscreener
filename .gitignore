@@ -69,6 +69,7 @@ frontend/.env.*
 
 # Generated data and backtest results
 data/processed/signals.json
+data/processed/insider_trades.json
 data/backtest_results/
 data/raw/
 

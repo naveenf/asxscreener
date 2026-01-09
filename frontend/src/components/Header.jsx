@@ -48,6 +48,9 @@ function Header({ status, onRefresh, refreshing, onSearch }) {
                 <NavLink to="/portfolio" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
                   Portfolio
                 </NavLink>
+                <NavLink to="/insider-trades" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                  Insider Trades
+                </NavLink>
               </nav>
               <div className="user-info">
                 <span className="user-name">{user.name}</span>
