@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import './InsiderTrades.css';
 
@@ -6,6 +6,7 @@ function InsiderTrades({ onAnalyze }) {
   const [groups, setGroupedTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTickers, setExpandedTickers] = useState(new Set());
+  const [sortOption, setSortOption] = useState('abs_value');
 
   const fetchTrades = async () => {
     try {
@@ -41,6 +42,33 @@ function InsiderTrades({ onAnalyze }) {
     }).format(value);
   };
 
+  const sortedGroups = useMemo(() => {
+    let sorted = [...groups];
+    switch (sortOption) {
+      case 'value_desc': // Top Buyers
+        sorted.sort((a, b) => b.net_value - a.net_value);
+        break;
+      case 'value_asc': // Top Sellers
+        sorted.sort((a, b) => a.net_value - b.net_value);
+        break;
+      case 'date_desc': // Most Recent
+        sorted.sort((a, b) => {
+          const dateA = a.trades.reduce((max, t) => t.date > max ? t.date : max, '');
+          const dateB = b.trades.reduce((max, t) => t.date > max ? t.date : max, '');
+          return dateB.localeCompare(dateA);
+        });
+        break;
+      case 'ticker_asc': // Alphabetical
+        sorted.sort((a, b) => a.ticker.localeCompare(b.ticker));
+        break;
+      case 'abs_value': // High Impact (Absolute Value)
+      default:
+        sorted.sort((a, b) => Math.abs(b.net_value) - Math.abs(a.net_value));
+        break;
+    }
+    return sorted;
+  }, [groups, sortOption]);
+
   if (loading) {
     return <div className="loading">Loading significant insider trades...</div>;
   }
@@ -48,19 +76,37 @@ function InsiderTrades({ onAnalyze }) {
   return (
     <div className="insider-trades-container">
       <div className="insider-header">
-        <h2>Significant Insider Trades</h2>
-        <div className="insider-summary">
-          Last 30 Days • On-market trades &gt; $50,000
+        <div className="header-title-section">
+          <h2>Significant Insider Trades</h2>
+          <div className="insider-summary">
+            Last 30 Days • On-market trades &gt; $50,000
+          </div>
+        </div>
+        
+        <div className="sort-controls">
+          <label htmlFor="sort-select">Sort By:</label>
+          <select 
+            id="sort-select"
+            value={sortOption} 
+            onChange={(e) => setSortOption(e.target.value)}
+            className="sort-select"
+          >
+            <option value="abs_value">High Impact (Abs Value)</option>
+            <option value="value_desc">Top Buyers (Highest Net)</option>
+            <option value="value_asc">Top Sellers (Lowest Net)</option>
+            <option value="date_desc">Most Recent</option>
+            <option value="ticker_asc">Ticker (A-Z)</option>
+          </select>
         </div>
       </div>
 
-      {groups.length === 0 ? (
+      {sortedGroups.length === 0 ? (
         <div className="no-trades">
           <p>No significant on-market director trades detected in the last 30 days.</p>
         </div>
       ) : (
         <div className="trades-list">
-          {groups.map((group) => (
+          {sortedGroups.map((group) => (
             <div 
               key={group.ticker} 
               className={`ticker-group ${expandedTickers.has(group.ticker) ? 'expanded' : ''}`}
