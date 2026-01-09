@@ -71,18 +71,48 @@ async def analyze_stock(ticker: str):
     df = None
     
     if csv_path.exists():
-        # Check freshness
-        modified_time = csv_path.stat().st_mtime
-        age_days = (datetime.now().timestamp() - modified_time) / 86400
-        
-        if age_days < 1:
-            try:
-                df = pd.read_csv(csv_path, index_col='Date', parse_dates=True)
-                # Ensure index is tz-naive
-                if df.index.tz is not None:
-                    df.index = df.index.tz_localize(None)
-            except Exception:
-                pass # Corrupt file, re-download
+        try:
+            # Load cached data to check freshness
+            df_temp = pd.read_csv(csv_path, index_col='Date', parse_dates=True)
+            if not df_temp.empty:
+                last_date = df_temp.index[-1].date()
+                now = datetime.now()
+                today_date = now.date()
+                
+                # ASX Market Hours (approximate)
+                market_open_hour = 10
+                market_close_hour = 16
+                
+                is_stale = False
+                
+                if last_date < today_date:
+                    # If data is from yesterday (or older)
+                    if now.hour >= market_open_hour:
+                         # Market is OPEN today, so we need today's candle (even if partial)
+                         is_stale = True
+                    # Else: Pre-market, yesterday's EOD is sufficient
+                    
+                elif last_date == today_date:
+                    # Data includes today's candle
+                    file_mod_time = datetime.fromtimestamp(csv_path.stat().st_mtime)
+                    age_minutes = (now - file_mod_time).total_seconds() / 60
+                    
+                    if now.hour >= market_close_hour and file_mod_time.hour < market_close_hour:
+                        # Market just closed, but we have intraday data -> Refresh for EOD
+                        is_stale = True
+                    elif market_open_hour <= now.hour < market_close_hour and age_minutes > 20:
+                        # Market is OPEN, and data is > 20 mins old -> Refresh for live price
+                        is_stale = True
+                
+                if not is_stale:
+                    df = df_temp
+                    # Ensure index is tz-naive
+                    if df.index.tz is not None:
+                        df.index = df.index.tz_localize(None)
+                        
+        except Exception as e:
+            print(f"Error reading cache for {ticker}: {e}")
+            pass # Force re-download on error
     
     if df is None or df.empty:
         # Download fresh
