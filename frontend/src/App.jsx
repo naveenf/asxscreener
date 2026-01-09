@@ -31,6 +31,7 @@ function App() {
   // Modal states
   const [selectedStockToAdd, setSelectedStockToAdd] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchModalTicker, setSearchModalTicker] = useState(null);
   
   // Key to force refresh of Portfolio component when stock is added
   const [portfolioKey, setPortfolioKey] = useState(0);
@@ -125,7 +126,10 @@ function App() {
         status={status}
         onRefresh={handleRefresh}
         refreshing={refreshing}
-        onSearch={() => setShowSearchModal(true)}
+        onSearch={() => {
+            setSearchModalTicker(null); // Clear previous
+            setShowSearchModal(true);
+        }}
       />
 
       <main className="main-content">
@@ -158,9 +162,8 @@ function App() {
           <Route path="/insider-trades" element={
             <InsiderTrades 
               onAnalyze={(ticker) => {
+                setSearchModalTicker(ticker);
                 setShowSearchModal(true);
-                // We'll need to pass the ticker to StockSearchModal, 
-                // but for now, we'll just open it as requested.
               }}
             />
           } />
@@ -169,7 +172,11 @@ function App() {
 
       {showSearchModal && (
         <StockSearchModal 
-          onClose={() => setShowSearchModal(false)}
+          initialTicker={searchModalTicker}
+          onClose={() => {
+            setShowSearchModal(false);
+            setSearchModalTicker(null);
+          }}
           onAddStock={(stock) => setSelectedStockToAdd(stock)}
         />
       )}

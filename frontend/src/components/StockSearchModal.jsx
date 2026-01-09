@@ -2,23 +2,35 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './StockSearchModal.css';
 
-const StockSearchModal = ({ onClose, onAddStock }) => {
-    const [ticker, setTicker] = useState('');
+const StockSearchModal = ({ onClose, onAddStock, initialTicker }) => {
+    const [ticker, setTicker] = useState(initialTicker || '');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [analysis, setAnalysis] = useState(null);
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const searchRef = useRef(null);
+    const didAutoSearch = useRef(false);
+
+    // Auto-search if initialTicker provided
+    useEffect(() => {
+        if (initialTicker && !didAutoSearch.current) {
+            handleSearch(null, initialTicker);
+            didAutoSearch.current = true;
+        }
+    }, [initialTicker]);
 
     // Debounced search for suggestions
     useEffect(() => {
         const timer = setTimeout(async () => {
-            if (ticker && ticker.length >= 1 && !analysis) {
+            if (ticker && ticker.length >= 1 && !analysis && !loading) {
                 try {
                     const response = await axios.get(`/api/stocks/search?q=${ticker}`);
                     setSuggestions(response.data);
-                    setShowSuggestions(true);
+                    // Only show suggestions if we haven't just completed a search/analysis
+                    if (!analysis) {
+                       setShowSuggestions(true);
+                    }
                 } catch (err) {
                     console.error("Failed to fetch suggestions:", err);
                 }
@@ -29,7 +41,7 @@ const StockSearchModal = ({ onClose, onAddStock }) => {
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [ticker, analysis]);
+    }, [ticker, analysis, loading]);
 
     // Close suggestions when clicking outside
     useEffect(() => {
@@ -45,8 +57,10 @@ const StockSearchModal = ({ onClose, onAddStock }) => {
     const handleSearch = async (e, selectedTicker = null) => {
         if (e) e.preventDefault();
         
-        const finalTicker = (selectedTicker || ticker).toUpperCase();
-        if (!finalTicker) return;
+        const inputTicker = selectedTicker || ticker;
+        if (!inputTicker) return;
+
+        const finalTicker = inputTicker.toUpperCase();
         
         setLoading(true);
         setError(null);
