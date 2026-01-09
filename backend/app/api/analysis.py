@@ -123,11 +123,20 @@ async def analyze_stock(ticker: str):
     # Ensure correct format for indicators
     if df.index.name != 'Date':
         df.index.name = 'Date'
+    
+    current_price = df['Close'].iloc[-1]
+    
+    # Prepare DataFrame for Analysis (Strictly EOD)
+    # If the last row is today's date (intraday), we exclude it for technical analysis
+    # to avoid repainting or false signals based on incomplete candles.
+    analysis_df = df.copy()
+    if analysis_df.index[-1].date() == datetime.now().date():
+        analysis_df = analysis_df.iloc[:-1]
         
-    # 2. Calculate Indicators
+    # 2. Calculate Indicators on EOD Data
     try:
-        df = TechnicalIndicators.add_all_indicators(
-            df,
+        analysis_df = TechnicalIndicators.add_all_indicators(
+            analysis_df,
             adx_period=settings.ADX_PERIOD,
             sma_period=settings.SMA_PERIOD,
             atr_period=settings.ATR_PERIOD,
@@ -140,9 +149,8 @@ async def analyze_stock(ticker: str):
         raise HTTPException(status_code=500, detail=f"Indicator calculation failed: {str(e)}")
         
     stock_name = get_stock_name(ticker)
-    current_price = df['Close'].iloc[-1]
     
-    # 3. Run Detectors
+    # 3. Run Detectors on EOD Data
     
     # --- Triple Trend Strategy ---
     trend_detector = TripleTrendDetector(
@@ -153,8 +161,8 @@ async def analyze_stock(ticker: str):
     
     # We need to manually construct the result because analyze_stock only returns if signal exists
     # But we want the status regardless of BUY signal
-    trend_entry = trend_detector.detect_entry_signal(df)
-    trend_score = trend_detector.calculate_score(trend_entry, df)
+    trend_entry = trend_detector.detect_entry_signal(analysis_df)
+    trend_score = trend_detector.calculate_score(trend_entry, analysis_df)
     
     # Logic for Trend Signal
     current_trend_signal = "HOLD"
@@ -162,7 +170,7 @@ async def analyze_stock(ticker: str):
         current_trend_signal = "BUY"
     elif trend_entry.get('is_bullish'):
         current_trend_signal = "BULLISH"
-    elif df['Fib_Pos'].iloc[-1] <= 0 and df['PP_Trend'].iloc[-1] == -1:
+    elif analysis_df['Fib_Pos'].iloc[-1] <= 0 and analysis_df['PP_Trend'].iloc[-1] == -1:
         current_trend_signal = "SELL" # Both major trend indicators are bearish
     
     trend_result = {
@@ -170,9 +178,9 @@ async def analyze_stock(ticker: str):
         "signal": current_trend_signal,
         "score": round(trend_score, 1),
         "indicators": {
-            "Fib_Pos": int(trend_entry.get('fib_pos', 0)) if trend_entry.get('has_signal') else int(df['Fib_Pos'].iloc[-1]),
-            "Supertrend": int(trend_entry.get('st_trend', 0)) if trend_entry.get('has_signal') else int(df['PP_Trend'].iloc[-1]),
-            "Instant_Trend": "BULLISH" if df['IT_Trigger'].iloc[-1] > df['IT_Trend'].iloc[-1] else "BEARISH"
+            "Fib_Pos": int(trend_entry.get('fib_pos', 0)) if trend_entry.get('has_signal') else int(analysis_df['Fib_Pos'].iloc[-1]),
+            "Supertrend": int(trend_entry.get('st_trend', 0)) if trend_entry.get('has_signal') else int(analysis_df['PP_Trend'].iloc[-1]),
+            "Instant_Trend": "BULLISH" if analysis_df['IT_Trigger'].iloc[-1] > analysis_df['IT_Trend'].iloc[-1] else "BEARISH"
         }
     }
     
@@ -185,14 +193,14 @@ async def analyze_stock(ticker: str):
         rsi_period=settings.RSI_PERIOD
     )
     
-    mr_entry = mr_detector.detect_entry_signal(df)
-    mr_score = mr_detector.calculate_score(mr_entry, df)
+    mr_entry = mr_detector.detect_entry_signal(analysis_df)
+    mr_score = mr_detector.calculate_score(mr_entry, analysis_df)
     
     # Logic for MR Signal
     current_mr_signal = "HOLD"
     if mr_entry['has_signal']:
         current_mr_signal = "BUY"
-    elif df['RSI'].iloc[-1] > 70 or df['Close'].iloc[-1] > df['BB_Upper'].iloc[-1]:
+    elif analysis_df['RSI'].iloc[-1] > 70 or analysis_df['Close'].iloc[-1] > analysis_df['BB_Upper'].iloc[-1]:
         current_mr_signal = "SELL" # Overbought state
     
     mr_result = {
@@ -200,9 +208,9 @@ async def analyze_stock(ticker: str):
         "signal": current_mr_signal,
         "score": round(mr_score, 1),
         "indicators": {
-            "RSI": round(df['RSI'].iloc[-1], 1),
-            "BB_Position": "OVERSOLD" if df['Close'].iloc[-1] < df['BB_Lower'].iloc[-1] else ("OVERBOUGHT" if df['Close'].iloc[-1] > df['BB_Upper'].iloc[-1] else "NORMAL"),
-            "BB_Lower": round(df['BB_Lower'].iloc[-1], 2)
+            "RSI": round(analysis_df['RSI'].iloc[-1], 1),
+            "BB_Position": "OVERSOLD" if analysis_df['Close'].iloc[-1] < analysis_df['BB_Lower'].iloc[-1] else ("OVERBOUGHT" if analysis_df['Close'].iloc[-1] > analysis_df['BB_Upper'].iloc[-1] else "NORMAL"),
+            "BB_Lower": round(analysis_df['BB_Lower'].iloc[-1], 2)
         }
     }
     
