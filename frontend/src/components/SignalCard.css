@@ -1,22 +1,35 @@
 .signal-card {
-  background-color: var(--color-bg-card);
-  border: var(--border-card); /* Cocoa border */
-  border-radius: var(--radius-md);
-  padding: 24px;
-  position: relative;
-  transition: var(--transition-default);
+  background: var(--color-surface-light);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
 }
 
-.signal-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-card);
-  border-color: var(--color-primary); /* Rust border on hover */
+.power-signal-border {
+  border: 2px solid #ffcc00 !important;
+  box-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
 }
 
-/* Header Section */
+.power-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ffcc00;
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-bottom-left-radius: 8px;
+  z-index: 2;
+  box-shadow: -2px 2px 5px rgba(0,0,0,0.2);
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;

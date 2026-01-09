@@ -205,12 +205,11 @@ def check_data_freshness():
 def download_data():
     """
     Download stock data using the existing download script.
-
-    Executes scripts/download_data.py using the backend's virtual environment.
     """
     print_info("Downloading stock data (this may take a few minutes)...")
 
     download_script = PROJECT_ROOT / 'scripts' / 'download_data.py'
+    forex_script = PROJECT_ROOT / 'scripts' / 'download_forex.py'
 
     if not download_script.exists():
         print_error(f"Download script not found: {download_script}")
@@ -223,17 +222,16 @@ def download_data():
         venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'bin' / 'python3'
 
     try:
-        # Use full path to python and script
-        result = subprocess.run(
-            [str(venv_python), str(download_script)],
-            cwd=str(PROJECT_ROOT),
-            check=True
-        )
+        # 1. Download Stocks
+        subprocess.run([str(venv_python), str(download_script)], cwd=str(PROJECT_ROOT), check=True)
+        
+        # 2. Download Forex (if script exists)
+        if forex_script.exists():
+            print_info("Downloading forex/commodity data (15m interval)...")
+            subprocess.run([str(venv_python), str(forex_script)], cwd=str(PROJECT_ROOT), check=True)
+            print_success("Forex data download completed")
 
-        if result.returncode == 0:
-            print_success("Data download completed")
-        else:
-            print_warning("Data download completed with some warnings")
+        print_success("All data downloads completed")
 
     except subprocess.CalledProcessError as e:
         print_error(f"Data download failed: {e}")
@@ -249,17 +247,18 @@ def download_data():
 
 def run_screener():
     """
-    Run the stock screener to generate fresh signals.
+    Run the stock and forex screeners to generate fresh signals.
     """
-    print_info("Running stock screener to generate fresh signals...")
-    
     # Get venv python path
     if sys.platform == 'win32':
         venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'Scripts' / 'python.exe'
     else:
         venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'bin' / 'python3'
         
-    # Step 1: Update stock list from our ASX 300 source
+    # --- STOCK SCREENER ---
+    print_info("Running stock screener to generate fresh signals...")
+    
+    # Update stock list from our ASX 300 source
     print_info("Updating ASX 300 stock list...")
     list_generator = PROJECT_ROOT / 'scripts' / 'generate_asx300_list.py'
     try:
@@ -267,25 +266,42 @@ def run_screener():
     except Exception as e:
         print_warning(f"Could not update stock list: {e}")
 
-    screener_script = PROJECT_ROOT / 'backend' / 'app' / 'services' / 'screener.py'
-    
     try:
         # Run the screener module as a module (-m), not a script
-        # This allows relative imports like 'from .indicators' to work
         env = os.environ.copy()
         env['PYTHONPATH'] = str(PROJECT_ROOT / 'backend')
         
-        result = subprocess.run(
+        subprocess.run(
             [str(venv_python), '-m', 'app.services.screener'],
             cwd=str(PROJECT_ROOT / 'backend'),
             env=env,
             check=True
         )
-        print_success("Screener completed successfully")
-    except subprocess.CalledProcessError as e:
-        print_error(f"Screener failed: {e}")
+        print_success("Stock screener completed successfully")
     except Exception as e:
-        print_error(f"Error running screener: {e}")
+        print_error(f"Stock screener failed: {e}")
+
+    # --- FOREX SCREENER ---
+    print_info("Running forex/commodity screener...")
+    try:
+        # Run the forex screener manually using a one-liner that calls the orchestrator
+        config_path = PROJECT_ROOT / 'data' / 'metadata' / 'forex_pairs.json'
+        data_dir = PROJECT_ROOT / 'data' / 'forex_raw'
+        output_path = PROJECT_ROOT / 'data' / 'processed' / 'forex_signals.json'
+        
+        if config_path.exists():
+            cmd = [
+                str(venv_python), 
+                "-c", 
+                f"from app.services.forex_screener import ForexScreener; from pathlib import Path; s = ForexScreener(data_dir=Path(r'{data_dir}'), config_path=Path(r'{config_path}'), output_path=Path(r'{output_path}')); res = s.screen_all(); print(f'Forex analyzed: {{res[\"analyzed_count\"]}} symbols, {{res[\"signals_count\"]}} signals found.')"
+            ]
+            env = os.environ.copy()
+            env['PYTHONPATH'] = str(PROJECT_ROOT / 'backend')
+            
+            subprocess.run(cmd, cwd=str(PROJECT_ROOT / 'backend'), env=env, check=True)
+            print_success("Forex screener completed successfully")
+    except Exception as e:
+        print_error(f"Forex screener failed: {e}")
 
 def start_backend():
     """

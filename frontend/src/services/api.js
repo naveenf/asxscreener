@@ -61,3 +61,32 @@ export async function triggerRefresh() {
 
   return response.json();
 }
+
+/**
+ * Fetch all forex signals
+ */
+export async function fetchForexSignals() {
+  const response = await fetch(`${API_BASE}/forex/signals`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch forex signals: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Trigger forex data refresh
+ */
+export async function triggerForexRefresh() {
+  const response = await fetch(`${API_BASE}/forex/refresh`, {
+    method: 'POST'
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to trigger forex refresh: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+

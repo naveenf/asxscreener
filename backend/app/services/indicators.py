@@ -427,6 +427,29 @@ class TechnicalIndicators:
         return middle_band, upper_band, lower_band
 
     @staticmethod
+    def calculate_ema(df: pd.DataFrame, column: str = 'Close', period: int = 14) -> pd.Series:
+        """Calculate Exponential Moving Average."""
+        return df[column].ewm(span=period, adjust=False).mean()
+
+    @staticmethod
+    def calculate_bb_width(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> pd.Series:
+        """Calculate Bollinger Band Width (High - Low / Middle)."""
+        middle, upper, lower = TechnicalIndicators.calculate_bollinger_bands(df, period, std_dev)
+        return (upper - lower) / middle
+
+    @staticmethod
+    def resample_to_1h(df: pd.DataFrame) -> pd.DataFrame:
+        """Resample 15m data to 1h for HTF filtering."""
+        df_1h = df.resample('1H').agg({
+            'Open': 'first',
+            'High': 'max',
+            'Low': 'min',
+            'Close': 'last',
+            'Volume': 'sum'
+        }).dropna()
+        return df_1h
+
+    @staticmethod
     def add_all_indicators(
         df: pd.DataFrame,
         adx_period: int = 14,
@@ -452,6 +475,11 @@ class TechnicalIndicators:
             df, column='Close', period=sma_period
         )
 
+        # Add strategy-specific EMAs (5, 13, 34)
+        df['EMA5'] = TechnicalIndicators.calculate_ema(df, period=5)
+        df['EMA13'] = TechnicalIndicators.calculate_ema(df, period=13)
+        df['EMA34'] = TechnicalIndicators.calculate_ema(df, period=34)
+
         # Add ATR indicators
         df['ATR'] = TechnicalIndicators.calculate_atr(df, period=atr_period)
         df['ATR_PCT'] = TechnicalIndicators.calculate_atr_percent(df, period=atr_period)
@@ -469,6 +497,7 @@ class TechnicalIndicators:
         df['BB_Middle'] = bb_middle
         df['BB_Upper'] = bb_upper
         df['BB_Lower'] = bb_lower
+        df['BB_Width'] = TechnicalIndicators.calculate_bb_width(df)
 
         # Add Triple Trend Indicators
         df = TechnicalIndicators.calculate_fibonacci_structure_trend(df, period=fib_period)

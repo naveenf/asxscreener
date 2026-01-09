@@ -20,6 +20,7 @@ from . import watchlist  # Import watchlist router
 from . import analysis   # Import analysis router
 from . import stocks     # Import stocks router
 from . import insider_trades # Import insider trades router
+from . import forex          # Import forex router
 from ..services.insider_trades import InsiderTradesService
 
 router = APIRouter()
@@ -31,6 +32,7 @@ router.include_router(watchlist.router)
 router.include_router(analysis.router)
 router.include_router(stocks.router)
 router.include_router(insider_trades.router)
+router.include_router(forex.router)
 
 
 def load_signals() -> dict:

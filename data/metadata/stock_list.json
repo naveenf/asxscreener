@@ -1,48 +1,8 @@
 {
   "stocks": [
     {
-      "ticker": "360.AX",
-      "name": "Life360 Inc",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "425.AX",
-      "name": "$2.6B",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "4DX.AX",
       "name": "4DMedical",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "755.AX",
-      "name": "$7.9B",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "963.AX",
-      "name": "$1.1B",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "A2M.AX",
-      "name": "The a2 Milk Company",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "A4N.AX",
-      "name": "Alpha HPA",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "AAI.AX",
-      "name": "Alcoa Corporation",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "ABB.AX",
-      "name": "Aussie Broadband",
       "sector": "Unknown"
     },
     {
@@ -51,8 +11,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "AFI.AX",
-      "name": "Australian Foundation Investment Company",
+      "ticker": "ASK.AX",
+      "name": "Abacus Storage King",
       "sector": "Unknown"
     },
     {
@@ -61,18 +21,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "AIA.AX",
-      "name": "Auckland International Airport",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "AIZ.AX",
       "name": "Air New Zealand",
       "sector": "Unknown"
     },
     {
-      "ticker": "ALD.AX",
-      "name": "Ampol",
+      "ticker": "AAI.AX",
+      "name": "Alcoa Corporation",
       "sector": "Unknown"
     },
     {
@@ -81,8 +36,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "ALL.AX",
-      "name": "Aristocrat Leisure",
+      "ticker": "A4N.AX",
+      "name": "Alpha HPA",
       "sector": "Unknown"
     },
     {
@@ -91,18 +46,23 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "ALX.AX",
-      "name": "Atlas Arteria",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "AMC.AX",
       "name": "Amcor Plc",
       "sector": "Unknown"
     },
     {
+      "ticker": "AOV.AX",
+      "name": "Amotiv",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "AMP.AX",
       "name": "AMP",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "ALD.AX",
+      "name": "Ampol",
       "sector": "Unknown"
     },
     {
@@ -116,23 +76,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "AOV.AX",
-      "name": "Amotiv",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "APA.AX",
       "name": "APA Group",
       "sector": "Unknown"
     },
     {
-      "ticker": "APE.AX",
-      "name": "Eagers Automotive",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "APZ.AX",
-      "name": "Aspen Group",
+      "ticker": "ARU.AX",
+      "name": "Arafura Rare Earths",
       "sector": "Unknown"
     },
     {
@@ -151,18 +101,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "ARU.AX",
-      "name": "Arafura Rare Earths",
+      "ticker": "ALL.AX",
+      "name": "Aristocrat Leisure",
       "sector": "Unknown"
     },
     {
-      "ticker": "ASB.AX",
-      "name": "Austal",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "ASK.AX",
-      "name": "Abacus Storage King",
+      "ticker": "APZ.AX",
+      "name": "Aspen Group",
       "sector": "Unknown"
     },
     {
@@ -171,13 +116,18 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "ALX.AX",
+      "name": "Atlas Arteria",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "AUB.AX",
       "name": "AUB Group",
       "sector": "Unknown"
     },
     {
-      "ticker": "AUI.AX",
-      "name": "Australian United Investment Company",
+      "ticker": "AIA.AX",
+      "name": "Auckland International Airport",
       "sector": "Unknown"
     },
     {
@@ -186,8 +136,28 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "BC8.AX",
-      "name": "Black Cat Syndicate",
+      "ticker": "ABB.AX",
+      "name": "Aussie Broadband",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "ASB.AX",
+      "name": "Austal",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "AFI.AX",
+      "name": "Australian Foundation Investment Company",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "AUI.AX",
+      "name": "Australian United Investment Company",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "BOQ.AX",
+      "name": "Bank of Queensland",
       "sector": "Unknown"
     },
     {
@@ -196,13 +166,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "BEN.AX",
-      "name": "Bendigo and Adelaide Bank",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "BFL.AX",
-      "name": "BSP Financial Group",
+      "ticker": "BPT.AX",
+      "name": "Beach Energy",
       "sector": "Unknown"
     },
     {
@@ -216,8 +181,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "BGP.AX",
-      "name": "Briscoe Group Australasia",
+      "ticker": "BEN.AX",
+      "name": "Bendigo and Adelaide Bank",
       "sector": "Unknown"
     },
     {
@@ -231,13 +196,28 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "BOQ.AX",
-      "name": "Bank of Queensland",
+      "ticker": "BC8.AX",
+      "name": "Black Cat Syndicate",
       "sector": "Unknown"
     },
     {
-      "ticker": "BPT.AX",
-      "name": "Beach Energy",
+      "ticker": "XYZ.AX",
+      "name": "Block, Inc.",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "BSL.AX",
+      "name": "BlueScope Steel",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "BXB.AX",
+      "name": "Brambles",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "BVS.AX",
+      "name": "Bravura Solutions",
       "sector": "Unknown"
     },
     {
@@ -251,13 +231,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "BSL.AX",
-      "name": "BlueScope Steel",
+      "ticker": "BGP.AX",
+      "name": "Briscoe Group Australasia",
       "sector": "Unknown"
     },
     {
-      "ticker": "BVS.AX",
-      "name": "Bravura Solutions",
+      "ticker": "BFL.AX",
+      "name": "BSP Financial Group",
       "sector": "Unknown"
     },
     {
@@ -266,123 +246,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "BXB.AX",
-      "name": "Brambles",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CAR.AX",
-      "name": "CAR Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CAT.AX",
-      "name": "Catapult Sports",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CBA.AX",
-      "name": "Commonwealth Bank of Australia",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CBO.AX",
-      "name": "Cobram Estate Olives",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CCP.AX",
-      "name": "Credit Corp Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CDA.AX",
-      "name": "Codan",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CEN.AX",
-      "name": "Contact Energy",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CGF.AX",
-      "name": "Challenger",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CHC.AX",
-      "name": "Charter Hall Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CHI.AX",
-      "name": "Churchill Leisure Industries",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CIA.AX",
-      "name": "Champion Iron",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CIP.AX",
-      "name": "Centuria Industrial REIT",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CKF.AX",
-      "name": "Collins Foods",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CLW.AX",
-      "name": "Charter Hall Long Wale REIT",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "CMM.AX",
       "name": "Capricorn Metals",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CMW.AX",
-      "name": "Cromwell Property Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CNI.AX",
-      "name": "Centuria Capital Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CNU.AX",
-      "name": "Chorus",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "COH.AX",
-      "name": "Cochlear",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "COL.AX",
-      "name": "Coles Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CPU.AX",
-      "name": "Computershare",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CQE.AX",
-      "name": "Charter Hall Social Infrastructure REIT",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "CQR.AX",
-      "name": "Charter Hall Retail REIT",
       "sector": "Unknown"
     },
     {
@@ -391,13 +256,68 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "CSL.AX",
-      "name": "CSL",
+      "ticker": "CAR.AX",
+      "name": "CAR Group",
       "sector": "Unknown"
     },
     {
-      "ticker": "CTD.AX",
-      "name": "Corporate Travel Management",
+      "ticker": "CYL.AX",
+      "name": "Catalyst Metals",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CAT.AX",
+      "name": "Catapult Sports",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CNI.AX",
+      "name": "Centuria Capital Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CIP.AX",
+      "name": "Centuria Industrial REIT",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CGF.AX",
+      "name": "Challenger",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CIA.AX",
+      "name": "Champion Iron",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CHC.AX",
+      "name": "Charter Hall Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CLW.AX",
+      "name": "Charter Hall Long Wale REIT",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CQR.AX",
+      "name": "Charter Hall Retail REIT",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CQE.AX",
+      "name": "Charter Hall Social Infrastructure REIT",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CNU.AX",
+      "name": "Chorus",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CHI.AX",
+      "name": "Churchill Leisure Industries",
       "sector": "Unknown"
     },
     {
@@ -411,13 +331,98 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "CYL.AX",
-      "name": "Catalyst Metals",
+      "ticker": "CBO.AX",
+      "name": "Cobram Estate Olives",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "COH.AX",
+      "name": "Cochlear",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CDA.AX",
+      "name": "Codan",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "COL.AX",
+      "name": "Coles Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CKF.AX",
+      "name": "Collins Foods",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CBA.AX",
+      "name": "Commonwealth Bank of Australia",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CPU.AX",
+      "name": "Computershare",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CEN.AX",
+      "name": "Contact Energy",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CTD.AX",
+      "name": "Corporate Travel Management",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CCP.AX",
+      "name": "Credit Corp Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CMW.AX",
+      "name": "Cromwell Property Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "CSL.AX",
+      "name": "CSL",
       "sector": "Unknown"
     },
     {
       "ticker": "DBI.AX",
       "name": "Dalrymple Bay Infrastructure",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "DTL.AX",
+      "name": "Data3",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "DTR.AX",
+      "name": "Dateline Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "DYL.AX",
+      "name": "Deep Yellow",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "DRR.AX",
+      "name": "Deterra Royalties",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "DVP.AX",
+      "name": "Develop Global",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "DXS.AX",
+      "name": "Dexus",
       "sector": "Unknown"
     },
     {
@@ -431,13 +436,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "DMP.AX",
-      "name": "Domino's Pizza Enterprises",
+      "ticker": "DUI.AX",
+      "name": "Diversified United Investment",
       "sector": "Unknown"
     },
     {
-      "ticker": "DNL.AX",
-      "name": "Dyno Nobel",
+      "ticker": "DMP.AX",
+      "name": "Domino's Pizza Enterprises",
       "sector": "Unknown"
     },
     {
@@ -456,38 +461,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "DRR.AX",
-      "name": "Deterra Royalties",
+      "ticker": "DNL.AX",
+      "name": "Dyno Nobel",
       "sector": "Unknown"
     },
     {
-      "ticker": "DTL.AX",
-      "name": "Data3",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "DTR.AX",
-      "name": "Dateline Resources",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "DUI.AX",
-      "name": "Diversified United Investment",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "DVP.AX",
-      "name": "Develop Global",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "DXS.AX",
-      "name": "Dexus",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "DYL.AX",
-      "name": "Deep Yellow",
+      "ticker": "APE.AX",
+      "name": "Eagers Automotive",
       "sector": "Unknown"
     },
     {
@@ -496,13 +476,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "EDV.AX",
-      "name": "Endeavour Group",
+      "ticker": "ELD.AX",
+      "name": "Elders",
       "sector": "Unknown"
     },
     {
-      "ticker": "ELD.AX",
-      "name": "Elders",
+      "ticker": "EOS.AX",
+      "name": "Electro Optic Systems Holdings",
       "sector": "Unknown"
     },
     {
@@ -516,8 +496,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "EOS.AX",
-      "name": "Electro Optic Systems Holdings",
+      "ticker": "EDV.AX",
+      "name": "Endeavour Group",
       "sector": "Unknown"
     },
     {
@@ -536,11 +516,6 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "FBU.AX",
-      "name": "Fletcher Building",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "FCL.AX",
       "name": "FINEOS Corporation Holdings PLC",
       "sector": "Unknown"
@@ -551,13 +526,18 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "FLT.AX",
-      "name": "Flight Centre Travel Group",
+      "ticker": "FPH.AX",
+      "name": "Fisher & Paykel Healthcare Corporation",
       "sector": "Unknown"
     },
     {
-      "ticker": "FMG.AX",
-      "name": "Fortescue",
+      "ticker": "FBU.AX",
+      "name": "Fletcher Building",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "FLT.AX",
+      "name": "Flight Centre Travel Group",
       "sector": "Unknown"
     },
     {
@@ -566,8 +546,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "FPH.AX",
-      "name": "Fisher & Paykel Healthcare Corporation",
+      "ticker": "FMG.AX",
+      "name": "Fortescue",
       "sector": "Unknown"
     },
     {
@@ -576,8 +556,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "GCI.AX",
-      "name": "Gryphon Capital Income Trust",
+      "ticker": "GLF.AX",
+      "name": "Gemlife Communities Group",
       "sector": "Unknown"
     },
     {
@@ -586,18 +566,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "GGP.AX",
-      "name": "Greatland Resources",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "GLF.AX",
-      "name": "Gemlife Communities Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "GLS.AX",
-      "name": "L1 Global Long Short Fund",
+      "ticker": "GNE.AX",
+      "name": "Genesis Energy",
       "sector": "Unknown"
     },
     {
@@ -606,28 +576,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "GMG.AX",
-      "name": "Goodman Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "GNC.AX",
-      "name": "Graincorp",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "GNE.AX",
-      "name": "Genesis Energy",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "GNP.AX",
       "name": "GenusPlus Group",
       "sector": "Unknown"
     },
     {
-      "ticker": "GOZ.AX",
-      "name": "Growthpoint Properties Australia",
+      "ticker": "GMG.AX",
+      "name": "Goodman Group",
       "sector": "Unknown"
     },
     {
@@ -641,13 +596,38 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "GNC.AX",
+      "name": "Graincorp",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "GGP.AX",
+      "name": "Greatland Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "GOZ.AX",
+      "name": "Growthpoint Properties Australia",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "GCI.AX",
+      "name": "Gryphon Capital Income Trust",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "GYG.AX",
       "name": "Guzman Y Gomez",
       "sector": "Unknown"
     },
     {
-      "ticker": "HDN.AX",
-      "name": "HomeCo Daily Needs REIT",
+      "ticker": "HSN.AX",
+      "name": "Hansen Technologies",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "HVN.AX",
+      "name": "Harvey Norman Holdings",
       "sector": "Unknown"
     },
     {
@@ -661,8 +641,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "HSN.AX",
-      "name": "Hansen Technologies",
+      "ticker": "HDN.AX",
+      "name": "HomeCo Daily Needs REIT",
       "sector": "Unknown"
     },
     {
@@ -671,28 +651,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "HVN.AX",
-      "name": "Harvey Norman Holdings",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "IAG.AX",
-      "name": "Insurance Australia Group",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "IEL.AX",
       "name": "IDP Education",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "IFL.AX",
-      "name": "Insignia Financial",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "IFT.AX",
-      "name": "Infratil",
       "sector": "Unknown"
     },
     {
@@ -711,8 +671,23 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "IFT.AX",
+      "name": "Infratil",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "INA.AX",
       "name": "Ingenia Communities Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "IFL.AX",
+      "name": "Insignia Financial",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "IAG.AX",
+      "name": "Insurance Australia Group",
       "sector": "Unknown"
     },
     {
@@ -726,6 +701,11 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "JHX.AX",
+      "name": "James Hardie Industries Plc",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "JBH.AX",
       "name": "JB Hi-Fi",
       "sector": "Unknown"
@@ -736,18 +716,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "JHX.AX",
-      "name": "James Hardie Industries Plc",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "KAR.AX",
       "name": "Karoon Energy",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "KCN.AX",
-      "name": "Kingsgate Consolidated",
       "sector": "Unknown"
     },
     {
@@ -756,33 +726,18 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "KCN.AX",
+      "name": "Kingsgate Consolidated",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "GLS.AX",
+      "name": "L1 Global Long Short Fund",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "L1G.AX",
       "name": "L1 Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "LFG.AX",
-      "name": "Liberty Financial Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "LFS.AX",
-      "name": "Latitude Group Holdings",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "LLC.AX",
-      "name": "LendLease Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "LNW.AX",
-      "name": "Light & Wonder Inc.",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "LOV.AX",
-      "name": "Lovisa Holdings",
       "sector": "Unknown"
     },
     {
@@ -791,8 +746,43 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "LFS.AX",
+      "name": "Latitude Group Holdings",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "963.AX",
+      "name": "$1.1B",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "LLC.AX",
+      "name": "LendLease Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "LFG.AX",
+      "name": "Liberty Financial Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "360.AX",
+      "name": "Life360 Inc",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "LNW.AX",
+      "name": "Light & Wonder Inc.",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "LTR.AX",
       "name": "Liontown",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "LOV.AX",
+      "name": "Lovisa Holdings",
       "sector": "Unknown"
     },
     {
@@ -801,43 +791,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "MAD.AX",
-      "name": "Mader Group",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "MAF.AX",
       "name": "MA Financial Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MAH.AX",
-      "name": "Macmahon Holdings",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MAQ.AX",
-      "name": "Macquarie Technology Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MCY.AX",
-      "name": "Mercury NZ",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MEZ.AX",
-      "name": "Meridian Energy",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MFF.AX",
-      "name": "MFF Capital Investments",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MFG.AX",
-      "name": "Magellan Financial Group",
       "sector": "Unknown"
     },
     {
@@ -846,38 +801,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "MGR.AX",
-      "name": "Mirvac Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MIN.AX",
-      "name": "Mineral Resources",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MLX.AX",
-      "name": "Metals X",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MMS.AX",
-      "name": "McMillan Shakespeare",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MND.AX",
-      "name": "Monadelphous Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MP1.AX",
-      "name": "Megaport",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "MPL.AX",
-      "name": "Medibank Private",
+      "ticker": "MAH.AX",
+      "name": "Macmahon Holdings",
       "sector": "Unknown"
     },
     {
@@ -886,8 +811,58 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "MAQ.AX",
+      "name": "Macquarie Technology Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MAD.AX",
+      "name": "Mader Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MFG.AX",
+      "name": "Magellan Financial Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MMS.AX",
+      "name": "McMillan Shakespeare",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MPL.AX",
+      "name": "Medibank Private",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MP1.AX",
+      "name": "Megaport",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MCY.AX",
+      "name": "Mercury NZ",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "755.AX",
+      "name": "$7.9B",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MEZ.AX",
+      "name": "Meridian Energy",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "MSB.AX",
       "name": "Mesoblast",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MLX.AX",
+      "name": "Metals X",
       "sector": "Unknown"
     },
     {
@@ -901,8 +876,23 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "NAB.AX",
-      "name": "National Australia Bank",
+      "ticker": "MFF.AX",
+      "name": "MFF Capital Investments",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MIN.AX",
+      "name": "Mineral Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MGR.AX",
+      "name": "Mirvac Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "MND.AX",
+      "name": "Monadelphous Group",
       "sector": "Unknown"
     },
     {
@@ -911,43 +901,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "NCK.AX",
-      "name": "Nick Scali",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "NEC.AX",
-      "name": "Nine Entertainment Co. Holdings",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "NEM.AX",
-      "name": "Newmont Corporation",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "NEU.AX",
-      "name": "Neuren Pharmaceuticals",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "NGI.AX",
-      "name": "Navigator Global Investments",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "NHC.AX",
-      "name": "New Hope Corporation",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "NHF.AX",
-      "name": "NIB Holdings",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "NIC.AX",
-      "name": "Nickel Industries",
+      "ticker": "NAB.AX",
+      "name": "National Australia Bank",
       "sector": "Unknown"
     },
     {
@@ -956,18 +911,28 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "NST.AX",
-      "name": "Northern Star Resources",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "NWH.AX",
-      "name": "NRW Holdings",
+      "ticker": "NGI.AX",
+      "name": "Navigator Global Investments",
       "sector": "Unknown"
     },
     {
       "ticker": "NWL.AX",
       "name": "Netwealth Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "NEU.AX",
+      "name": "Neuren Pharmaceuticals",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "NHC.AX",
+      "name": "New Hope Corporation",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "NEM.AX",
+      "name": "Newmont Corporation",
       "sector": "Unknown"
     },
     {
@@ -986,8 +951,33 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "OBM.AX",
-      "name": "Ora Banda Mining",
+      "ticker": "NHF.AX",
+      "name": "NIB Holdings",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "NCK.AX",
+      "name": "Nick Scali",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "NIC.AX",
+      "name": "Nickel Industries",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "NEC.AX",
+      "name": "Nine Entertainment Co. Holdings",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "NST.AX",
+      "name": "Northern Star Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "NWH.AX",
+      "name": "NRW Holdings",
       "sector": "Unknown"
     },
     {
@@ -996,13 +986,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "ORA.AX",
-      "name": "Orora",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "ORG.AX",
-      "name": "Origin Energy",
+      "ticker": "OBM.AX",
+      "name": "Ora Banda Mining",
       "sector": "Unknown"
     },
     {
@@ -1011,8 +996,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "PDI.AX",
-      "name": "Predictive Discovery",
+      "ticker": "ORG.AX",
+      "name": "Origin Energy",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "ORA.AX",
+      "name": "Orora",
       "sector": "Unknown"
     },
     {
@@ -1021,48 +1011,18 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "PGF.AX",
-      "name": "PM Capital Global Opportunities Fund",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "PL8.AX",
-      "name": "Plato Income Maximiser",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "PLS.AX",
-      "name": "PLS Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "PME.AX",
-      "name": "Pro Medicus",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "PMV.AX",
-      "name": "Premier Investments",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "PNI.AX",
-      "name": "Pinnacle Investment Management Group",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "PNR.AX",
       "name": "Pantoro Gold",
       "sector": "Unknown"
     },
     {
-      "ticker": "PPT.AX",
-      "name": "Perpetual",
+      "ticker": "PRN.AX",
+      "name": "Perenti",
       "sector": "Unknown"
     },
     {
-      "ticker": "PRN.AX",
-      "name": "Perenti",
+      "ticker": "PPT.AX",
+      "name": "Perpetual",
       "sector": "Unknown"
     },
     {
@@ -1076,13 +1036,43 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "PYC.AX",
-      "name": "PYC Therapeutics",
+      "ticker": "PNI.AX",
+      "name": "Pinnacle Investment Management Group",
       "sector": "Unknown"
     },
     {
-      "ticker": "QAL.AX",
-      "name": "Qualitas",
+      "ticker": "PL8.AX",
+      "name": "Plato Income Maximiser",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "PLS.AX",
+      "name": "PLS Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "PGF.AX",
+      "name": "PM Capital Global Opportunities Fund",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "PDI.AX",
+      "name": "Predictive Discovery",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "PMV.AX",
+      "name": "Premier Investments",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "PME.AX",
+      "name": "Pro Medicus",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "PYC.AX",
+      "name": "PYC Therapeutics",
       "sector": "Unknown"
     },
     {
@@ -1096,6 +1086,11 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "QAL.AX",
+      "name": "Qualitas",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "QRI.AX",
       "name": "Qualitas Real Estate Income Fund",
       "sector": "Unknown"
@@ -1106,8 +1101,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "RDX.AX",
-      "name": "Redox",
+      "ticker": "RMS.AX",
+      "name": "Ramelius Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "RHC.AX",
+      "name": "Ramsay Health Care",
       "sector": "Unknown"
     },
     {
@@ -1116,8 +1116,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "REG.AX",
-      "name": "Regis Healthcare",
+      "ticker": "RDX.AX",
+      "name": "Redox",
       "sector": "Unknown"
     },
     {
@@ -1126,13 +1126,43 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "RPL.AX",
+      "name": "Regal Partners",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "RGN.AX",
       "name": "Region Group",
       "sector": "Unknown"
     },
     {
-      "ticker": "RHC.AX",
-      "name": "Ramsay Health Care",
+      "ticker": "REG.AX",
+      "name": "Regis Healthcare",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "RRL.AX",
+      "name": "Regis Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "RWC.AX",
+      "name": "Reliance Worldwide Corporation",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "RMD.AX",
+      "name": "ResMed Inc.",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "RSG.AX",
+      "name": "Resolute Mining",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "SGLLV.AX",
+      "name": "Ricegrowers",
       "sector": "Unknown"
     },
     {
@@ -1146,38 +1176,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "RMD.AX",
-      "name": "ResMed Inc.",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "RMS.AX",
-      "name": "Ramelius Resources",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "RPL.AX",
-      "name": "Regal Partners",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "RRL.AX",
-      "name": "Regis Resources",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "RSG.AX",
-      "name": "Resolute Mining",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "RUL.AX",
       "name": "RPMGlobal Holdings",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "RWC.AX",
-      "name": "Reliance Worldwide Corporation",
       "sector": "Unknown"
     },
     {
@@ -1186,8 +1186,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "S32.AX",
-      "name": "South32",
+      "ticker": "SFR.AX",
+      "name": "Sandfire Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "STO.AX",
+      "name": "Santos",
       "sector": "Unknown"
     },
     {
@@ -1196,23 +1201,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "SDF.AX",
-      "name": "Steadfast Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "SDR.AX",
-      "name": "SiteMinder",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "SEK.AX",
       "name": "SEEK",
       "sector": "Unknown"
     },
     {
-      "ticker": "SFR.AX",
-      "name": "Sandfire Resources",
+      "ticker": "SSM.AX",
+      "name": "Service Stream",
       "sector": "Unknown"
     },
     {
@@ -1221,43 +1216,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "SGLLV.AX",
-      "name": "Ricegrowers",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "SGM.AX",
-      "name": "Sims",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "SGP.AX",
-      "name": "Stockland",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "SGR.AX",
-      "name": "The Star Entertainment Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "SHL.AX",
-      "name": "Sonic Healthcare",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "SIG.AX",
       "name": "Sigma Healthcare",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "SIQ.AX",
-      "name": "Smartgroup Corporation",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "SLC.AX",
-      "name": "Superloop",
       "sector": "Unknown"
     },
     {
@@ -1266,23 +1226,33 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "SMR.AX",
-      "name": "Stanmore Resources",
+      "ticker": "SGM.AX",
+      "name": "Sims",
       "sector": "Unknown"
     },
     {
-      "ticker": "SNL.AX",
-      "name": "Supply Network",
+      "ticker": "SDR.AX",
+      "name": "SiteMinder",
       "sector": "Unknown"
     },
     {
-      "ticker": "SNZ.AX",
-      "name": "Summerset Group Holdings",
+      "ticker": "SIQ.AX",
+      "name": "Smartgroup Corporation",
       "sector": "Unknown"
     },
     {
-      "ticker": "SOL.AX",
-      "name": "Washington H. Soul Pattinson and Co.",
+      "ticker": "SHL.AX",
+      "name": "Sonic Healthcare",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "S32.AX",
+      "name": "South32",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "SX2.AX",
+      "name": "Southern Cross Gold Consolidated",
       "sector": "Unknown"
     },
     {
@@ -1296,23 +1266,28 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "SRL.AX",
-      "name": "Sunrise Energy Metals",
+      "ticker": "SMR.AX",
+      "name": "Stanmore Resources",
       "sector": "Unknown"
     },
     {
-      "ticker": "SSM.AX",
-      "name": "Service Stream",
+      "ticker": "SDF.AX",
+      "name": "Steadfast Group",
       "sector": "Unknown"
     },
     {
-      "ticker": "STO.AX",
-      "name": "Santos",
+      "ticker": "SGP.AX",
+      "name": "Stockland",
       "sector": "Unknown"
     },
     {
-      "ticker": "SUL.AX",
-      "name": "Super Retail Group",
+      "ticker": "SNZ.AX",
+      "name": "Summerset Group Holdings",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "425.AX",
+      "name": "$2.6B",
       "sector": "Unknown"
     },
     {
@@ -1321,8 +1296,23 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "SX2.AX",
-      "name": "Southern Cross Gold Consolidated",
+      "ticker": "SRL.AX",
+      "name": "Sunrise Energy Metals",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "SUL.AX",
+      "name": "Super Retail Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "SLC.AX",
+      "name": "Superloop",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "SNL.AX",
+      "name": "Supply Network",
       "sector": "Unknown"
     },
     {
@@ -1331,28 +1321,8 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "TCL.AX",
-      "name": "Transurban Group",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "TEA.AX",
       "name": "Tasmea",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "TLC.AX",
-      "name": "The Lottery Corporation",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "TLS.AX",
-      "name": "Telstra Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "TLX.AX",
-      "name": "Telix Pharmaceuticals",
       "sector": "Unknown"
     },
     {
@@ -1361,8 +1331,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "TPG.AX",
-      "name": "TPG Telecom",
+      "ticker": "TLX.AX",
+      "name": "Telix Pharmaceuticals",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "TLS.AX",
+      "name": "Telstra Group",
       "sector": "Unknown"
     },
     {
@@ -1371,8 +1346,28 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "TUA.AX",
-      "name": "Tuas",
+      "ticker": "A2M.AX",
+      "name": "The a2 Milk Company",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "TLC.AX",
+      "name": "The Lottery Corporation",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "SGR.AX",
+      "name": "The Star Entertainment Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "TPG.AX",
+      "name": "TPG Telecom",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "TCL.AX",
+      "name": "Transurban Group",
       "sector": "Unknown"
     },
     {
@@ -1381,23 +1376,13 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "TUA.AX",
+      "name": "Tuas",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "VAU.AX",
       "name": "Vault Minerals",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "VCX.AX",
-      "name": "Vicinity Centres",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "VEA.AX",
-      "name": "Viva Energy Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "VGN.AX",
-      "name": "Virgin Australia Holdings",
       "sector": "Unknown"
     },
     {
@@ -1406,8 +1391,18 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "VSL.AX",
-      "name": "Vulcan Steel",
+      "ticker": "VCX.AX",
+      "name": "Vicinity Centres",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "VGN.AX",
+      "name": "Virgin Australia Holdings",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "VEA.AX",
+      "name": "Viva Energy Group",
       "sector": "Unknown"
     },
     {
@@ -1416,13 +1411,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "WA1.AX",
-      "name": "WA1 Resources",
+      "ticker": "VSL.AX",
+      "name": "Vulcan Steel",
       "sector": "Unknown"
     },
     {
-      "ticker": "WAF.AX",
-      "name": "West African Resources",
+      "ticker": "WA1.AX",
+      "name": "WA1 Resources",
       "sector": "Unknown"
     },
     {
@@ -1431,53 +1426,13 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "WBC.AX",
-      "name": "Westpac Banking Corporation",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "WBT.AX",
-      "name": "Weebit Nano",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "WDS.AX",
-      "name": "Woodside Energy Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "WEB.AX",
-      "name": "WEB Travel Group",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "WES.AX",
-      "name": "Wesfarmers",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "WGX.AX",
-      "name": "Westgold Resources",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "WHC.AX",
-      "name": "Whitehaven Coal",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "WLE.AX",
       "name": "WAM Leaders",
       "sector": "Unknown"
     },
     {
-      "ticker": "WOR.AX",
-      "name": "Worley",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "WOW.AX",
-      "name": "Woolworths Group",
+      "ticker": "SOL.AX",
+      "name": "Washington H. Soul Pattinson and Co.",
       "sector": "Unknown"
     },
     {
@@ -1486,18 +1441,63 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "WEB.AX",
+      "name": "WEB Travel Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "WBT.AX",
+      "name": "Weebit Nano",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "WES.AX",
+      "name": "Wesfarmers",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "WAF.AX",
+      "name": "West African Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "WGX.AX",
+      "name": "Westgold Resources",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "WBC.AX",
+      "name": "Westpac Banking Corporation",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "WHC.AX",
+      "name": "Whitehaven Coal",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "WTC.AX",
       "name": "Wisetech Global",
       "sector": "Unknown"
     },
     {
-      "ticker": "XRO.AX",
-      "name": "Xero",
+      "ticker": "WDS.AX",
+      "name": "Woodside Energy Group",
       "sector": "Unknown"
     },
     {
-      "ticker": "XYZ.AX",
-      "name": "Block, Inc.",
+      "ticker": "WOW.AX",
+      "name": "Woolworths Group",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "WOR.AX",
+      "name": "Worley",
+      "sector": "Unknown"
+    },
+    {
+      "ticker": "XRO.AX",
+      "name": "Xero",
       "sector": "Unknown"
     },
     {
@@ -1516,5 +1516,5 @@
       "sector": "Unknown"
     }
   ],
-  "last_updated": "2026-01-09T11:29:37.960993Z"
+  "last_updated": "2026-01-09T16:59:37.230846Z"
 }

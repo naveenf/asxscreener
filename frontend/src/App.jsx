@@ -10,6 +10,7 @@ import { Routes, Route } from 'react-router-dom';
 import axios from 'axios';
 import Header from './components/Header';
 import SignalList from './components/SignalList';
+import ForexList from './components/ForexList';
 import Portfolio from './components/Portfolio';
 import InsiderTrades from './components/InsiderTrades';
 import AddStockModal from './components/AddStockModal';
@@ -152,6 +153,7 @@ function App() {
               onAddWatchlist={handleAddToWatchlist}
             />
           } />
+          <Route path="/forex" element={<ForexList />} />
           <Route path="/portfolio" element={
             <Portfolio 
               key={portfolioKey} 

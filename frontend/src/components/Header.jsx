@@ -43,6 +43,9 @@ function Header({ status, onRefresh, refreshing, onSearch }) {
             <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
               Screener
             </NavLink>
+            <NavLink to="/forex" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+              Forex
+            </NavLink>
             {user && (
               <NavLink to="/portfolio" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
                 Portfolio
