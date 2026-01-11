@@ -14,6 +14,7 @@ import ForexList from './components/ForexList';
 import Portfolio from './components/Portfolio';
 import InsiderTrades from './components/InsiderTrades';
 import AddStockModal from './components/AddStockModal';
+import AddForexModal from './components/AddForexModal';
 import StockSearchModal from './components/StockSearchModal';
 import Toast from './components/Toast';
 import { fetchSignals, fetchStatus, triggerRefresh } from './services/api';
@@ -31,6 +32,7 @@ function App() {
   
   // Modal states
   const [selectedStockToAdd, setSelectedStockToAdd] = useState(null);
+  const [selectedForexToAdd, setSelectedForexToAdd] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchModalTicker, setSearchModalTicker] = useState(null);
   
@@ -160,11 +162,12 @@ function App() {
               onAddWatchlist={handleAddToWatchlist}
             />
           } />
-          <Route path="/forex" element={<ForexList />} />
+          <Route path="/forex" element={<ForexList onAddStock={(fx) => setSelectedForexToAdd(fx)} />} />
           <Route path="/portfolio" element={
             <Portfolio 
               key={portfolioKey} 
               onAddStock={(stock) => setSelectedStockToAdd(stock)} 
+              onAddForex={(fx) => setSelectedForexToAdd(fx)}
               onShowToast={setToast}
             />
           } />
@@ -196,6 +199,18 @@ function App() {
           onClose={() => setSelectedStockToAdd(null)}
           onAdded={(msg) => {
             setToast({ message: msg || 'Stock added to portfolio!', type: 'success' });
+            setPortfolioKey(prev => prev + 1);
+          }}
+          onError={(msg) => setToast({ message: msg, type: 'error' })}
+        />
+      )}
+
+      {selectedForexToAdd && (
+        <AddForexModal 
+          forex={selectedForexToAdd} 
+          onClose={() => setSelectedForexToAdd(null)}
+          onAdded={(msg) => {
+            setToast({ message: msg || 'Forex added to portfolio!', type: 'success' });
             setPortfolioKey(prev => prev + 1);
           }}
           onError={(msg) => setToast({ message: msg, type: 'error' })}

@@ -3,9 +3,11 @@
  */
 
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import './SignalCard.css';
 
-function ForexCard({ signal }) {
+function ForexCard({ signal, onAdd }) {
+  const { user } = useAuth();
   const getScoreClass = (score) => {
     if (score >= 80) return 'score-high';
     if (score >= 60) return 'score-medium';
@@ -67,9 +69,17 @@ function ForexCard({ signal }) {
         <span className="strategy-badge active">
           Power Trend (15m)
         </span>
-        <span className="timestamp-small">
-            {new Date(signal.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-        </span>
+        {user ? (
+          <div className="card-actions">
+            <button className="add-portfolio-btn" onClick={() => onAdd(signal)}>
+              + Portfolio
+            </button>
+          </div>
+        ) : (
+          <span className="timestamp-small">
+              {new Date(signal.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+          </span>
+        )}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import { fetchForexSignals, triggerForexRefresh } from '../services/api';
 import ForexCard from './ForexCard';
 import './SignalList.css'; // Reuse base styles
 
-function ForexList() {
+function ForexList({ onAddStock }) {
   const [signals, setSignals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,7 +97,7 @@ function ForexList() {
       ) : (
         <div className="signal-grid">
           {signals.map((signal) => (
-            <ForexCard key={signal.symbol} signal={signal} />
+            <ForexCard key={signal.symbol} signal={signal} onAdd={onAddStock} />
           ))}
         </div>
       )}

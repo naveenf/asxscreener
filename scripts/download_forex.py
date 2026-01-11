@@ -11,7 +11,11 @@ import oandapyV20.endpoints.instruments as instruments
 
 # Load environment variables
 PROJECT_ROOT = Path(__file__).parent.parent
-load_dotenv(PROJECT_ROOT / "backend" / ".env")
+# Try root first, then backend/
+if (PROJECT_ROOT / ".env").exists():
+    load_dotenv(PROJECT_ROOT / ".env")
+else:
+    load_dotenv(PROJECT_ROOT / "backend" / ".env")
 
 # Config
 DATA_DIR = PROJECT_ROOT / "data" / "forex_raw"

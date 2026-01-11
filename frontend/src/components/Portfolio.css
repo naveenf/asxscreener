@@ -623,6 +623,58 @@
 
 
 
+.asset-class-toggle {
+
+    display: flex;
+
+    background: rgba(255, 255, 255, 0.05);
+
+    border-radius: var(--radius-pill);
+
+    padding: 4px;
+
+    gap: 4px;
+
+    width: fit-content;
+
+}
+
+
+
+.asset-btn {
+
+    background: none;
+
+    border: none;
+
+    color: var(--color-text-secondary);
+
+    padding: 6px 16px;
+
+    border-radius: var(--radius-pill);
+
+    cursor: pointer;
+
+    font-size: 0.85rem;
+
+    font-weight: 500;
+
+    transition: all 0.2s;
+
+}
+
+
+
+.asset-btn.active {
+
+    background: rgba(255, 255, 255, 0.15);
+
+    color: white;
+
+}
+
+
+
 .view-toggle {
 
     display: flex;
