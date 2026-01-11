@@ -125,9 +125,10 @@ class ForexScreener:
                 continue
 
             # Determine Strategy and Timeframe from Config
-            config = self.strategy_map.get(symbol, {"strategy": "TrendFollowing", "timeframe": "15m"})
+            config = self.strategy_map.get(symbol, {"strategy": "TrendFollowing", "timeframe": "15m", "target_rr": 2.0})
             strategy_name = config.get("strategy", "TrendFollowing")
             base_tf = config.get("timeframe", "15m")
+            target_rr = config.get("target_rr", 2.0)
             
             # Map timeframes for the detector
             # 15m -> base=15m, htf=1h
@@ -147,7 +148,7 @@ class ForexScreener:
             
             try:
                 # Analyze
-                result = strategy.analyze(data, symbol)
+                result = strategy.analyze(data, symbol, target_rr=target_rr)
                 total_analyzed += 1
 
                 if result and result.get('signal'):

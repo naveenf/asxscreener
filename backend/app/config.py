@@ -65,8 +65,16 @@ class Settings(BaseSettings):
     OANDA_ACCESS_TOKEN: str = ""
     OANDA_ENV: str = "live"
 
+    # Email Settings
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = ""
+
     class Config:
-        env_file = ".env"
+        # Use absolute path to project root for .env
+        env_file = Path(__file__).parent.parent.parent / ".env"
 
 
 # Global settings instance

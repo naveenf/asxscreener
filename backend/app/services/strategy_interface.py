@@ -13,7 +13,7 @@ class ForexStrategy(ABC):
         pass
 
     @abstractmethod
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0) -> Optional[Dict]:
         """
         Analyze the given symbol using multi-timeframe data.
 
@@ -22,6 +22,7 @@ class ForexStrategy(ABC):
                   Expected keys: '15m', '1h', '4h'.
                   DataFrames must have OHLCV columns and datetime index.
             symbol: The symbol being analyzed (e.g., 'EURUSD=X').
+            target_rr: Target Reward-to-Risk ratio.
 
         Returns:
             Dictionary with signal details if a signal is found, else None.

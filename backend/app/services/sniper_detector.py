@@ -36,7 +36,7 @@ class SniperDetector(ForexStrategy):
         if symbol in self.caskets.get('steady', []): return 'Steady'
         return 'Cyclical'
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0) -> Optional[Dict]:
         df_15m = data.get('base')
         df_1h = data.get('htf')
         
@@ -102,16 +102,24 @@ class SniperDetector(ForexStrategy):
                 score += 20.0
             else: return None
 
+        price = float(latest_15['Close'])
+        stop_loss = float(latest_15['EMA13'])
+        signal_type = "BUY" if is_buy else "SELL"
+        
+        # Calculate TP
+        risk = abs(price - stop_loss)
+        take_profit = price + (risk * target_rr if signal_type == "BUY" else -risk * target_rr)
+
         return {
-            "signal": "BUY" if is_buy else "SELL",
+            "signal": signal_type,
             "score": min(round(score, 1), 100.0),
             "strategy": self.get_name(),
             "symbol": symbol,
             "casket": casket,
-            "price": float(latest_15['Close']),
+            "price": price,
             "timestamp": latest_15.name.isoformat() if hasattr(latest_15.name, 'isoformat') else str(latest_15.name),
-            "stop_loss": float(latest_15['EMA13']),
-            "take_profit": None,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
             "indicators": {
                 "ADX": round(float(latest_15['ADX']), 2),
                 "di_momentum": round(di_jump, 2),

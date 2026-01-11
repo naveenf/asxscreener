@@ -19,7 +19,7 @@ class ForexDetector(ForexStrategy):
     def get_name(self) -> str:
         return "TrendFollowing"
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0) -> Optional[Dict]:
         df = data.get('base')
         df_htf = data.get('htf')
 
@@ -63,17 +63,23 @@ class ForexDetector(ForexStrategy):
             if is_bull and not htf_bull: return None
             if is_bear and not htf_bear: return None
 
+        price = float(latest['Close'])
         stop_loss = float(latest['EMA34'])
+        
+        # Calculate TP
+        risk = abs(price - stop_loss)
+        signal_type = "BUY" if is_bull else "SELL"
+        take_profit = price + (risk * target_rr if signal_type == "BUY" else -risk * target_rr)
 
         return {
-            "signal": "BUY" if is_bull else "SELL",
+            "signal": signal_type,
             "score": min(round(70.0 + min(di_jump, 20.0), 2), 100.0),
             "strategy": self.get_name(),
             "symbol": symbol,
-            "price": float(latest['Close']),
+            "price": price,
             "timestamp": latest.name.isoformat() if hasattr(latest.name, 'isoformat') else str(latest.name),
             "stop_loss": stop_loss,
-            "take_profit": None,
+            "take_profit": take_profit,
             "indicators": {
                 "ADX": round(float(latest['ADX']), 2),
                 "di_momentum": round(di_jump, 2),

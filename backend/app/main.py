@@ -12,6 +12,8 @@ import logging
 from .api.routes import router
 from .config import settings
 from .services.forex_screener import ForexScreener
+from .services.notification import EmailService
+from .firebase_setup import db
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -31,13 +33,44 @@ async def scheduled_forex_refresh():
     """Background task to refresh forex data every 15 minutes."""
     try:
         logger.info("Starting scheduled forex refresh...")
-        ForexScreener.run_orchestrated_refresh(
+        results = ForexScreener.run_orchestrated_refresh(
             project_root=settings.PROJECT_ROOT,
             data_dir=settings.DATA_DIR / "forex_raw",
             config_path=settings.METADATA_DIR / "forex_pairs.json",
             output_path=settings.PROCESSED_DATA_DIR / "forex_signals.json"
         )
         logger.info("Scheduled forex refresh completed successfully.")
+
+        # --- Email Notification Logic ---
+        all_signals = results.get('signals', [])
+        diff = EmailService.filter_new_signals(all_signals)
+        new_entries = diff['entries']
+        exits = diff['exits']
+        
+        if new_entries or exits:
+            # Fetch users who have opted in
+            users_ref = db.collection('users')
+            users = []
+            for doc in users_ref.stream():
+                user_data = doc.to_dict()
+                email = user_data.get('email')
+                if email and user_data.get('email_notifications', True): 
+                    users.append(email)
+            
+            if users:
+                if new_entries:
+                    logger.info(f"Sending {len(new_entries)} new entries...")
+                    EmailService.send_signal_alert(users, new_entries)
+                
+                if exits:
+                    logger.info(f"Sending {len(exits)} trade exits...")
+                    EmailService.send_exit_alert(users, exits)
+            
+            # Update state to current active signals
+            EmailService.save_last_sent_signals(all_signals)
+        else:
+            logger.info("No new entries or exits to notify.")
+
     except Exception as e:
         logger.error(f"Scheduled forex refresh failed: {e}")
 

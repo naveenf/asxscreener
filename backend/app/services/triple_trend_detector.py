@@ -37,7 +37,7 @@ class TripleTrendDetector(ForexStrategy):
     def get_name(self) -> str:
         return "TripleTrend"
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0) -> Optional[Dict]:
         """
         Analyze using MTF data.
         Primary analysis on 'base' timeframe.
@@ -99,17 +99,23 @@ class TripleTrendDetector(ForexStrategy):
              if latest['PP_Trend'] == -1: score += 15
              if htf_confirmed: score += 20
         
-        stop_loss = float(latest['PP_TrailingSL']) if 'PP_TrailingSL' in latest else float(latest['Close']) * 0.99
+        price = float(latest['Close'])
+        stop_loss = float(latest['PP_TrailingSL']) if 'PP_TrailingSL' in latest else price * (0.99 if is_buy else 1.01)
+        
+        # Calculate TP
+        risk = abs(price - stop_loss)
+        signal_type = "BUY" if is_buy else "SELL"
+        take_profit = price + (risk * target_rr if signal_type == "BUY" else -risk * target_rr)
 
         return {
-            "signal": "BUY" if is_buy else "SELL",
+            "signal": signal_type,
             "score": min(score, 100.0),
             "strategy": self.get_name(),
             "symbol": symbol,
-            "price": float(latest['Close']),
+            "price": price,
             "timestamp": latest.name.isoformat() if hasattr(latest.name, 'isoformat') else str(latest.name),
             "stop_loss": stop_loss,
-            "take_profit": None,
+            "take_profit": take_profit,
             "indicators": {
                 "ADX": 0.0,
                 "Fib_Pos": int(latest.get('Fib_Pos', 0)),
