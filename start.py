@@ -202,6 +202,27 @@ def check_data_freshness():
         return False
 
 
+def download_forex_data():
+    """
+    Download forex/commodity data using the OANDA script.
+    """
+    forex_script = PROJECT_ROOT / 'scripts' / 'download_forex.py'
+    if not forex_script.exists():
+        return
+
+    # Get venv python path
+    if sys.platform == 'win32':
+        venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'Scripts' / 'python.exe'
+    else:
+        venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'bin' / 'python3'
+
+    try:
+        print_info("Updating forex/commodity data (Incremental)...")
+        subprocess.run([str(venv_python), str(forex_script)], cwd=str(PROJECT_ROOT), check=True)
+        print_success("Forex data update completed")
+    except subprocess.CalledProcessError as e:
+        print_error(f"Forex download failed: {e}")
+
 def download_data():
     """
     Download stock data using the existing download script.
@@ -209,7 +230,6 @@ def download_data():
     print_info("Downloading stock data (this may take a few minutes)...")
 
     download_script = PROJECT_ROOT / 'scripts' / 'download_data.py'
-    forex_script = PROJECT_ROOT / 'scripts' / 'download_forex.py'
 
     if not download_script.exists():
         print_error(f"Download script not found: {download_script}")
@@ -224,14 +244,10 @@ def download_data():
     try:
         # 1. Download Stocks
         subprocess.run([str(venv_python), str(download_script)], cwd=str(PROJECT_ROOT), check=True)
+        print_success("Stock data download completed")
         
-        # 2. Download Forex (if script exists)
-        if forex_script.exists():
-            print_info("Downloading forex/commodity data (15m interval)...")
-            subprocess.run([str(venv_python), str(forex_script)], cwd=str(PROJECT_ROOT), check=True)
-            print_success("Forex data download completed")
-
-        print_success("All data downloads completed")
+        # 2. Download Forex
+        download_forex_data()
 
     except subprocess.CalledProcessError as e:
         print_error(f"Data download failed: {e}")
@@ -578,11 +594,14 @@ def main():
             age_days = int((time.time() - oldest_file.stat().st_mtime) / 86400)
             print_warning(f"Active stock data is outdated (last updated: {age_days} days ago)")
 
-        download_data()
+        download_data() # Downloads Stocks + Forex
     else:
         oldest_file = min(relevant_files, key=lambda f: f.stat().st_mtime)
         age_days = int((time.time() - oldest_file.stat().st_mtime) / 86400)
         print_success(f"Active stock data is fresh (last updated: {age_days} day{'s' if age_days != 1 else ''} ago)")
+        
+        # Even if stocks are fresh, ensure Forex is up to the minute
+        download_forex_data()
 
     # Step 2.5: Run screener
     run_screener()

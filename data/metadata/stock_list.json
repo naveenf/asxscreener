@@ -751,11 +751,6 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "963.AX",
-      "name": "$1.1B",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "LLC.AX",
       "name": "LendLease Group",
       "sector": "Unknown"
@@ -843,11 +838,6 @@
     {
       "ticker": "MCY.AX",
       "name": "Mercury NZ",
-      "sector": "Unknown"
-    },
-    {
-      "ticker": "755.AX",
-      "name": "$7.9B",
       "sector": "Unknown"
     },
     {
@@ -1286,11 +1276,6 @@
       "sector": "Unknown"
     },
     {
-      "ticker": "425.AX",
-      "name": "$2.6B",
-      "sector": "Unknown"
-    },
-    {
       "ticker": "SUN.AX",
       "name": "Suncorp Group",
       "sector": "Unknown"
@@ -1516,5 +1501,5 @@
       "sector": "Unknown"
     }
   ],
-  "last_updated": "2026-01-09T16:59:37.230846Z"
+  "last_updated": "2026-01-11T13:08:20.654972Z"
 }

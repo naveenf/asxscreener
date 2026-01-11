@@ -1,14 +1,24 @@
 # ASX Stock Screener - Project Context
 
 ## Project Overview
-The ASX Stock Screener is a full-stack application designed to identify trading opportunities on the Australian Securities Exchange (ASX). It implements dual trading strategies: **Trend Following** (based on ADX/DI) and **Mean Reversion** (based on Bollinger Bands/RSI). The core calculation logic matches **Pine Script** (TradingView) standards, particularly using "Wilder's Smoothing" for technical accuracy.
+The ASX Stock Screener is a full-stack application designed to identify trading opportunities on the Australian Securities Exchange (ASX) and Global Forex/Commodity markets. It uses a **Dynamic Strategy Selection** engine to apply the most effective algorithm for each asset class.
+
+The system implements three core trading strategies:
+1.  **Trend Following** (ADX/DI)
+2.  **Mean Reversion** (Bollinger Bands/RSI)
+3.  **Squeeze** (Volatility Compression Breakout)
+
+Calculations match **Pine Script** (TradingView) standards, using "Wilder's Smoothing" for technical accuracy.
 
 ## Tech Stack
 
 ### Backend
 *   **Framework:** FastAPI (Python 3.10+)
 *   **Data Processing:** Pandas, NumPy
-*   **Data Source:** `yfinance` (Yahoo Finance)
+*   **Data Source:** 
+    *   Stocks: `yfinance` (Yahoo Finance)
+    *   Forex/Commodities: `yfinance` / Oanda (Downloaded via `scripts/download_forex.py`)
+*   **Strategies:** Multi-Timeframe (MTF) analysis (15m, 1h, 4h).
 *   **Database/Auth:** Google Firebase (Firestore + Authentication)
 *   **Testing:** `pytest`
 
@@ -28,9 +38,12 @@ asx-screener/
 │   │   ├── models/          # Pydantic data models
 │   │   ├── services/        # Core business logic
 │   │   │   ├── indicators.py           # ADX, DI, RSI, BB implementation
-│   │   │   ├── signal_detector.py      # Trend Following logic
-│   │   │   ├── mean_reversion_detector.py # Mean Reversion logic
-│   │   │   └── screener.py             # Analysis orchestrator
+│   │   │   ├── strategy_interface.py   # Abstract Base Class for MTF strategies
+│   │   │   ├── forex_detector.py       # Trend Following logic (MTF)
+│   │   │   ├── squeeze_detector.py     # Squeeze Strategy logic (MTF)
+│   │   │   ├── triple_trend_detector.py# Triple Confirmation logic (Fib+Supertrend)
+│   │   │   ├── sniper_detector.py      # Legacy Sniper logic
+│   │   │   └── forex_screener.py       # Dynamic Strategy Orchestrator
 │   │   ├── config.py        # Environment configuration
 │   │   └── main.py          # App entry point
 │   ├── tests/               # Pytest suite
@@ -44,8 +57,14 @@ asx-screener/
 │   └── package.json         # Node dependencies
 ├── data/
 │   ├── raw/                 # CSV storage for stock data
-│   └── metadata/            # Stock lists (ASX200)
+│   ├── forex_raw/           # CSV storage for Forex MTF data (15m, 1h, 4h)
+│   └── metadata/            # Configuration files
+│       ├── best_strategies.json # Optimized Strategy Map
+│       ├── forex_pairs.json     # Asset list
+│       └── stock_list.json      # Stock list
 ├── scripts/
+│   ├── backtest_arena.py    # Backtesting Engine for Strategy Optimization
+│   ├── squeeze_test.py      # Targeted Squeeze Strategy Analysis
 │   └── download_data.py     # Independent data fetcher
 └── start.py                 # Unified startup script
 ```
@@ -54,39 +73,45 @@ asx-screener/
 
 ### 1. Trend Following (ADX/DI)
 *   **Logic:** Identifies strong directional trends.
-*   **Indicators:** ADX (Trend strength), DI+ / DI- (Direction).
-*   **Signals:**
-    *   **Entry:** ADX > 30 AND DI+ > DI-
-    *   **Exit:** 15% Profit OR DI+ crosses below DI- (Trend reversal)
-*   **Smoothing:** Uses **Wilder's Smoothing** (EMA with `alpha=1/period`).
+*   **Indicators:** ADX (>30), DI+ / DI- Crossover.
+*   **Best For:** Strong trending pairs (e.g., EUR/GBP).
 
 ### 2. Mean Reversion (BB/RSI)
 *   **Logic:** Identifies overbought conditions expecting a return to the mean.
-*   **Indicators:** Bollinger Bands (Volatility/Extreme Price), RSI (Momentum).
-*   **Signals:**
-    *   **Entry:** Price > Upper Bollinger Band AND RSI > 70
-    *   **Exit:** Price returns to Middle Bollinger Band (Mean) OR 7% Profit Target.
+*   **Indicators:** Bollinger Bands (Volatility/Extreme Price), RSI (>70).
+*   **Best For:** Range-bound markets.
+
+### 3. Squeeze Strategy (Volatility Compression)
+*   **Logic:** Identifies periods of low volatility (squeeze) followed by an explosive breakout.
+*   **Indicators:** Bollinger Band Width, Volume, MTF Confirmation.
+*   **Rules:**
+    *   **Entry:** Breakout from narrow Bollinger Bands.
+    *   **Exit:** 3.0x Risk (Commodities/Indices) or 1.5x Risk (Forex).
+    *   **Stop Loss:** Middle Bollinger Band (SMA 20).
+*   **Best For:** Silver, Nasdaq, Oil, USD/JPY (High Volatility).
 
 ## Key Workflows
 
-### 1. Data Pipeline
-*   **Download:** `scripts/download_data.py` fetches 2 years of daily OHLC data.
-*   **Analysis:** `app.services.screener` orchestrates both detectors, scoring signals on a 0-100 scale based on signal strength and trend alignment.
+### 1. Backtest Arena & Optimization
+*   **Engine:** `scripts/backtest_arena.py` runs all strategies against all pairs using 15m, 1h, and 4h data.
+*   **Optimization:** Determines the best algorithm and timeframe for each specific pair.
+*   **Result:** Generates `data/metadata/best_strategies.json`.
 
-### 2. Authentication & Portfolio
-*   **Frontend:** Uses Google OAuth to get an ID token.
-*   **Backend:** Verifies token via Firebase Admin SDK and stores portfolios in Firestore (`users` collection).
+### 2. Dynamic Live Screening
+*   **Orchestrator:** `app.services.forex_screener.py` loads `best_strategies.json`.
+*   **Execution:** 
+    *   Loads specific "Base" timeframe (e.g., Silver 1H, Nasdaq 15M).
+    *   Applies the designated strategy (e.g., Squeeze).
+    *   Checks "HTF" (Higher Timeframe) for trend confirmation.
+
+### 3. Data Pipeline
+*   **Download:** `scripts/download_data.py` (Stocks) and `scripts/download_forex.py` (Forex/Commodities).
+*   **Freshness:** Checked automatically on startup (>1 day old = refresh).
 
 ## Building and Running
 
 ### Prerequisites
 *   Python 3.10+, Node.js 18+, Firebase Project (Firestore enabled).
-
-### Configuration
-Requires three sensitive files (gitignored):
-1.  `backend/serviceAccountKey.json`: Firebase Admin credentials.
-2.  `backend/.env`: `GOOGLE_CLIENT_ID=...`
-3.  `frontend/.env`: `VITE_GOOGLE_CLIENT_ID=...`
 
 ### Unified Startup
 ```bash
@@ -95,7 +120,7 @@ python start.py
 *   **Backend:** `http://localhost:8000` (Docs at `/docs`)
 *   **Frontend:** `http://localhost:5173`
 
-## Development Conventions
-*   **Frontend Vars:** Must start with `VITE_` to be exposed by Vite.
-*   **API Proxy:** `vite.config.js` proxies `/api` and `/auth` to the backend.
-*   **Data Freshness:** Automatically checked on startup (>7 days = refresh).
+### Configuration Files (Gitignored)
+1.  `backend/serviceAccountKey.json`: Firebase Admin credentials.
+2.  `backend/.env`: `GOOGLE_CLIENT_ID=...`
+3.  `frontend/.env`: `VITE_GOOGLE_CLIENT_ID=...`

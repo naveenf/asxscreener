@@ -1,46 +1,95 @@
 {
   "pairs": [
-    {"symbol": "EURUSD=X", "name": "EUR/USD", "type": "Forex"},
-    {"symbol": "GBPUSD=X", "name": "GBP/USD", "type": "Forex"},
-    {"symbol": "USDJPY=X", "name": "USD/JPY", "type": "Forex"},
-    {"symbol": "AUDUSD=X", "name": "AUD/USD", "type": "Forex"},
-    {"symbol": "EURJPY=X", "name": "EUR/JPY", "type": "Forex"},
-    {"symbol": "GBPJPY=X", "name": "GBP/JPY", "type": "Forex"},
-    {"symbol": "AUDJPY=X", "name": "AUD/JPY", "type": "Forex"},
-    {"symbol": "USDCHF=X", "name": "USD/CHF", "type": "Forex"},
-    {"symbol": "USDCAD=X", "name": "USD/CAD", "type": "Forex"},
-    {"symbol": "NZDUSD=X", "name": "NZD/USD", "type": "Forex"},
-    {"symbol": "EURGBP=X", "name": "EUR/GBP", "type": "Forex"},
-    {"symbol": "EURAUD=X", "name": "EUR/AUD", "type": "Forex"},
-    {"symbol": "GBPAUD=X", "name": "GBP/AUD", "type": "Forex"},
-    {"symbol": "AUDNZD=X", "name": "AUD/NZD", "type": "Forex"},
-    {"symbol": "USDNOK=X", "name": "USD/NOK", "type": "Forex"},
-    {"symbol": "USDSGD=X", "name": "USD/SGD", "type": "Forex"},
-    {"symbol": "AUDSGD=X", "name": "AUD/SGD", "type": "Forex"},
-    {"symbol": "EURSGD=X", "name": "EUR/SGD", "type": "Forex"},
-    {"symbol": "CADCHF=X", "name": "CAD/CHF", "type": "Forex"},
-    {"symbol": "CADJPY=X", "name": "CAD/JPY", "type": "Forex"},
-    {"symbol": "GBPCHF=X", "name": "GBP/CHF", "type": "Forex"},
-    {"symbol": "EURCAD=X", "name": "EUR/CAD", "type": "Forex"},
-    {"symbol": "USDMXN=X", "name": "USD/MXN", "type": "Forex"},
-    {"symbol": "USDPLN=X", "name": "USD/PLN", "type": "Forex"},
-    {"symbol": "GBPNZD=X", "name": "GBP/NZD", "type": "Forex"},
-    {"symbol": "CHFJPY=X", "name": "CHF/JPY", "type": "Forex"},
-    {"symbol": "AUDCAD=X", "name": "AUD/CAD", "type": "Forex"},
-    {"symbol": "AUDCHF=X", "name": "AUD/CHF", "type": "Forex"},
-    {"symbol": "GC=F", "name": "Gold", "type": "Commodity"},
-    {"symbol": "SI=F", "name": "Silver", "type": "Commodity"},
-    {"symbol": "HG=F", "name": "Copper", "type": "Commodity"},
-    {"symbol": "PA=F", "name": "Palladium", "type": "Commodity"},
-    {"symbol": "BZ=F", "name": "Brent Crude Oil", "type": "Commodity"},
-    {"symbol": "ZW=F", "name": "Wheat", "type": "Commodity"},
-    {"symbol": "ZC=F", "name": "Corn", "type": "Commodity"},
-    {"symbol": "ZS=F", "name": "Soybeans", "type": "Commodity"},
-    {"symbol": "SB=F", "name": "Sugar", "type": "Commodity"},
-    {"symbol": "LTC-USD", "name": "Litecoin", "type": "Crypto"},
-    {"symbol": "BTC-USD", "name": "Bitcoin", "type": "Crypto"},
-    {"symbol": "^FTSE", "name": "UK 100", "type": "Index"},
-    {"symbol": "^N225", "name": "Japan 225", "type": "Index"},
-    {"symbol": "NQ=F", "name": "NAS100", "type": "Index"}
+    {
+      "symbol": "XAG_USD",
+      "name": "Silver",
+      "type": "Commodity",
+      "oanda_symbol": "XAG_USD",
+      "yf_symbol_legacy": "SI=F"
+    },
+    {
+      "symbol": "XAU_USD",
+      "name": "Gold",
+      "type": "Commodity",
+      "oanda_symbol": "XAU_USD",
+      "yf_symbol_legacy": "GC=F"
+    },
+    {
+      "symbol": "BCO_USD",
+      "name": "Brent Crude Oil",
+      "type": "Commodity",
+      "oanda_symbol": "BCO_USD",
+      "yf_symbol_legacy": "BZ=F"
+    },
+    {
+      "symbol": "XCU_USD",
+      "name": "Copper",
+      "type": "Commodity",
+      "oanda_symbol": "XCU_USD",
+      "yf_symbol_legacy": "HG=F"
+    },
+    {
+      "symbol": "NAS100_USD",
+      "name": "Nasdaq 100",
+      "type": "Index",
+      "oanda_symbol": "NAS100_USD",
+      "yf_symbol_legacy": "NQ=F"
+    },
+    {
+      "symbol": "JP225_USD",
+      "name": "Japan 225",
+      "type": "Index",
+      "oanda_symbol": "JP225_USD",
+      "yf_symbol_legacy": "^N225"
+    },
+    {
+      "symbol": "UK100_GBP",
+      "name": "UK 100",
+      "type": "Index",
+      "oanda_symbol": "UK100_GBP",
+      "yf_symbol_legacy": "^FTSE"
+    },
+    {
+      "symbol": "CORN_USD",
+      "name": "Corn",
+      "type": "Commodity",
+      "oanda_symbol": "CORN_USD",
+      "yf_symbol_legacy": "ZC=F"
+    },
+    {
+      "symbol": "SOYBN_USD",
+      "name": "Soybeans",
+      "type": "Commodity",
+      "oanda_symbol": "SOYBN_USD",
+      "yf_symbol_legacy": "ZS=F"
+    },
+    {
+      "symbol": "WHEAT_USD",
+      "name": "Wheat",
+      "type": "Commodity",
+      "oanda_symbol": "WHEAT_USD",
+      "yf_symbol_legacy": "ZW=F"
+    },
+    {
+      "symbol": "USD_JPY",
+      "name": "USD/JPY",
+      "type": "Forex",
+      "oanda_symbol": "USD_JPY",
+      "yf_symbol_legacy": "USDJPY=X"
+    },
+    {
+      "symbol": "AUD_USD",
+      "name": "AUD/USD",
+      "type": "Forex",
+      "oanda_symbol": "AUD_USD",
+      "yf_symbol_legacy": "AUDUSD=X"
+    },
+    {
+      "symbol": "USD_CHF",
+      "name": "USD/CHF",
+      "type": "Forex",
+      "oanda_symbol": "USD_CHF",
+      "yf_symbol_legacy": "USDCHF=X"
+    }
   ]
 }

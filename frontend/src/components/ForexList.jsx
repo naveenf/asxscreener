@@ -45,9 +45,20 @@ function ForexList() {
 
   useEffect(() => {
     loadData();
+    
+    // Listen for global refresh events
+    const handleGlobalRefresh = () => {
+      console.log("Global refresh detected, updating forex list...");
+      loadData();
+    };
+    window.addEventListener('data-refreshed', handleGlobalRefresh);
+
     // Auto refresh every 5 minutes
     const interval = setInterval(loadData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('data-refreshed', handleGlobalRefresh);
+    };
   }, []);
 
   if (loading && !signals.length) {

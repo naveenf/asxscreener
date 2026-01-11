@@ -7,16 +7,27 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Optional, List
 from .indicators import TechnicalIndicators
+from .strategy_interface import ForexStrategy
 
-class ForexDetector:
+class ForexDetector(ForexStrategy):
     def __init__(self, adx_threshold: float = 30.0, di_threshold: float = 20.0, sma_period: int = 200):
         self.adx_threshold = adx_threshold
         self.di_threshold = di_threshold
         self.sma_period = sma_period
         self.sma_column = f'SMA{sma_period}'
 
-    def analyze(self, df: pd.DataFrame, symbol: str, name: str, pair_type: str) -> Optional[Dict]:
-        if len(df) < self.sma_period + 20: return None
+    def get_name(self) -> str:
+        return "TrendFollowing"
+
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str) -> Optional[Dict]:
+        df = data.get('base')
+        df_htf = data.get('htf')
+
+        if df is None or len(df) < self.sma_period + 20: return None
+        
+        # Add indicators
+        df = TechnicalIndicators.add_all_indicators(df, adx_period=14, sma_period=self.sma_period)
+
         latest = df.iloc[-1]
         prev1 = df.iloc[-2]
         prev2 = df.iloc[-3]
@@ -42,16 +53,35 @@ class ForexDetector:
         dist_to_ema = abs(latest['Close'] - latest['EMA13']) / latest['Close']
         if dist_to_ema > 0.0030: return None
 
+        # 6. HTF Bias (EMA Trend) - Optional Filter
+        if df_htf is not None and len(df_htf) > 50:
+            df_htf = TechnicalIndicators.add_all_indicators(df_htf)
+            latest_htf = df_htf.iloc[-1]
+            htf_bull = latest_htf['Close'] > latest_htf['EMA34']
+            htf_bear = latest_htf['Close'] < latest_htf['EMA34']
+            
+            if is_bull and not htf_bull: return None
+            if is_bear and not htf_bear: return None
+
+        stop_loss = float(latest['EMA34'])
+
         return {
-            "symbol": symbol, "name": name, "type": pair_type,
             "signal": "BUY" if is_bull else "SELL",
-            "score": round(70.0 + min(di_jump, 20.0), 2),
-            "price": round(float(latest['Close']), 5),
-            "is_power_signal": True,
+            "score": min(round(70.0 + min(di_jump, 20.0), 2), 100.0),
+            "strategy": self.get_name(),
+            "symbol": symbol,
+            "price": float(latest['Close']),
+            "timestamp": latest.name.isoformat() if hasattr(latest.name, 'isoformat') else str(latest.name),
+            "stop_loss": stop_loss,
+            "take_profit": None,
             "indicators": {
                 "ADX": round(float(latest['ADX']), 2),
                 "di_momentum": round(di_jump, 2),
-                "dist_ema": round(dist_to_ema * 100, 3)
-            },
-            "timestamp": latest.name.isoformat() if hasattr(latest.name, 'isoformat') else str(latest.name)
+                "dist_ema": round(dist_to_ema * 100, 3),
+                "vol_accel": 0.0,
+                "DIPlus": float(latest['DIPlus']),
+                "DIMinus": float(latest['DIMinus']),
+                "is_power_volume": False,
+                "is_power_momentum": di_jump > 5.0
+            }
         }

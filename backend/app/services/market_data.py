@@ -101,7 +101,7 @@ def update_all_stocks_data(tickers: List[str], data_dir: Path) -> Dict[str, bool
         print(f"Downloading latest data for {len(tickers)} stocks from yfinance...")
         new_data = yf.download(yf_tickers, period="7d", interval="1d", progress=False, group_by='ticker')
         
-        if new_data.empty:
+        if new_data is None or (isinstance(new_data, pd.DataFrame) and new_data.empty):
             print("No new data downloaded from yfinance")
             return results
 
@@ -125,6 +125,13 @@ def update_all_stocks_data(tickers: List[str], data_dir: Path) -> Dict[str, bool
                 if ticker_df is None or ticker_df.empty:
                     continue
                 
+                # Robustly handle cases where yfinance returns a single-level index for the ticker slice
+                if isinstance(ticker_df.columns, pd.MultiIndex):
+                    ticker_df.columns = ticker_df.columns.get_level_values(-1)
+
+                if 'Close' not in ticker_df.columns:
+                    continue
+
                 ticker_df = ticker_df.dropna(subset=['Close'])
                 if ticker_df.empty:
                     continue

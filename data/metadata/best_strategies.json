@@ -1,0 +1,67 @@
+{
+  "XAG_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "1h",
+    "target_rr": 3.0
+  },
+  "XAU_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "1h",
+    "target_rr": 3.0
+  },
+  "BCO_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "15m",
+    "target_rr": 3.0
+  },
+  "XCU_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "15m",
+    "target_rr": 3.0
+  },
+  "NAS100_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "15m",
+    "target_rr": 3.0
+  },
+  "JP225_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "15m",
+    "target_rr": 3.0
+  },
+  "UK100_GBP": {
+    "strategy": "Squeeze",
+    "timeframe": "1h",
+    "target_rr": 3.0
+  },
+  "CORN_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "15m",
+    "target_rr": 3.0
+  },
+  "SOYBN_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "1h",
+    "target_rr": 3.0
+  },
+  "WHEAT_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "15m",
+    "target_rr": 3.0
+  },
+  "USD_JPY": {
+    "strategy": "Squeeze",
+    "timeframe": "1h",
+    "target_rr": 1.5
+  },
+  "AUD_USD": {
+    "strategy": "Squeeze",
+    "timeframe": "1h",
+    "target_rr": 1.5
+  },
+  "USD_CHF": {
+    "strategy": "Squeeze",
+    "timeframe": "15m",
+    "target_rr": 1.5
+  }
+}

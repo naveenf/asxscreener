@@ -84,6 +84,13 @@ function App() {
     try {
       await triggerRefresh();
       await loadData();
+      
+      // Also broadcast a custom event or rely on polling, 
+      // but let's just trigger a re-render of components that use forex data 
+      // by incrementing the portfolioKey or similar, or just trust the next interval.
+      // Better: loadData doesn't load forex signals, those are in ForexList.
+      // So we should probably add a way to trigger ForexList refresh.
+      window.dispatchEvent(new CustomEvent('data-refreshed'));
     } catch (err) {
       console.error('Error refreshing data:', err);
       setError(err.message);

@@ -22,7 +22,7 @@ DATA_DIR = PROJECT_ROOT / 'data' / 'raw'
 METADATA_DIR = PROJECT_ROOT / 'data' / 'metadata'
 
 # Download configuration
-MAX_WORKERS = 4          # Parallel downloads
+MAX_WORKERS = 1          # Parallel downloads
 REQUEST_DELAY = 1.5      # Seconds between requests
 MAX_RETRIES = 3          # Retry attempts for failed downloads
 MIN_DATA_ROWS = 200      # Minimum rows required (~1 year)
@@ -60,12 +60,20 @@ def download_stock_data(ticker: str, period: str = '2y', interval: str = '1d'):
     print(f"Downloading {ticker}...", end=' ')
 
     try:
-        stock = yf.Ticker(ticker)
-        df = stock.history(period=period, interval=interval)
+        df = yf.download(ticker, period=period, interval=interval, progress=False, timeout=10)
 
-        if df.empty:
+        if df is None or (isinstance(df, pd.DataFrame) and df.empty):
             print("⚠️  No data available")
             return False
+
+        # Ensure we have a single-level column index if yfinance returned MultiIndex
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        # Handle duplicate columns (e.g. if yfinance returns multiple 'Close' columns)
+        if df.columns.duplicated().any():
+            # print(f"⚠️  Duplicate columns found for {ticker}, keeping first")
+            df = df.loc[:, ~df.columns.duplicated()]
 
         # Data validation
         if len(df) < MIN_DATA_ROWS:
@@ -73,8 +81,12 @@ def download_stock_data(ticker: str, period: str = '2y', interval: str = '1d'):
             return False
 
         # Check for zero prices or missing data
-        if (df['Close'] == 0).sum() > 0:
-            print(f"⚠️  Contains zero prices")
+        if 'Close' in df.columns:
+            if (df['Close'] == 0).any():
+                print(f"⚠️  Contains zero prices")
+                return False
+        else:
+            print(f"⚠️  'Close' column not found")
             return False
 
         # For 4-hour data (future enhancement):

@@ -64,7 +64,21 @@ const Portfolio = ({ onAddStock, onShowToast }) => {
 
   useEffect(() => {
     fetchPortfolio();
-  }, []);
+    
+    // Listen for global refresh events
+    const handleGlobalRefresh = () => {
+        console.log("Global refresh detected, updating portfolio...");
+        fetchPortfolio();
+        if (activeView === 'tax') {
+            fetchTaxSummary();
+        }
+    };
+    window.addEventListener('data-refreshed', handleGlobalRefresh);
+    
+    return () => {
+        window.removeEventListener('data-refreshed', handleGlobalRefresh);
+    };
+  }, [activeView]);
   
   useEffect(() => {
       if (activeView === 'tax' && !taxSummary) {

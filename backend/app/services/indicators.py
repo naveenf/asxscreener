@@ -440,7 +440,7 @@ class TechnicalIndicators:
     @staticmethod
     def resample_to_1h(df: pd.DataFrame) -> pd.DataFrame:
         """Resample 15m data to 1h for HTF filtering."""
-        df_1h = df.resample('1H').agg({
+        df_1h = df.resample('1h').agg({
             'Open': 'first',
             'High': 'max',
             'Low': 'min',

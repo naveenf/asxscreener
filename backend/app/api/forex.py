@@ -31,26 +31,39 @@ async def get_forex_signals():
         return json.load(f)
 
 @router.post("/refresh")
-async def refresh_forex():
-    """Trigger data refresh and re-run forex screener."""
+async def refresh_forex(mode: str = 'sniper'):
+    """
+    Trigger data refresh and re-run forex screener.
+
+    Args:
+        mode: 'sniper' (Elite 3 selection) or 'balanced' (all signals)
+    """
     try:
-        # 1. Download data (run the script using the same python executable)
-        script_path = settings.PROJECT_ROOT / "scripts" / "download_forex.py"
-        subprocess.run([sys.executable, str(script_path)], check=True)
-        
-        # 2. Run screener
-        screener = ForexScreener(
+        results = ForexScreener.run_orchestrated_refresh(
+            project_root=settings.PROJECT_ROOT,
             data_dir=FOREX_DATA_DIR,
             config_path=CONFIG_PATH,
-            output_path=OUTPUT_PATH
+            output_path=OUTPUT_PATH,
+            mode=mode
         )
-        results = screener.screen_all()
-        
-        return {
-            "status": "success",
-            "signals_count": results["signals_count"],
-            "timestamp": results["generated_at"]
-        }
+
+        # Format response based on mode
+        if mode == 'sniper':
+            return {
+                "status": "success",
+                "mode": "sniper",
+                "elite_signals_count": results.get("top_n_selected", 0),
+                "total_signals_found": results.get("signals_found", 0),
+                "total_analyzed": results.get("total_analyzed", 0),
+                "timestamp": results["generated_at"]
+            }
+        else:
+            return {
+                "status": "success",
+                "mode": "balanced",
+                "signals_count": results.get("signals_count", 0),
+                "timestamp": results["generated_at"]
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

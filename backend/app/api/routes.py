@@ -22,6 +22,7 @@ from . import stocks     # Import stocks router
 from . import insider_trades # Import insider trades router
 from . import forex          # Import forex router
 from ..services.insider_trades import InsiderTradesService
+from ..services.forex_screener import ForexScreener
 
 router = APIRouter()
 
@@ -134,6 +135,18 @@ async def refresh_data():
         print("Updating insider trades...")
         insider_service = InsiderTradesService(settings.PROCESSED_DATA_DIR / 'insider_trades.json')
         insider_service.scrape_and_update()
+
+        # 4. Update Forex/Commodities
+        print("Updating forex and commodities...")
+        try:
+            ForexScreener.run_orchestrated_refresh(
+                project_root=settings.PROJECT_ROOT,
+                data_dir=settings.DATA_DIR / "forex_raw",
+                config_path=settings.METADATA_DIR / "forex_pairs.json",
+                output_path=settings.PROCESSED_DATA_DIR / "forex_signals.json"
+            )
+        except Exception as fe:
+            print(f"Forex refresh failed during global refresh: {fe}")
         
         print(f"Refresh complete. Found {results['signals_count']} signals.")
 

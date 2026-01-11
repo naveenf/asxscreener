@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     # Auth settings
     GOOGLE_CLIENT_ID: str = ""  # Required for frontend-driven auth
 
+    # OANDA settings
+    OANDA_ACCESS_TOKEN: str = ""
+    OANDA_ENV: str = "live"
+
     class Config:
         env_file = ".env"
 

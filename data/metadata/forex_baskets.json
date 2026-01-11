@@ -1,0 +1,30 @@
+{
+  "momentum": [
+    "NQ=F",
+    "^N225",
+    "USDJPY=X",
+    "GBPJPY=X",
+    "EURJPY=X",
+    "AUDJPY=X",
+    "CADJPY=X",
+    "CHFJPY=X",
+    "BTC-USD",
+    "LTC-USD"
+  ],
+  "steady": [
+    "EURUSD=X",
+    "GBPUSD=X",
+    "AUDUSD=X",
+    "NZDUSD=X",
+    "USDCHF=X",
+    "USDCAD=X",
+    "EURGBP=X",
+    "EURAUD=X",
+    "GBPAUD=X",
+    "AUDNZD=X",
+    "GC=F",
+    "SI=F",
+    "HG=F",
+    "^FTSE"
+  ]
+}

@@ -40,6 +40,17 @@ const Watchlist = ({ onShowToast }) => {
 
   useEffect(() => {
     fetchWatchlist();
+    
+    // Listen for global refresh events
+    const handleGlobalRefresh = () => {
+        console.log("Global refresh detected, updating watchlist...");
+        fetchWatchlist();
+    };
+    window.addEventListener('data-refreshed', handleGlobalRefresh);
+    
+    return () => {
+        window.removeEventListener('data-refreshed', handleGlobalRefresh);
+    };
   }, []);
 
   const handleRemove = (item) => {

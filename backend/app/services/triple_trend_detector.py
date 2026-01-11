@@ -12,11 +12,10 @@ Screening is performed on T-1 (previous day's close) to ensure stability.
 import pandas as pd
 import numpy as np
 from typing import Dict, Optional
-
 from .indicators import TechnicalIndicators
+from .strategy_interface import ForexStrategy
 
-
-class TripleTrendDetector:
+class TripleTrendDetector(ForexStrategy):
     """Detect signals using Fibonacci, Supertrend, and Instant Trend alignment."""
 
     def __init__(
@@ -35,192 +34,134 @@ class TripleTrendDetector:
         self.stop_loss = stop_loss
         self.time_limit = time_limit
 
-    def detect_entry_signal(self, df: pd.DataFrame) -> Dict:
-        """
-        Detect entry signal on T-1 data.
-        
-        Conditions:
-        1. Fibonacci Trend is Bullish (Fib_Pos > 0)
-        2. Supertrend is Bullish (PP_Trend == 1)
-        3. Instant Trend Trigger crosses above IT_Trend (Bullish Trigger)
-        """
-        if len(df) < 3:
-            return {'has_signal': False, 'reason': 'Insufficient data'}
+    def get_name(self) -> str:
+        return "TripleTrend"
 
-        # Evaluation is on i-1 (yesterday)
-        # In this backtester's context, df is sliced up to the 'current_date'
-        # So iloc[-1] is actually the 'current' close (which we use as the T-1 signal)
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str) -> Optional[Dict]:
+        """
+        Analyze using MTF data.
+        Primary analysis on 'base' timeframe.
+        Optional confirmation from 'htf' if available.
+        """
+        df = data.get('base') 
+        df_htf = data.get('htf')
+
+        if df is None or len(df) < 50:
+            return None
+
+        # Add indicators to execution timeframe
+        df = TechnicalIndicators.add_all_indicators(
+            df, 
+            fib_period=self.fib_period,
+            st_factor=self.st_factor,
+            it_alpha=self.it_alpha
+        )
+
         latest = df.iloc[-1]
         prev = df.iloc[-2]
 
-        # Check required columns
-        required = ['Fib_Pos', 'PP_Trend', 'IT_Trend', 'IT_Trigger', 'Close']
-        if any(pd.isna(latest[col]) for col in required):
-            return {'has_signal': False, 'reason': 'NaN values in indicators'}
-
         # 1. Fibonacci Anchor (Long term)
         fib_bullish = latest['Fib_Pos'] > 0
+        fib_bearish = latest['Fib_Pos'] < 0
 
         # 2. Supertrend Confirmation (Mid term)
         st_bullish = latest['PP_Trend'] == 1
+        st_bearish = latest['PP_Trend'] == -1
 
         # 3. Instant Trend Trigger (Short term)
-        # Crossover: Trigger was below Trend, now is above
-        it_crossover = (prev['IT_Trigger'] <= prev['IT_Trend']) and (latest['IT_Trigger'] > latest['IT_Trend'])
+        # Crossover
+        it_crossover_bull = (prev['IT_Trigger'] <= prev['IT_Trend']) and (latest['IT_Trigger'] > latest['IT_Trend'])
+        it_crossover_bear = (prev['IT_Trigger'] >= prev['IT_Trend']) and (latest['IT_Trigger'] < latest['IT_Trend'])
 
-        # 4. Price Filter
-        price_ok = latest['Close'] >= 1.0
+        # 4. HTF Confirmation - Optional but powerful
+        htf_confirmed = True
+        if df_htf is not None and len(df_htf) > 20:
+            df_htf = TechnicalIndicators.calculate_pivot_supertrend(df_htf, factor=3.0)
+            latest_htf = df_htf.iloc[-1]
+            if st_bullish and latest_htf['PP_Trend'] != 1: htf_confirmed = False
+            if st_bearish and latest_htf['PP_Trend'] != -1: htf_confirmed = False
 
-        # All conditions must align for a signal
-        # Note: has_signal is specifically for the FRESH crossover
-        has_signal = fib_bullish and st_bullish and it_crossover and price_ok
+        # Signal Logic
+        is_buy = fib_bullish and st_bullish and it_crossover_bull and htf_confirmed
+        is_sell = fib_bearish and st_bearish and it_crossover_bear and htf_confirmed
+
+        if not (is_buy or is_sell):
+            return None
+
+        # Calculate Score
+        score = 50.0
+        if is_buy:
+             if latest['Fib_Pos'] > 0: score += 15
+             if latest['PP_Trend'] == 1: score += 15
+             if htf_confirmed: score += 20
+        else:
+             if latest['Fib_Pos'] < 0: score += 15
+             if latest['PP_Trend'] == -1: score += 15
+             if htf_confirmed: score += 20
         
-        # is_bullish tracks if we are in the zone, regardless of crossover
-        is_bullish = fib_bullish and st_bullish and (latest['IT_Trigger'] > latest['IT_Trend']) and price_ok
+        stop_loss = float(latest['PP_TrailingSL']) if 'PP_TrailingSL' in latest else float(latest['Close']) * 0.99
 
         return {
-            'has_signal': has_signal,
-            'is_bullish': is_bullish,
-            'fib_pos': int(latest['Fib_Pos']),
-            'st_trend': int(latest['PP_Trend']),
-            'it_trend': float(latest['IT_Trend']),
-            'it_trigger': float(latest['IT_Trigger']),
-            'close': float(latest['Close']),
-            'date': latest.name
+            "signal": "BUY" if is_buy else "SELL",
+            "score": min(score, 100.0),
+            "strategy": self.get_name(),
+            "symbol": symbol,
+            "price": float(latest['Close']),
+            "timestamp": latest.name.isoformat() if hasattr(latest.name, 'isoformat') else str(latest.name),
+            "stop_loss": stop_loss,
+            "take_profit": None,
+            "indicators": {
+                "ADX": 0.0,
+                "Fib_Pos": int(latest.get('Fib_Pos', 0)),
+                "PP_Trend": int(latest.get('PP_Trend', 0)),
+                "IT_Trend": round(float(latest.get('IT_Trend', 0)), 2),
+                "vol_accel": 0.0,
+                "di_momentum": 0.0,
+                "DIPlus": 0.0,
+                "DIMinus": 0.0,
+                "is_power_volume": False,
+                "is_power_momentum": False
+            }
         }
 
-    def calculate_score(self, signal_info: Dict, df: pd.DataFrame) -> float:
-        """
-        Calculate signal score.
-        Granular scoring:
-        - 20 pts for Fibonacci Bullish
-        - 20 pts for Supertrend Bullish
-        - 20 pts for Momentum Bullish (Trigger > Trend)
-        - 10 pts Bonus for fresh Triple Confirmation (Crossover)
-        - Up to 30 pts for risk/reward (distance to stop loss)
-        """
-        latest = df.iloc[-1]
-        score = 0.0
-
-        # 1. Fibonacci (20 pts)
-        if latest['Fib_Pos'] > 0:
-            score += 20.0
-        
-        # 2. Supertrend (20 pts)
-        if latest['PP_Trend'] == 1:
-            score += 20.0
-            
-        # 3. Momentum State (20 pts)
-        if latest['IT_Trigger'] > latest['IT_Trend']:
-            score += 20.0
-
-        # 4. Fresh Crossover Bonus (10 pts)
-        if signal_info.get('has_signal'):
-            score += 10.0
-
-        # 5. Risk/Reward Bonus (Up to 30 pts)
-        # ONLY apply if Supertrend is Bullish
-        if latest['PP_Trend'] == 1 and 'PP_TrailingSL' in latest and not pd.isna(latest['PP_TrailingSL']):
-            dist_pct = (latest['Close'] - latest['PP_TrailingSL']) / latest['Close']
-            # Bonus of up to 30 points if within 5% of the stop
-            dist_bonus = max(0, (0.05 - dist_pct) / 0.05 * 30.0)
-            score += min(dist_bonus, 30.0)
-
-        return min(score, 100.0)
-
-    def detect_exit_signal(
-        self,
-        df: pd.DataFrame,
-        entry_price: float,
-        current_index: Optional[int] = None,
-        entry_index: Optional[int] = None
-    ) -> Dict:
-        """
-        Detect exit signal.
-        """
-        if current_index is None:
-            current_index = len(df) - 1
-            
-        # Convert negative index to positive absolute index
-        if current_index < 0:
-            current_index = len(df) + current_index
-
-        if current_index < 0 or current_index >= len(df):
-            return {'has_exit': False}
-
-        current = df.iloc[current_index]
-        current_price = current['Close']
-
-        # 1. Profit Target
-        profit_pct = (current_price - entry_price) / entry_price
-        profit_hit = profit_pct >= self.profit_target
-
-        # 2. Hard Stop Loss (10%)
-        stop_loss_hit = profit_pct <= -self.stop_loss
-
-        # 3. Instant Trend Reversal (REMOVED for more room)
-        it_reversal = False # current['IT_Trigger'] < current['IT_Trend']
-
-        # 4. Supertrend Flip
-        st_flip = current['PP_Trend'] == -1
-
-        # 5. Time Limit
-        time_limit_hit = False
-        if entry_index is not None:
-            bars_held = current_index - entry_index
-            time_limit_hit = bars_held >= self.time_limit
-
-        has_exit = profit_hit or stop_loss_hit or st_flip or time_limit_hit
-
-        exit_reason = None
-        if profit_hit: exit_reason = 'profit_target'
-        elif stop_loss_hit: exit_reason = 'stop_loss'
-        elif st_flip: exit_reason = 'supertrend_reversal'
-        elif time_limit_hit: exit_reason = 'time_limit'
-
-        return {
-            'has_exit': has_exit,
-            'exit_reason': exit_reason,
-            'current_price': float(current_price),
-            'profit_pct': float(profit_pct * 100),
-            'date': current.name
-        }
+    # Kept for backward compatibility with StockScreener if needed, or remove later
+    def detect_entry_signal(self, df: pd.DataFrame) -> Dict:
+        pass
 
     def analyze_stock(self, df: pd.DataFrame, ticker: str, name: str = None) -> Optional[Dict]:
         """
-        Analyze a stock and return signal if present.
+        Backward compatibility wrapper for StockScreener.
         """
-        signal_info = self.detect_entry_signal(df)
-
-        if not signal_info['has_signal']:
-            return None
-
-        score = self.calculate_score(signal_info, df)
-        latest = df.iloc[-1]
+        # Adapt single dataframe to the new interface expectations
+        data = {'base': df, 'htf': None}
         
-        above_sma = False
-        if 'SMA200' in latest and not pd.isna(latest['SMA200']):
-            above_sma = latest['Close'] > latest['SMA200']
-
-        return {
-            'ticker': ticker,
-            'name': name or ticker,
-            'signal': 'BUY',
-            'strategy': 'trend_following',
-            'score': round(score, 2),
-            'current_price': round(signal_info['close'], 2),
-            'indicators': {
-                'Fib_Pos': int(signal_info['fib_pos']),
-                'PP_Trend': int(signal_info['st_trend']),
-                'IT_Trend': round(float(signal_info['it_trend']), 2),
-                'IT_Trigger': round(float(signal_info['it_trigger']), 2),
-                'SMA200': round(float(latest.get('SMA200', 0)), 2) if 'SMA200' in latest else None,
-                'above_sma200': bool(above_sma)
-            },
-            'entry_conditions': {
-                'fib_structure_bullish': bool(signal_info['fib_pos'] > 0),
-                'supertrend_bullish': bool(signal_info['st_trend'] == 1),
-                'it_trend_bullish': bool(latest['IT_Trigger'] > latest['IT_Trend'])
-            },
-            'timestamp': signal_info['date'].isoformat() if hasattr(signal_info['date'], 'isoformat') else str(signal_info['date'])
-        }
+        result = self.analyze(data, ticker)
+        
+        if result and result.get('signal') == 'BUY':
+            # Remap to the format StockScreener expects
+            latest = df.iloc[-1]
+            prev = df.iloc[-2]
+            
+            return {
+                'ticker': ticker,
+                'name': name or ticker,
+                'signal': 'BUY',
+                'strategy': 'trend_following',
+                'score': result['score'],
+                'current_price': result['price'],
+                'indicators': {
+                    'Fib_Pos': int(latest.get('Fib_Pos', 0)),
+                    'PP_Trend': int(latest.get('PP_Trend', 0)),
+                    'IT_Trend': round(float(latest.get('IT_Trend', 0)), 2),
+                    'IT_Trigger': round(float(latest.get('IT_Trigger', 0)), 2),
+                    'SMA200': round(float(latest.get('SMA200', 0)), 2) if 'SMA200' in latest else None,
+                    'above_sma200': bool(latest['Close'] > latest.get('SMA200', 999999)) if 'SMA200' in latest else False
+                },
+                'entry_conditions': {
+                    'fib_structure_bullish': bool(latest.get('Fib_Pos', 0) > 0),
+                    'supertrend_bullish': bool(latest.get('PP_Trend', 0) == 1),
+                    'it_trend_bullish': bool(latest.get('IT_Trigger', 0) > latest.get('IT_Trend', 0))
+                },
+                'timestamp': result['timestamp']
+            }
+        return None

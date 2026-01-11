@@ -612,10 +612,6 @@ STOCKS_DATA = [
         "name": "Latitude Group Holdings"
     },
     {
-        "ticker": "963",
-        "name": "$1.1B"
-    },
-    {
         "ticker": "LLC",
         "name": "LendLease Group"
     },
@@ -686,10 +682,6 @@ STOCKS_DATA = [
     {
         "ticker": "MCY",
         "name": "Mercury NZ"
-    },
-    {
-        "ticker": "755",
-        "name": "$7.9B"
     },
     {
         "ticker": "MEZ",
@@ -1038,10 +1030,6 @@ STOCKS_DATA = [
     {
         "ticker": "SNZ",
         "name": "Summerset Group Holdings"
-    },
-    {
-        "ticker": "425",
-        "name": "$2.6B"
     },
     {
         "ticker": "SUN",
