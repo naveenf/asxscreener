@@ -130,3 +130,36 @@ class SniperDetector(ForexStrategy):
                 "is_power_momentum": di_jump > 7.0
             }
         }
+
+    def check_exit(self, data: Dict[str, pd.DataFrame], direction: str, entry_price: float) -> Optional[Dict]:
+        """
+        Exit if price crosses EMA13 (Trailing Stop).
+        """
+        df = data.get('base')
+        if df is None or len(df) < 50: return None
+        
+        if 'EMA13' not in df.columns:
+            df = TechnicalIndicators.add_all_indicators(df)
+            
+        latest = df.iloc[-1]
+        close = float(latest['Close'])
+        ema13 = float(latest['EMA13'])
+        
+        exit_signal = False
+        reason = None
+        
+        if direction == "BUY":
+            if close < ema13:
+                exit_signal = True
+                reason = f"Price ({close:.4f}) crossed below EMA13 ({ema13:.4f})"
+        elif direction == "SELL":
+            if close > ema13:
+                exit_signal = True
+                reason = f"Price ({close:.4f}) crossed above EMA13 ({ema13:.4f})"
+                
+        if exit_signal:
+            return {
+                "exit_signal": True,
+                "reason": reason
+            }
+        return None

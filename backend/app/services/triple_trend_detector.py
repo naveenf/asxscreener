@@ -130,9 +130,77 @@ class TripleTrendDetector(ForexStrategy):
             }
         }
 
-    # Kept for backward compatibility with StockScreener if needed, or remove later
     def detect_entry_signal(self, df: pd.DataFrame) -> Dict:
-        pass
+        """
+        Backward compatibility for StockScreener and API.
+        """
+        if df is None or len(df) < 50:
+            return {'has_signal': False}
+            
+        # Ensure indicators are present
+        if 'Fib_Pos' not in df.columns:
+            df = TechnicalIndicators.add_all_indicators(df, fib_period=self.fib_period, st_factor=self.st_factor, it_alpha=self.it_alpha)
+
+        latest = df.iloc[-1]
+        prev = df.iloc[-2]
+        
+        # Logic from analyze() - handling NaNs
+        fib_pos = latest.get('Fib_Pos', 0)
+        pp_trend = latest.get('PP_Trend', 0)
+        it_trigger = latest.get('IT_Trigger', 0)
+        it_trend = latest.get('IT_Trend', 0)
+        
+        fib_bullish = not pd.isna(fib_pos) and fib_pos > 0
+        st_bullish = not pd.isna(pp_trend) and pp_trend == 1
+        
+        it_curr_trigger = latest.get('IT_Trigger', 0)
+        it_curr_trend = latest.get('IT_Trend', 0)
+        it_prev_trigger = prev.get('IT_Trigger', 0)
+        it_prev_trend = prev.get('IT_Trend', 0)
+        
+        it_crossover_bull = (it_prev_trigger <= it_prev_trend) and (it_curr_trigger > it_curr_trend)
+        
+        has_signal = fib_bullish and st_bullish and it_crossover_bull
+        
+        return {
+            'has_signal': has_signal,
+            'is_bullish': fib_bullish or st_bullish,
+            'fib_pos': 0 if pd.isna(fib_pos) else fib_pos,
+            'st_trend': 0 if pd.isna(pp_trend) else pp_trend
+        }
+
+    def detect_exit_signal(self, df: pd.DataFrame, entry_price: float, current_index: int = -1, entry_index: int = None) -> Dict:
+        """
+        Backward compatibility for Portfolio API.
+        """
+        if df is None or len(df) < 2:
+            return {'has_exit': False}
+            
+        data = {'base': df}
+        res = self.check_exit(data, "BUY", entry_price) # Assume BUY for portfolio trend
+        
+        if res and res.get('exit_signal'):
+            return {
+                'has_exit': True,
+                'exit_reason': res.get('reason')
+            }
+        return {'has_exit': False}
+
+    def calculate_score(self, signal_info: Dict, df: pd.DataFrame) -> float:
+        """
+        Backward compatibility for scoring.
+        """
+        score = 50.0
+        latest = df.iloc[-1]
+        fib_pos = latest.get('Fib_Pos', 0)
+        pp_trend = latest.get('PP_Trend', 0)
+        it_trigger = latest.get('IT_Trigger', 0)
+        it_trend = latest.get('IT_Trend', 0)
+        
+        if not pd.isna(fib_pos) and fib_pos > 0: score += 15
+        if not pd.isna(pp_trend) and pp_trend == 1: score += 15
+        if not pd.isna(it_trigger) and not pd.isna(it_trend) and it_trigger > it_trend: score += 20
+        return min(score, 100.0)
 
     def analyze_stock(self, df: pd.DataFrame, ticker: str, name: str = None) -> Optional[Dict]:
         """
@@ -169,5 +237,39 @@ class TripleTrendDetector(ForexStrategy):
                     'it_trend_bullish': bool(latest.get('IT_Trigger', 0) > latest.get('IT_Trend', 0))
                 },
                 'timestamp': result['timestamp']
+            }
+        return None
+
+    def check_exit(self, data: Dict[str, pd.DataFrame], direction: str, entry_price: float) -> Optional[Dict]:
+        """
+        Exit if Supertrend reverses.
+        """
+        df = data.get('base')
+        if df is None or len(df) < 50: return None
+        
+        # Ensure indicators
+        if 'PP_Trend' not in df.columns:
+            df = TechnicalIndicators.add_all_indicators(df, st_factor=self.st_factor)
+            
+        latest = df.iloc[-1]
+        pp_trend = int(latest.get('PP_Trend', 0))
+        close = float(latest['Close'])
+        
+        exit_signal = False
+        reason = None
+        
+        if direction == "BUY":
+            if pp_trend == -1:
+                exit_signal = True
+                reason = f"Supertrend flipped Bearish (Close: {close:.4f})"
+        elif direction == "SELL":
+            if pp_trend == 1:
+                exit_signal = True
+                reason = f"Supertrend flipped Bullish (Close: {close:.4f})"
+                
+        if exit_signal:
+            return {
+                "exit_signal": True,
+                "reason": reason
             }
         return None

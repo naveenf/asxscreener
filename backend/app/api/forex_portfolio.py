@@ -13,6 +13,7 @@ import pandas as pd
 from ..firebase_setup import db
 from ..models.forex_portfolio_schema import ForexPortfolioItemCreate, ForexPortfolioItemResponse, ForexPortfolioItemSell
 from ..config import settings
+from ..services.portfolio_monitor import PortfolioMonitor
 
 router = APIRouter(prefix="/api/forex-portfolio")
 
@@ -163,6 +164,10 @@ async def list_forex_portfolio(email: str = Depends(get_current_user_email)):
                 sell_date=sell_date,
                 sell_price=data.get('sell_price'),
                 notes=data.get('notes'),
+                strategy=data.get('strategy'),
+                timeframe=data.get('timeframe'),
+                exit_signal=data.get('exit_signal', False),
+                exit_reason=data.get('exit_reason'),
                 current_price=metrics['current_price'],
                 gain_loss_aud=metrics['gain_loss_aud'] if data.get('status') == 'OPEN' else None,
                 gain_loss_percent=metrics['gain_loss_percent'],
@@ -190,6 +195,8 @@ async def add_forex_item(
             'buy_price': item.buy_price,
             'quantity': item.quantity,
             'notes': item.notes,
+            'strategy': item.strategy,
+            'timeframe': item.timeframe,
             'status': 'OPEN',
             'created_at': datetime.utcnow()
         }
@@ -204,7 +211,9 @@ async def add_forex_item(
             buy_price=item.buy_price,
             quantity=item.quantity,
             status='OPEN',
-            notes=item.notes
+            notes=item.notes,
+            strategy=item.strategy,
+            timeframe=item.timeframe
         )
     except Exception as e:
         print(f"Forex Portfolio Add Error: {e}")
@@ -297,6 +306,8 @@ async def update_forex_item(
             'buy_price': item.buy_price,
             'quantity': item.quantity,
             'notes': item.notes,
+            'strategy': item.strategy,
+            'timeframe': item.timeframe,
             'updated_at': datetime.utcnow()
         }
         
@@ -315,6 +326,8 @@ async def update_forex_item(
             quantity=item.quantity,
             status=doc.to_dict().get('status', 'OPEN'),
             notes=item.notes,
+            strategy=item.strategy,
+            timeframe=item.timeframe,
             current_price=metrics['current_price'],
             gain_loss_aud=metrics['gain_loss_aud'],
             gain_loss_percent=metrics['gain_loss_percent']
@@ -322,3 +335,17 @@ async def update_forex_item(
     except Exception as e:
         print(f"Forex Portfolio Update Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to update item")
+
+@router.post("/check-exits")
+async def check_portfolio_exits(email: str = Depends(get_current_user_email)):
+    """
+    Trigger an exit check for all open positions in the user's portfolio.
+    Returns list of detected exit signals.
+    """
+    try:
+        monitor = PortfolioMonitor()
+        exits = monitor.check_portfolio_exits(email)
+        return {"status": "success", "exits_found": len(exits), "details": exits}
+    except Exception as e:
+        print(f"Portfolio Exit Check Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to check exits")

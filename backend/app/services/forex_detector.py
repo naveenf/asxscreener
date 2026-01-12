@@ -91,3 +91,36 @@ class ForexDetector(ForexStrategy):
                 "is_power_momentum": di_jump > 5.0
             }
         }
+
+    def check_exit(self, data: Dict[str, pd.DataFrame], direction: str, entry_price: float) -> Optional[Dict]:
+        """
+        Exit if trend reverses (Price crosses EMA34).
+        """
+        df = data.get('base')
+        if df is None or len(df) < 50: return None
+        
+        if 'EMA34' not in df.columns:
+            df = TechnicalIndicators.add_all_indicators(df, sma_period=self.sma_period)
+            
+        latest = df.iloc[-1]
+        close = float(latest['Close'])
+        ema34 = float(latest['EMA34'])
+        
+        exit_signal = False
+        reason = None
+        
+        if direction == "BUY":
+            if close < ema34:
+                exit_signal = True
+                reason = f"Price ({close:.4f}) crossed below EMA34 ({ema34:.4f})"
+        elif direction == "SELL":
+            if close > ema34:
+                exit_signal = True
+                reason = f"Price ({close:.4f}) crossed above EMA34 ({ema34:.4f})"
+                
+        if exit_signal:
+            return {
+                "exit_signal": True,
+                "reason": reason
+            }
+        return None

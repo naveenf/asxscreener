@@ -95,7 +95,9 @@ function SignalCard({ signal, onAdd, onWatchlist }) {
       {/* Price Section */}
       <div className="price-section">
         <span className="price-value">{formatPrice(signal.current_price)}</span>
-        {signal.sector && <span className="sector-tag">{signal.sector}</span>}
+        {signal.sector && signal.sector !== 'Unknown' && (
+          <span className="sector-tag">{signal.sector}</span>
+        )}
       </div>
 
       {/* Grid of Data */}

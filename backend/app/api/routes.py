@@ -24,6 +24,8 @@ from . import forex          # Import forex router
 from . import forex_portfolio # Import forex portfolio router
 from ..services.insider_trades import InsiderTradesService
 from ..services.forex_screener import ForexScreener
+from ..services.refresh_manager import refresh_manager
+from ..services.tasks import run_stock_refresh_task
 
 router = APIRouter()
 
@@ -36,6 +38,11 @@ router.include_router(stocks.router)
 router.include_router(insider_trades.router)
 router.include_router(forex.router)
 router.include_router(forex_portfolio.router)
+
+@router.get("/api/status/refresh")
+async def get_refresh_status():
+    """Get the status of ongoing background refresh tasks."""
+    return refresh_manager.get_status()
 
 
 def load_signals() -> dict:
@@ -100,70 +107,6 @@ async def get_stock_detail(ticker: str):
     return stock_signal
 
 
-@router.post("/api/refresh")
-async def refresh_data():
-    """
-    Trigger data refresh and re-run screener.
-
-    This will:
-    1. Download latest daily data for all stocks
-    2. Re-calculate indicators for all stocks
-    3. Detect new signals
-    4. Update signals.json
-    """
-    try:
-        print(f"Starting manual refresh at {datetime.now()}")
-        # Create screener (new detectors are initialized inside StockScreener)
-        screener = StockScreener(
-            data_dir=settings.RAW_DATA_DIR,
-            metadata_dir=settings.METADATA_DIR,
-            output_dir=settings.PROCESSED_DATA_DIR
-        )
-        
-        # 1. Update data from yfinance
-        stocks = screener.load_stock_list()
-        tickers = [s['ticker'] for s in stocks]
-        print(f"Updating data for {len(tickers)} tickers...")
-        update_results = update_all_stocks_data(tickers, settings.RAW_DATA_DIR)
-        success_count = sum(1 for r in update_results.values() if r)
-        print(f"Successfully updated {success_count}/{len(tickers)} CSV files")
-
-        # 2. Run screener
-        print("Running screener...")
-        results = screener.screen_all_stocks()
-        screener.save_signals(results)
-        
-        # 3. Update Insider Trades
-        print("Updating insider trades...")
-        insider_service = InsiderTradesService(settings.PROCESSED_DATA_DIR / 'insider_trades.json')
-        insider_service.scrape_and_update()
-
-        # 4. Update Forex/Commodities
-        print("Updating forex and commodities...")
-        try:
-            ForexScreener.run_orchestrated_refresh(
-                project_root=settings.PROJECT_ROOT,
-                data_dir=settings.DATA_DIR / "forex_raw",
-                config_path=settings.METADATA_DIR / "forex_pairs.json",
-                output_path=settings.PROCESSED_DATA_DIR / "forex_signals.json"
-            )
-        except Exception as fe:
-            print(f"Forex refresh failed during global refresh: {fe}")
-        
-        print(f"Refresh complete. Found {results['signals_count']} signals.")
-
-        return {
-            "status": "success",
-            "message": "Data refreshed successfully",
-            "signals_found": results['signals_count'],
-            "timestamp": results['generated_at']
-        }
-
-    except Exception as e:
-        print(f"Refresh failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}")
-
-
 @router.get("/api/status", response_model=ScreenerStatus)
 async def get_status():
     """
@@ -195,3 +138,21 @@ async def get_status():
             signals_count=0,
             status="error"
         )
+
+
+from fastapi import BackgroundTasks
+
+@router.post("/api/refresh")
+async def refresh_data(background_tasks: BackgroundTasks):
+    """
+    Trigger background data refresh and re-run screener.
+    """
+    if refresh_manager.is_refreshing_stocks:
+        return {"status": "error", "message": "Refresh already in progress"}
+    
+    background_tasks.add_task(run_stock_refresh_task)
+    
+    return {
+        "status": "success",
+        "message": "Refresh started in background"
+    }

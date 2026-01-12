@@ -13,6 +13,8 @@ class ForexPortfolioItemCreate(BaseModel):
     buy_price: float  # Price in pair's currency
     quantity: float
     notes: Optional[str] = None
+    strategy: Optional[str] = None
+    timeframe: Optional[str] = None
 
 class ForexPortfolioItemSell(BaseModel):
     quantity: float
@@ -27,6 +29,14 @@ class ForexPortfolioItemResponse(BaseModel):
     buy_price: float
     quantity: float
     status: str = "OPEN" # OPEN, CLOSED
+    
+    # Strategy Context
+    strategy: Optional[str] = None
+    timeframe: Optional[str] = None
+    
+    # Exit Signal
+    exit_signal: bool = False
+    exit_reason: Optional[str] = None
     
     # Sell details
     sell_date: Optional[date] = None

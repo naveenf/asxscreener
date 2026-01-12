@@ -148,6 +148,10 @@ STOCKS_DATA = [
         "name": "Beach Energy"
     },
     {
+        "ticker": "BAP",
+        "name": "Bapcor Ltd"
+    },
+    {
         "ticker": "BGA",
         "name": "Bega Cheese"
     },

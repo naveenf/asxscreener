@@ -12,6 +12,8 @@ const AddForexModal = ({ forex, onClose, onAdded, onError }) => {
   const [buyPrice, setBuyPrice] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [strategy, setStrategy] = useState(null);
+  const [timeframe, setTimeframe] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -23,6 +25,8 @@ const AddForexModal = ({ forex, onClose, onAdded, onError }) => {
         setBuyPrice(forex.buy_price || '');
         setQuantity(forex.quantity || 1);
         setNotes(forex.notes || '');
+        setStrategy(forex.strategy || null);
+        setTimeframe(forex.timeframe || null);
       } else {
         // Adding from screener
         setBuyPrice(forex.price || '');
@@ -31,6 +35,8 @@ const AddForexModal = ({ forex, onClose, onAdded, onError }) => {
         } else {
             setDirection('BUY');
         }
+        setStrategy(forex.strategy || 'TrendFollowing');
+        setTimeframe(forex.timeframe_used || '15m');
       }
     }
   }, [forex]);
@@ -46,7 +52,9 @@ const AddForexModal = ({ forex, onClose, onAdded, onError }) => {
         buy_date: buyDate,
         buy_price: parseFloat(buyPrice),
         quantity: parseFloat(quantity),
-        notes: notes
+        notes: notes,
+        strategy: strategy,
+        timeframe: timeframe
       };
 
       const config = {

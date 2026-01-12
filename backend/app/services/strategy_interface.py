@@ -36,3 +36,21 @@ class ForexStrategy(ABC):
                 - 'take_profit': float (optional)
         """
         pass
+
+    @abstractmethod
+    def check_exit(self, data: Dict[str, pd.DataFrame], direction: str, entry_price: float) -> Optional[Dict]:
+        """
+        Check if an open position should be closed based on strategy rules.
+
+        Args:
+            data: Dictionary containing dataframes for different timeframes.
+            direction: 'BUY' or 'SELL'.
+            entry_price: The price at which the position was opened.
+
+        Returns:
+            Dictionary with exit details if exit condition met, else None.
+            Required keys:
+                - 'exit_signal': bool (True)
+                - 'reason': str
+        """
+        pass

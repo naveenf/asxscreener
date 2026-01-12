@@ -14,6 +14,7 @@ from pathlib import Path
 import json
 
 from ..config import settings
+from ..services.market_data import normalize_ticker
 from ..services.indicators import TechnicalIndicators
 from ..services.triple_trend_detector import TripleTrendDetector
 from ..services.mean_reversion_detector import MeanReversionDetector
@@ -29,14 +30,14 @@ def get_stock_name(ticker: str) -> str:
             with open(metadata_file, 'r') as f:
                 data = json.load(f)
                 for stock in data.get('stocks', []):
-                    if stock['ticker'] == ticker:
+                    if stock['ticker'] == ticker or stock['ticker'] == normalize_ticker(ticker):
                         return stock.get('name', ticker)
     except Exception:
         pass
         
     # Fallback to yfinance
     try:
-        ticker_obj = yf.Ticker(ticker)
+        ticker_obj = yf.Ticker(normalize_ticker(ticker))
         return ticker_obj.info.get('longName', ticker)
     except Exception:
         return ticker
@@ -44,7 +45,7 @@ def get_stock_name(ticker: str) -> str:
 def download_single_stock(ticker: str) -> pd.DataFrame:
     """Download history for a single stock."""
     try:
-        stock = yf.Ticker(ticker)
+        stock = yf.Ticker(normalize_ticker(ticker))
         df = stock.history(period="2y", interval="1d")
         
         if df.empty:
@@ -64,7 +65,8 @@ async def analyze_stock(ticker: str):
     3. Runs Mean Reversion Detector.
     4. Returns combined analysis.
     """
-    ticker = ticker.upper()
+    ticker_input = ticker.upper()
+    ticker = normalize_ticker(ticker_input)
     
     # 1. Get Data
     csv_path = settings.RAW_DATA_DIR / f"{ticker}.csv"
@@ -107,22 +109,20 @@ async def analyze_stock(ticker: str):
                 if not is_stale:
                     df = df_temp
                     # Ensure index is tz-naive
-                    if df.index.tz is not None:
-                        df.index = df.index.tz_localize(None)
+                    df.index = pd.to_datetime(df.index)
+                    if hasattr(df.index, 'tz') and df.index.tz is not None:
+                        df.index = df.index.tz_convert(None)
                         
         except Exception as e:
             print(f"Error reading cache for {ticker}: {e}")
             pass # Force re-download on error
     
     if df is None or df.empty:
-        # Download fresh
-        df = download_single_stock(ticker)
-        # Save to cache
-        df.to_csv(csv_path)
-    
-    # Ensure correct format for indicators
-    if df.index.name != 'Date':
-        df.index.name = 'Date'
+        raise HTTPException(status_code=404, detail=f"No data found for {ticker_input}")
+
+    # Standardize format: strictly timezone-naive and floored to midnight
+    df.index = pd.to_datetime(df.index, utc=True).tz_localize(None).normalize()
+    df.index.name = 'Date'
     
     current_price = df['Close'].iloc[-1]
     
@@ -153,34 +153,58 @@ async def analyze_stock(ticker: str):
     # 3. Run Detectors on EOD Data
     
     # --- Triple Trend Strategy ---
-    trend_detector = TripleTrendDetector(
-        profit_target=settings.PROFIT_TARGET,
-        stop_loss=settings.TREND_FOLLOWING_STOP_LOSS,
-        time_limit=settings.TREND_FOLLOWING_TIME_LIMIT
-    )
+    # We inspect the DataFrame directly as detectors are optimized for screening (BUY only)
+    # but here we want full status (BUY/SELL/HOLD)
     
-    # We need to manually construct the result because analyze_stock only returns if signal exists
-    # But we want the status regardless of BUY signal
-    trend_entry = trend_detector.detect_entry_signal(analysis_df)
-    trend_score = trend_detector.calculate_score(trend_entry, analysis_df)
+    latest = analysis_df.iloc[-1]
+    
+    # Helper to safely convert to int and handle NaNs
+    def safe_int(val, default=0):
+        try:
+            if pd.isna(val): return default
+            return int(val)
+        except:
+            return default
+
+    fib_pos = safe_int(latest.get('Fib_Pos'))
+    pp_trend = safe_int(latest.get('PP_Trend'))
+    it_trigger = latest.get('IT_Trigger', 0)
+    it_trend = latest.get('IT_Trend', 0)
+    it_bullish = it_trigger > it_trend if not (pd.isna(it_trigger) or pd.isna(it_trend)) else False
     
     # Logic for Trend Signal
     current_trend_signal = "HOLD"
-    if trend_entry['has_signal']:
+    
+    # Buy Condition: All Bullish
+    if fib_pos > 0 and pp_trend == 1 and it_bullish:
         current_trend_signal = "BUY"
-    elif trend_entry.get('is_bullish'):
+    # Sell/Bearish Condition: Major trends bearish
+    elif fib_pos < 0 and pp_trend == -1:
+        current_trend_signal = "SELL"
+    # Mixed/Neutral
+    elif fib_pos > 0 or pp_trend == 1:
         current_trend_signal = "BULLISH"
-    elif analysis_df['Fib_Pos'].iloc[-1] <= 0 and analysis_df['PP_Trend'].iloc[-1] == -1:
-        current_trend_signal = "SELL" # Both major trend indicators are bearish
+    elif fib_pos < 0 or pp_trend == -1:
+        current_trend_signal = "BEARISH"
+        
+    # Calculate Score manually based on logic
+    trend_score = 50.0
+    if fib_pos > 0: trend_score += 15
+    if pp_trend == 1: trend_score += 15
+    if it_bullish: trend_score += 10
+    if fib_pos < 0: trend_score -= 15
+    if pp_trend == -1: trend_score -= 15
+    
+    trend_score = max(0.0, min(trend_score, 100.0))
     
     trend_result = {
         "strategy": "Trend Following",
         "signal": current_trend_signal,
         "score": round(trend_score, 1),
         "indicators": {
-            "Fib_Pos": int(trend_entry.get('fib_pos', 0)) if trend_entry.get('has_signal') else int(analysis_df['Fib_Pos'].iloc[-1]),
-            "Supertrend": int(trend_entry.get('st_trend', 0)) if trend_entry.get('has_signal') else int(analysis_df['PP_Trend'].iloc[-1]),
-            "Instant_Trend": "BULLISH" if analysis_df['IT_Trigger'].iloc[-1] > analysis_df['IT_Trend'].iloc[-1] else "BEARISH"
+            "Fib_Pos": fib_pos,
+            "Supertrend": pp_trend,
+            "Instant_Trend": "BULLISH" if it_bullish else "BEARISH"
         }
     }
     
@@ -200,7 +224,7 @@ async def analyze_stock(ticker: str):
     current_mr_signal = "HOLD"
     if mr_entry['has_signal']:
         current_mr_signal = "BUY"
-    elif analysis_df['RSI'].iloc[-1] > 70 or analysis_df['Close'].iloc[-1] > analysis_df['BB_Upper'].iloc[-1]:
+    elif latest.get('RSI', 0) > 70 or latest.get('Close', 0) > latest.get('BB_Upper', 999999):
         current_mr_signal = "SELL" # Overbought state
     
     mr_result = {
@@ -208,14 +232,14 @@ async def analyze_stock(ticker: str):
         "signal": current_mr_signal,
         "score": round(mr_score, 1),
         "indicators": {
-            "RSI": round(analysis_df['RSI'].iloc[-1], 1),
-            "BB_Position": "OVERSOLD" if analysis_df['Close'].iloc[-1] < analysis_df['BB_Lower'].iloc[-1] else ("OVERBOUGHT" if analysis_df['Close'].iloc[-1] > analysis_df['BB_Upper'].iloc[-1] else "NORMAL"),
-            "BB_Lower": round(analysis_df['BB_Lower'].iloc[-1], 2)
+            "RSI": round(latest.get('RSI', 0), 1),
+            "BB_Position": "OVERSOLD" if latest.get('Close', 0) < latest.get('BB_Lower', 0) else ("OVERBOUGHT" if latest.get('Close', 0) > latest.get('BB_Upper', 999999) else "NORMAL"),
+            "BB_Lower": round(latest.get('BB_Lower', 0), 2)
         }
     }
     
     return {
-        "ticker": ticker,
+        "ticker": ticker_input,
         "name": stock_name,
         "current_price": round(current_price, 2),
         "last_updated": datetime.now().isoformat(),
@@ -224,3 +248,4 @@ async def analyze_stock(ticker: str):
             "mean_reversion": mr_result
         }
     }
+

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { fetchForexPrice, checkPortfolioExits, fetchInstantStockPrice, fetchStatus, fetchForexSignals } from '../services/api';
 import Watchlist from './Watchlist';
 import ConfirmModal from './ConfirmModal';
 import SellStockModal from './SellStockModal';
@@ -17,6 +18,7 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
   const [sellingStock, setSellingStock] = useState(null);
   const [sellingForex, setSellingForex] = useState(null);
   const [editingForex, setEditingForex] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   
   // UI State for grouping
   const [expandedGroups, setExpandedGroups] = useState({}); // { ticker: boolean }
@@ -36,6 +38,12 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPortfolio(response.data);
+      
+      // Get stock status for "Last Updated"
+      try {
+          const statusData = await fetchStatus();
+          setLastUpdated(statusData.last_updated);
+      } catch (e) { console.error(e); }
     } catch (err) {
       if (err.response && err.response.status === 401) {
         logout();
@@ -58,6 +66,12 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setForexPortfolio(response.data);
+
+      // Get forex status for "Last Updated"
+      try {
+          const fxSignals = await fetchForexSignals();
+          setLastUpdated(fxSignals.generated_at);
+      } catch (e) { console.error(e); }
     } catch (err) {
       console.error("Failed to fetch forex portfolio", err);
     } finally {
@@ -80,6 +94,53 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
           setLoadingTax(false);
       }
   };
+
+  const handleRefreshPrice = async (item) => {
+      try {
+          const data = await fetchForexPrice(item.symbol);
+          // Update local state temporarily
+          setForexPortfolio(prev => prev.map(p => {
+              if (p.symbol === item.symbol && p.status === 'OPEN') {
+                  // Re-calculate basic metrics if needed, or just update price for display
+                  // Ideally we re-calculate gain/loss but that logic is complex in frontend.
+                  // For now, just updating current_price property.
+                  return { ...p, current_price: data.price };
+              }
+              return p;
+          }));
+          if (onShowToast) onShowToast({message: `Price updated for ${item.symbol}`, type: 'success'});
+      } catch (err) {
+          console.error(err);
+          if (onShowToast) onShowToast({message: "Failed to fetch live price", type: 'error'});
+      }
+  };
+
+  const handleRefreshStockPrice = async (ticker) => {
+      try {
+          const data = await fetchInstantStockPrice(ticker);
+          setPortfolio(prev => prev.map(p => {
+              if (p.ticker === ticker && p.status === 'OPEN') {
+                  return { ...p, current_price: data.price, current_value: data.price * p.quantity, gain_loss: (data.price * p.quantity) - ((p.buy_price * p.quantity) + (p.brokerage || 0)) };
+              }
+              return p;
+          }));
+          if (onShowToast) onShowToast({message: `Price updated for ${ticker}`, type: 'success'});
+      } catch (err) {
+          console.error(err);
+          if (onShowToast) onShowToast({message: "Failed to fetch live price", type: 'error'});
+      }
+  };
+
+  useEffect(() => {
+    if (assetClass === 'forex' && activeView === 'portfolio') {
+        checkPortfolioExits().then(res => {
+            if (res.exits_found > 0) {
+                if (onShowToast) onShowToast({message: `${res.exits_found} Exit Signals Detected!`, type: 'warning'});
+                fetchForexPortfolio(); // Reload to get updated signals
+            }
+        }).catch(err => console.error("Exit check failed", err));
+    }
+  }, [assetClass, activeView]);
 
   useEffect(() => {
     setLoading(true);
@@ -168,12 +229,18 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
                 active_items: [],
                 total_qty: 0,
                 total_gain_loss_aud: 0,
-                current_price: item.current_price
+                current_price: item.current_price,
+                exit_signal: false,
+                exit_reason: null
             };
         }
         groups[key].active_items.push(item);
         groups[key].total_qty += item.quantity;
         groups[key].total_gain_loss_aud += (item.gain_loss_aud || 0);
+        if (item.exit_signal) {
+            groups[key].exit_signal = true;
+            groups[key].exit_reason = item.exit_reason;
+        }
     });
     return Object.values(groups).sort((a, b) => a.symbol.localeCompare(b.symbol) || a.direction.localeCompare(b.direction));
   }, [forexPortfolio]);
@@ -284,6 +351,11 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
                   {assetClass === 'asx' ? 'Tax Reports' : 'History'}
               </button>
           </div>
+          {lastUpdated && (
+              <div className="last-updated-portfolio">
+                  Last Screened: {new Date(lastUpdated).toLocaleString()}
+              </div>
+          )}
         </div>
         <button 
           className="add-stock-btn" 
@@ -361,10 +433,22 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
                                             {formatCurrency(group.total_cost_basis / group.total_qty)}
                                         </td>
                                         <td>
-                                            {group.current_price 
-                                                ? `$${group.current_price.toFixed(2)}` 
-                                                : <span className="loading-dots">...</span>
-                                            }
+                                            <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
+                                                {group.current_price 
+                                                    ? `$${group.current_price.toFixed(2)}` 
+                                                    : <span className="loading-dots">...</span>
+                                                }
+                                                <button 
+                                                    className="refresh-btn-small" 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleRefreshStockPrice(group.ticker);
+                                                    }}
+                                                    title="Instant Price Check"
+                                                >
+                                                    ↻
+                                                </button>
+                                            </div>
                                         </td>
                                         <td className="trend-cell">
                                             <>
@@ -481,6 +565,9 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
                                         <td className="ticker">
                                             <span className="toggle-icon">▶</span>
                                             {group.symbol}
+                                            {group.exit_signal && (
+                                                <span className="exit-badge" title={group.exit_reason}>EXIT</span>
+                                            )}
                                         </td>
                                         <td>
                                             <span className={`strategy-badge ${group.direction === 'BUY' ? 'triple_trend' : 'mean_reversion'}`}>
@@ -491,7 +578,21 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
                                         <td>
                                             {(group.active_items.reduce((acc, item) => acc + (item.buy_price * item.quantity), 0) / group.total_qty).toFixed(5)}
                                         </td>
-                                        <td>{group.current_price ? group.current_price.toFixed(5) : '...'}</td>
+                                        <td>
+                                            <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
+                                                {group.current_price ? group.current_price.toFixed(5) : '...'}
+                                                <button 
+                                                    className="refresh-btn-small" 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleRefreshPrice(group);
+                                                    }}
+                                                    title="Instant Price Check"
+                                                >
+                                                    ↻
+                                                </button>
+                                            </div>
+                                        </td>
                                         <td className={`gain-loss ${group.total_gain_loss_aud >= 0 ? 'positive' : 'negative'}`}>
                                             {formatCurrency(group.total_gain_loss_aud)}
                                         </td>

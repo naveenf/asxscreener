@@ -4,15 +4,15 @@ Forex API Router
 Endpoints for Forex and Commodity signals.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 import json
-import subprocess
-import sys
-from pathlib import Path
 from datetime import datetime
 
 from ..services.forex_screener import ForexScreener
+from ..services.oanda_price import OandaPriceService
 from ..config import settings
+from ..services.refresh_manager import refresh_manager
+from ..services.tasks import run_forex_refresh_task
 
 router = APIRouter(prefix="/api/forex", tags=["forex"])
 
@@ -20,6 +20,14 @@ router = APIRouter(prefix="/api/forex", tags=["forex"])
 CONFIG_PATH = settings.METADATA_DIR / "forex_pairs.json"
 FOREX_DATA_DIR = settings.DATA_DIR / "forex_raw"
 OUTPUT_PATH = settings.PROCESSED_DATA_DIR / "forex_signals.json"
+
+@router.get("/price/{symbol}")
+async def get_forex_price(symbol: str):
+    """Get real-time price from OANDA."""
+    price = OandaPriceService.get_current_price(symbol)
+    if price is None:
+        raise HTTPException(status_code=404, detail="Price unavailable")
+    return {"symbol": symbol, "price": price}
 
 @router.get("/signals")
 async def get_forex_signals():
@@ -31,39 +39,19 @@ async def get_forex_signals():
         return json.load(f)
 
 @router.post("/refresh")
-async def refresh_forex(mode: str = 'sniper'):
+async def refresh_forex(background_tasks: BackgroundTasks, mode: str = 'sniper'):
     """
-    Trigger data refresh and re-run forex screener.
+    Trigger background data refresh and re-run forex screener.
 
     Args:
         mode: 'sniper' (Elite 3 selection) or 'balanced' (all signals)
     """
-    try:
-        results = ForexScreener.run_orchestrated_refresh(
-            project_root=settings.PROJECT_ROOT,
-            data_dir=FOREX_DATA_DIR,
-            config_path=CONFIG_PATH,
-            output_path=OUTPUT_PATH,
-            mode=mode
-        )
+    if refresh_manager.is_refreshing_forex:
+        return {"status": "error", "message": "Forex refresh already in progress"}
 
-        # Format response based on mode
-        if mode == 'sniper':
-            return {
-                "status": "success",
-                "mode": "sniper",
-                "elite_signals_count": results.get("top_n_selected", 0),
-                "total_signals_found": results.get("signals_found", 0),
-                "total_analyzed": results.get("total_analyzed", 0),
-                "timestamp": results["generated_at"]
-            }
-        else:
-            return {
-                "status": "success",
-                "mode": "balanced",
-                "signals_count": results.get("signals_count", 0),
-                "timestamp": results["generated_at"]
-            }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+    background_tasks.add_task(run_forex_refresh_task, mode)
+    
+    return {
+        "status": "success",
+        "message": "Forex refresh started in background"
+    }

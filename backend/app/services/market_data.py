@@ -11,6 +11,29 @@ from fastapi import HTTPException
 from pathlib import Path
 import logging
 import os
+from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
+
+# Simple in-memory cache for prices
+# { ticker: (price, timestamp) }
+_price_cache = {}
+CACHE_TTL_SECONDS = 60
+
+def get_cached_price(ticker: str) -> Optional[float]:
+    """Get price from cache or fetch if expired."""
+    now = datetime.now()
+    if ticker in _price_cache:
+        price, timestamp = _price_cache[ticker]
+        if now - timestamp < timedelta(seconds=CACHE_TTL_SECONDS):
+            return price
+            
+    try:
+        price = validate_and_get_price(ticker)
+        _price_cache[ticker] = (price, now)
+        return price
+    except Exception:
+        return None
 
 def normalize_ticker(ticker: str) -> str:
     """Ensure ticker has .AX suffix for ASX stocks."""
@@ -60,7 +83,7 @@ def get_current_prices(tickers: List[str]) -> Dict[str, float]:
                 
         return prices
     except Exception as e:
-        print(f"Error fetching prices: {e}")
+        logger.error(f"Error fetching prices: {e}")
         return {}
 
 def validate_and_get_price(ticker: str) -> float:
@@ -98,14 +121,14 @@ def update_all_stocks_data(tickers: List[str], data_dir: Path) -> Dict[str, bool
     
     try:
         # Download last 7 days to ensure we cover weekends/holidays and overlap with CSV
-        print(f"Downloading latest data for {len(tickers)} stocks from yfinance...")
+        logger.info(f"Downloading latest data for {len(tickers)} stocks from yfinance...")
         new_data = yf.download(yf_tickers, period="7d", interval="1d", progress=False, group_by='ticker')
         
         if new_data is None or (isinstance(new_data, pd.DataFrame) and new_data.empty):
-            print("No new data downloaded from yfinance")
+            logger.warning("No new data downloaded from yfinance")
             return results
 
-        print(f"Download complete. Data shape: {new_data.shape}")
+        logger.info(f"Download complete. Data shape: {new_data.shape}")
 
         for ticker in tickers:
             try:
@@ -166,9 +189,9 @@ def update_all_stocks_data(tickers: List[str], data_dir: Path) -> Dict[str, bool
                 
                 results[ticker] = True
             except Exception as e:
-                print(f"Error updating {ticker}: {e}")
+                logger.error(f"Error updating {ticker}: {e}")
                 
         return results
     except Exception as e:
-        print(f"Batch update failed: {e}")
+        logger.error(f"Batch update failed: {e}")
         return results

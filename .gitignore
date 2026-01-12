@@ -78,3 +78,12 @@ jan4_stocks.txt
 current_tickers.txt
 existing_files.txt
 data/backtest_results/
+test_bap.py
+*.txt
+!requirements.txt
+!README.md
+!pinescript_*.txt
+!fibonacci_trend.txt
+!supertrend.txt
+!Instant_trend.txt
+!plan.txt

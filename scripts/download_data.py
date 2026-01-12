@@ -45,10 +45,39 @@ def load_stock_list():
     return data['stocks']
 
 
+def get_portfolio_tickers():
+    """Fetch unique tickers from all user portfolios in Firestore."""
+    try:
+        # Add backend to path to import firebase_setup
+        sys.path.append(str(PROJECT_ROOT / 'backend'))
+        from app.firebase_setup import db
+        
+        tickers = set()
+        # Query all 'portfolio' collections (ASX stocks)
+        docs = db.collection_group('portfolio').stream()
+        
+        for doc in docs:
+            data = doc.to_dict()
+            if 'ticker' in data:
+                t = data['ticker'].upper().strip()
+                # Ensure .AX suffix if missing (simple heuristic)
+                if not t.endswith('.AX') and not t.endswith('.F'): 
+                    # Assuming ASX if not futures. 
+                    # Ideally we trust user input or validate, but for download we normalize.
+                    t += '.AX'
+                tickers.add(t)
+                
+        print(f"Found {len(tickers)} unique tickers from user portfolios.")
+        return list(tickers)
+    except Exception as e:
+        print(f"Warning: Failed to fetch portfolio tickers (Firebase error): {e}")
+        return []
+
+
 def download_stock_data(ticker: str, period: str = '2y', interval: str = '1d'):
     """
     Download historical data from Yahoo Finance.
-
+    
     Args:
         ticker: Stock ticker (e.g., 'CBA.AX')
         period: Time period ('1y', '2y', etc.)
@@ -182,8 +211,24 @@ def main():
     print(f"Logging to: {log_file}\n")
 
     # Load stock list
-    stocks = load_stock_list()
-    print(f"Found {len(stocks)} stocks to download\n")
+    stocks_meta = load_stock_list()
+    print(f"Found {len(stocks_meta)} stocks in metadata")
+    
+    # Fetch portfolio tickers
+    portfolio_tickers = get_portfolio_tickers()
+    
+    # Merge lists
+    # Create a set of existing tickers for fast lookup
+    existing_tickers = {s['ticker'] for s in stocks_meta}
+    
+    # Add new tickers from portfolio
+    for t in portfolio_tickers:
+        if t not in existing_tickers:
+            stocks_meta.append({'ticker': t, 'name': t, 'sector': 'Unknown'})
+            existing_tickers.add(t)
+            print(f"  + Added from portfolio: {t}")
+            
+    print(f"Total stocks to download: {len(stocks_meta)}\n")
 
     # Download each stock with parallel processing and progress bar
     success_count = 0
@@ -193,11 +238,11 @@ def main():
         # Submit all download tasks
         futures = {
             executor.submit(download_stock_data_with_retry, stock['ticker']): stock
-            for stock in stocks
+            for stock in stocks_meta
         }
 
         # Process results with progress bar
-        for future in tqdm(as_completed(futures), total=len(stocks), desc="Downloading stocks"):
+        for future in tqdm(as_completed(futures), total=len(stocks_meta), desc="Downloading stocks"):
             stock = futures[future]
             ticker = stock['ticker']
 

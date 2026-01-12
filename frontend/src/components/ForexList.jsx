@@ -5,16 +5,35 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { fetchForexSignals, triggerForexRefresh } from '../services/api';
+import { fetchForexSignals, triggerForexRefresh, fetchRefreshStatus } from '../services/api';
 import ForexCard from './ForexCard';
 import './SignalList.css'; // Reuse base styles
 
-function ForexList({ onAddStock }) {
+function ForexList({ onAddStock, onShowToast }) {
   const [signals, setSignals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState(null);
+
+  const pollRefreshStatus = () => {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const status = await fetchRefreshStatus();
+          const task = status.forex;
+          if (!task.in_progress) {
+            clearInterval(interval);
+            if (task.error) reject(new Error(task.error));
+            else resolve();
+          }
+        } catch (err) {
+          clearInterval(interval);
+          reject(err);
+        }
+      }, 3000);
+    });
+  };
 
   const loadData = async () => {
     try {
@@ -35,9 +54,15 @@ function ForexList({ onAddStock }) {
     try {
       setRefreshing(true);
       await triggerForexRefresh();
+      if (onShowToast) onShowToast({ message: 'Forex refresh started...', type: 'info' });
+      
+      await pollRefreshStatus();
+      
       await loadData();
+      if (onShowToast) onShowToast({ message: 'Forex refresh complete!', type: 'success' });
     } catch (err) {
       alert("Refresh failed: " + err.message);
+      if (onShowToast) onShowToast({ message: 'Forex refresh failed', type: 'error' });
     } finally {
       setRefreshing(false);
     }
@@ -69,7 +94,7 @@ function ForexList({ onAddStock }) {
     <div className="signal-list-container">
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 className="signal-count">
-          FOREX & COMMODITIES (15M)
+          FOREX & COMMODITIES
         </h2>
         <button 
           className="refresh-button" 

@@ -171,6 +171,11 @@
       "sector": "Unknown"
     },
     {
+      "ticker": "BAP.AX",
+      "name": "Bapcor Ltd",
+      "sector": "Unknown"
+    },
+    {
       "ticker": "BGA.AX",
       "name": "Bega Cheese",
       "sector": "Unknown"
@@ -1501,5 +1506,5 @@
       "sector": "Unknown"
     }
   ],
-  "last_updated": "2026-01-11T18:22:57.660544Z"
+  "last_updated": "2026-01-12T17:23:38.807622Z"
 }

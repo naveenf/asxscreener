@@ -79,7 +79,7 @@ class StockScreener:
             )
 
     def load_stock_list(self) -> List[Dict]:
-        """Load stock list from metadata."""
+        """Load stock list from metadata and merge with user portfolio tickers."""
         stock_list_file = self.metadata_dir / 'stock_list.json'
 
         if not stock_list_file.exists():
@@ -88,7 +88,41 @@ class StockScreener:
         with open(stock_list_file, 'r') as f:
             data = json.load(f)
 
-        return data.get('stocks', [])
+        stocks = data.get('stocks', [])
+        
+        # Merge with portfolio stocks
+        try:
+            from ..firebase_setup import db
+            # Collection group query for all portfolios
+            docs = db.collection_group('portfolio').stream()
+            
+            existing_tickers = {s['ticker'] for s in stocks}
+            added_count = 0
+            
+            for doc in docs:
+                item = doc.to_dict()
+                ticker = item.get('ticker', '').upper().strip()
+                if ticker and ticker not in existing_tickers:
+                    # Basic normalization
+                    if not ticker.endswith('.AX') and not ticker.endswith('.F'):
+                        ticker += '.AX'
+                    
+                    if ticker not in existing_tickers:
+                        stocks.append({
+                            'ticker': ticker,
+                            'name': ticker, # Placeholder
+                            'sector': 'Portfolio'
+                        })
+                        existing_tickers.add(ticker)
+                        added_count += 1
+            
+            if added_count > 0:
+                print(f"Screener: Added {added_count} unique stocks from user portfolios.")
+                
+        except Exception as e:
+            print(f"Screener: Warning - Could not fetch portfolio stocks: {e}")
+
+        return stocks
 
     def process_stock(self, stock: Dict) -> Dict:
         """

@@ -103,6 +103,13 @@ asx-screener/
     *   Loads specific "Base" timeframe (e.g., Silver 1H, Nasdaq 15M).
     *   Applies the designated strategy (e.g., Squeeze).
     *   Checks "HTF" (Higher Timeframe) for trend confirmation.
+*   **Refresh Logic (NEW):**
+    *   **Asynchronous Processing:** Long-running downloads and screening tasks move to non-blocking background threads via FastAPI `BackgroundTasks`.
+    *   **Automated Scheduling:** 
+        *   Forex: Refreshes every 15 minutes (at :01, :16, :31, :46) to capture closed candles.
+        *   ASX Stocks: Refreshes daily at 18:00 AEST once EOD data is available.
+    *   **Portfolio Instant Price:** Individual holdings can be updated on-demand with a 1-minute server-side cache to prevent API throttling.
+    *   **UI Feedback:** Real-time polling of refresh status with Toast notifications upon completion.
 
 ### 3. Data Pipeline
 *   **Download:** `scripts/download_data.py` (Stocks) and `scripts/download_forex.py` (Forex/Commodities).

@@ -4,6 +4,7 @@ FastAPI Application
 Main application entry point for the ASX Stock Screener API.
 """
 
+# ASX Stock Screener API - Main Application
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -11,9 +12,7 @@ import logging
 
 from .api.routes import router
 from .config import settings
-from .services.forex_screener import ForexScreener
-from .services.notification import EmailService
-from .firebase_setup import db
+from .services.tasks import run_forex_refresh_task, run_stock_refresh_task
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -29,58 +28,20 @@ app = FastAPI(
 # Initialize scheduler
 scheduler = AsyncIOScheduler()
 
-async def scheduled_forex_refresh():
-    """Background task to refresh forex data every 15 minutes."""
-    try:
-        logger.info("Starting scheduled forex refresh...")
-        results = ForexScreener.run_orchestrated_refresh(
-            project_root=settings.PROJECT_ROOT,
-            data_dir=settings.DATA_DIR / "forex_raw",
-            config_path=settings.METADATA_DIR / "forex_pairs.json",
-            output_path=settings.PROCESSED_DATA_DIR / "forex_signals.json"
-        )
-        logger.info("Scheduled forex refresh completed successfully.")
-
-        # --- Email Notification Logic ---
-        all_signals = results.get('signals', [])
-        diff = EmailService.filter_new_signals(all_signals)
-        new_entries = diff['entries']
-        exits = diff['exits']
-        
-        if new_entries or exits:
-            # Fetch users who have opted in
-            users_ref = db.collection('users')
-            users = []
-            for doc in users_ref.stream():
-                user_data = doc.to_dict()
-                email = user_data.get('email')
-                if email and user_data.get('email_notifications', True): 
-                    users.append(email)
-            
-            if users:
-                if new_entries:
-                    logger.info(f"Sending {len(new_entries)} new entries...")
-                    EmailService.send_signal_alert(users, new_entries)
-                
-                if exits:
-                    logger.info(f"Sending {len(exits)} trade exits...")
-                    EmailService.send_exit_alert(users, exits)
-            
-            # Update state to current active signals
-            EmailService.save_last_sent_signals(all_signals)
-        else:
-            logger.info("No new entries or exits to notify.")
-
-    except Exception as e:
-        logger.error(f"Scheduled forex refresh failed: {e}")
-
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup."""
     # Add scheduled tasks
-    scheduler.add_job(scheduled_forex_refresh, 'interval', minutes=15)
+    
+    # 1. Forex Refresh: Run at minutes 1, 16, 31, 46 past the hour
+    scheduler.add_job(run_forex_refresh_task, 'cron', minute='1,16,31,46', args=['dynamic'])
+    
+    # 2. Stock Refresh: Run daily at 18:00 AEST (8:00 UTC approximately, but scheduler uses local time by default if not specified)
+    # Market closes at 17:00 AEST.
+    scheduler.add_job(run_stock_refresh_task, 'cron', hour=18, minute=0)
+    
     scheduler.start()
-    logger.info("Background scheduler started (Forex refresh every 15m).")
+    logger.info("Background scheduler started (Forex every 15m, Stocks daily at 18:00).")
 
 @app.on_event("shutdown")
 async def shutdown_event():

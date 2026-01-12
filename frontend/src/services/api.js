@@ -22,6 +22,32 @@ export async function fetchSignals(minScore = 0, sortBy = 'score') {
 }
 
 /**
+ * Fetch background refresh status
+ */
+export async function fetchRefreshStatus() {
+  const response = await fetch(`${API_BASE}/status/refresh`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch refresh status: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch instant cached stock price
+ */
+export async function fetchInstantStockPrice(ticker) {
+  const response = await fetch(`${API_BASE}/portfolio/price/${ticker}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch instant price for ${ticker}`);
+  }
+
+  return response.json();
+}
+
+/**
  * Fetch details for a specific stock
  */
 export async function fetchStockDetail(ticker) {
@@ -85,6 +111,38 @@ export async function triggerForexRefresh() {
 
   if (!response.ok) {
     throw new Error(`Failed to trigger forex refresh: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch real-time OANDA price
+ */
+export async function fetchForexPrice(symbol) {
+  const response = await fetch(`${API_BASE}/forex/price/${symbol}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch price for ${symbol}`);
+  }
+  
+  return response.json();
+}
+
+/**
+ * Trigger portfolio exit checks
+ */
+export async function checkPortfolioExits() {
+  const token = localStorage.getItem('google_token');
+  const response = await fetch(`${API_BASE}/forex-portfolio/check-exits`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to check exits: ${response.statusText}`);
   }
 
   return response.json();

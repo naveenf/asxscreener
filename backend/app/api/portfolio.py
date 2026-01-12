@@ -11,16 +11,25 @@ from google.auth.transport import requests as google_requests
 from datetime import datetime, date
 import math
 import pandas as pd
+import yfinance as yf
+import traceback
 
 from ..firebase_setup import db
 from ..models.portfolio_schema import PortfolioItemCreate, PortfolioItemResponse, PortfolioItemSell, TaxSummaryResponse, TaxSummaryItem
 from ..config import settings
-from ..services.market_data import get_current_prices, validate_and_get_price, normalize_ticker
+from ..services.market_data import get_current_prices, validate_and_get_price, normalize_ticker, get_cached_price
 from ..services.indicators import TechnicalIndicators
 from ..services.triple_trend_detector import TripleTrendDetector
-from ..services.mean_reversion_detector import MeanReversionDetector
 
 router = APIRouter(prefix="/api/portfolio")
+
+@router.get("/price/{ticker}")
+async def get_instant_price(ticker: str):
+    """Get instant cached price for a ticker."""
+    price = get_cached_price(ticker)
+    if price is None:
+        raise HTTPException(status_code=404, detail="Price unavailable")
+    return {"ticker": ticker, "price": price}
 
 def calculate_trend_signal(ticker: str, buy_price: float, buy_date: date, strategy_type: str) -> tuple[str, str]:
     """
@@ -31,17 +40,26 @@ def calculate_trend_signal(ticker: str, buy_price: float, buy_date: date, strate
         yf_ticker = normalize_ticker(ticker)
         csv_path = settings.RAW_DATA_DIR / f"{yf_ticker}.csv"
         
+        df = None
         if not csv_path.exists():
-            return "HOLD", "No history data"
+            # On-demand download
+            try:
+                stock = yf.Ticker(yf_ticker)
+                df = stock.history(period="2y", interval="1d")
+                if not df.empty:
+                    df.to_csv(csv_path)
+                else:
+                    return "HOLD", "No history data"
+            except Exception as de:
+                return "HOLD", f"Download Error: {str(de)}"
+        else:
+            df = pd.read_csv(csv_path, index_col='Date', parse_dates=True)
             
-        df = pd.read_csv(csv_path, index_col='Date', parse_dates=True)
-        if df.empty:
+        if df is None or df.empty:
             return "HOLD", "Empty history"
             
-        # Standardize index: timezone-naive and floored to midnight
-        df.index = pd.to_datetime(df.index, utc=True)
-        df.index = df.index.tz_localize(None)
-        df.index = df.index.normalize()
+        # Standardize index: strictly timezone-naive and floored to midnight
+        df.index = pd.to_datetime(df.index, utc=True).tz_localize(None).normalize()
             
         # Add indicators
         df = TechnicalIndicators.add_all_indicators(
@@ -55,6 +73,19 @@ def calculate_trend_signal(ticker: str, buy_price: float, buy_date: date, strate
             bb_std_dev=settings.BB_STD_DEV
         )
         
+        if df.empty:
+            return "HOLD", "Indicators failed"
+
+        latest = df.iloc[-1]
+        
+        # Helper to safely convert to int and handle NaNs
+        def safe_int(val, default=0):
+            try:
+                if pd.isna(val): return default
+                return int(val)
+            except:
+                return default
+
         # Instantiate correct detector
         if strategy_type == 'mean_reversion':
             detector = MeanReversionDetector(
@@ -65,40 +96,66 @@ def calculate_trend_signal(ticker: str, buy_price: float, buy_date: date, strate
                 rsi_period=settings.RSI_PERIOD,
                 time_limit=settings.MEAN_REVERSION_TIME_LIMIT
             )
-        else: # Default to triple_trend
+            
+            # Find entry index based on buy_date
+            entry_idx = None
+            # Force target_date to be naive and normalized
+            target_date = pd.to_datetime(buy_date).replace(tzinfo=None).normalize()
+            
+            if target_date in df.index:
+                entry_idx = df.index.get_loc(target_date)
+            else:
+                # Find closest date after buy_date
+                # Comparison is now safe because both are naive
+                future_dates = df.index[df.index >= target_date]
+                if not future_dates.empty:
+                    entry_idx = df.index.get_loc(future_dates[0])
+            
+            # 1. Check for EXIT signal first
+            exit_info = detector.detect_exit_signal(df, buy_price, current_index=-1, entry_index=entry_idx)
+            if exit_info.get('has_exit'):
+                reason = exit_info.get('exit_reason', 'Unknown')
+                return "EXIT", reason.replace('_', ' ').title()
+                
+            # 2. Check for fresh BUY signal (add to position)
+            entry_info = detector.detect_entry_signal(df)
+            if entry_info.get('has_signal'):
+                return "BUY", "Fresh Signal"
+                
+            return "HOLD", "Mean Rev Normal"
+            
+        else: # Triple Trend
             detector = TripleTrendDetector(
                 profit_target=settings.PROFIT_TARGET,
                 stop_loss=settings.TREND_FOLLOWING_STOP_LOSS,
                 time_limit=settings.TREND_FOLLOWING_TIME_LIMIT
             )
             
-        # Find entry index based on buy_date
-        entry_idx = None
-        target_date = pd.Timestamp(buy_date).replace(tzinfo=None).floor('D')
-        if target_date in df.index:
-            entry_idx = df.index.get_loc(target_date)
-        else:
-            # Find closest date after buy_date
-            future_dates = df.index[df.index >= target_date]
-            if not future_dates.empty:
-                entry_idx = df.index.get_loc(future_dates[0])
-        
-        # 1. Check for EXIT signal first
-        exit_info = detector.detect_exit_signal(df, buy_price, current_index=-1, entry_index=entry_idx)
-        if exit_info.get('has_exit'):
-            reason = exit_info.get('exit_reason', 'Unknown')
-            return "EXIT", reason.replace('_', ' ').title()
+            # Check for BUY
+            entry_info = detector.detect_entry_signal(df)
+            if entry_info.get('has_signal'):
+                return "BUY", "Strong Trend"
+                
+            # Check for EXIT
+            exit_info = detector.detect_exit_signal(df, buy_price)
+            if exit_info.get('has_exit'):
+                return "EXIT", exit_info.get('exit_reason', 'Trend Reversal')
+
+            # Fallback to direct inspection for HOLD reason
+            fib_pos = safe_int(latest.get('Fib_Pos'))
+            pp_trend = safe_int(latest.get('PP_Trend'))
             
-        # 2. Check for fresh BUY signal (add to position)
-        entry_info = detector.detect_entry_signal(df)
-        if entry_info.get('has_signal'):
-            return "BUY", "Fresh Signal"
-            
-        return "HOLD", "Strong Trend"
+            if pp_trend == 1:
+                return "HOLD", "Supertrend Bullish"
+            if fib_pos > 0:
+                return "HOLD", "Structure Bullish"
+                
+            return "HOLD", "Neutral"
         
     except Exception as e:
         print(f"Error calculating trend for {ticker}: {e}")
-        return "HOLD", "Error"
+        traceback.print_exc()
+        return "HOLD", f"Error: {str(e)[:30]}"
 
 async def get_current_user_email(authorization: str = Header(...)) -> str:
     """

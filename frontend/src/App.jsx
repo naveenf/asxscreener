@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Header from './components/Header';
 import SignalList from './components/SignalList';
@@ -17,10 +17,11 @@ import AddStockModal from './components/AddStockModal';
 import AddForexModal from './components/AddForexModal';
 import StockSearchModal from './components/StockSearchModal';
 import Toast from './components/Toast';
-import { fetchSignals, fetchStatus, triggerRefresh } from './services/api';
+import { fetchSignals, fetchStatus, triggerRefresh, fetchRefreshStatus } from './services/api';
 import './App.css';
 
 function App() {
+  const location = useLocation();
   const [signals, setSignals] = useState([]);
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,28 @@ function App() {
   
   // Key to force refresh of Portfolio component when stock is added
   const [portfolioKey, setPortfolioKey] = useState(0);
+
+  const pollRefreshStatus = (type = 'stocks') => {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const status = await fetchRefreshStatus();
+          const task = status[type];
+          if (!task.in_progress) {
+            clearInterval(interval);
+            if (task.error) {
+              reject(new Error(task.error));
+            } else {
+              resolve();
+            }
+          }
+        } catch (err) {
+          clearInterval(interval);
+          reject(err);
+        }
+      }, 3000); // Poll every 3 seconds
+    });
+  };
 
   const handleAddToWatchlist = async (signal) => {
     try {
@@ -82,20 +105,21 @@ function App() {
 
   // Handle refresh
   const handleRefresh = async () => {
+    if (refreshing) return;
     setRefreshing(true);
     try {
       await triggerRefresh();
-      await loadData();
+      setToast({ message: 'Stock refresh started in background...', type: 'info' });
       
-      // Also broadcast a custom event or rely on polling, 
-      // but let's just trigger a re-render of components that use forex data 
-      // by incrementing the portfolioKey or similar, or just trust the next interval.
-      // Better: loadData doesn't load forex signals, those are in ForexList.
-      // So we should probably add a way to trigger ForexList refresh.
+      await pollRefreshStatus('stocks');
+      
+      await loadData();
+      setToast({ message: 'Stock refresh complete!', type: 'success' });
       window.dispatchEvent(new CustomEvent('data-refreshed'));
     } catch (err) {
       console.error('Error refreshing data:', err);
       setError(err.message);
+      setToast({ message: 'Refresh failed: ' + err.message, type: 'error' });
     } finally {
       setRefreshing(false);
     }
@@ -162,7 +186,7 @@ function App() {
               onAddWatchlist={handleAddToWatchlist}
             />
           } />
-          <Route path="/forex" element={<ForexList onAddStock={(fx) => setSelectedForexToAdd(fx)} />} />
+          <Route path="/forex" element={<ForexList onAddStock={(fx) => setSelectedForexToAdd(fx)} onShowToast={setToast} />} />
           <Route path="/portfolio" element={
             <Portfolio 
               key={portfolioKey} 
@@ -228,13 +252,17 @@ function App() {
 
       <footer className="footer">
         <p>ASX Stock Screener Pro</p>
-        <p style={{ fontSize: '0.8rem', marginTop: '4px', color: 'var(--color-text-muted)' }}>
-          Strategies: Trend (ADX &gt; 30) • Mean Reversion (RSI &gt; 70)
-        </p>
-        {status?.last_updated && (
-          <p style={{ marginTop: '8px', fontFamily: 'var(--font-body)' }}>
-            Last Updated: {formatLastUpdated(status.last_updated)}
-          </p>
+        {location.pathname === '/' && (
+          <>
+            <p style={{ fontSize: '0.8rem', marginTop: '4px', color: 'var(--color-text-muted)' }}>
+              Strategies: Trend (ADX &gt; 30) • Mean Reversion (RSI &gt; 70)
+            </p>
+            {status?.last_updated && (
+              <p style={{ marginTop: '8px', fontFamily: 'var(--font-body)' }}>
+                Last Updated: {formatLastUpdated(status.last_updated)}
+              </p>
+            )}
+          </>
         )}
       </footer>
     </div>

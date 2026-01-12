@@ -92,3 +92,37 @@ class SqueezeDetector(ForexStrategy):
                 "is_power_momentum": False
             }
         }
+
+    def check_exit(self, data: Dict[str, pd.DataFrame], direction: str, entry_price: float) -> Optional[Dict]:
+        """
+        Exit if price crosses the Middle Bollinger Band (SMA 20).
+        """
+        df = data.get('base')
+        if df is None or len(df) < 20: return None
+        
+        # Ensure indicators are present
+        if 'BB_Middle' not in df.columns:
+            df = TechnicalIndicators.add_all_indicators(df)
+            
+        latest = df.iloc[-1]
+        close = float(latest['Close'])
+        bb_middle = float(latest['BB_Middle'])
+        
+        exit_signal = False
+        reason = None
+        
+        if direction == "BUY":
+            if close < bb_middle:
+                exit_signal = True
+                reason = f"Price ({close:.4f}) crossed below BB Middle ({bb_middle:.4f})"
+        elif direction == "SELL":
+            if close > bb_middle:
+                exit_signal = True
+                reason = f"Price ({close:.4f}) crossed above BB Middle ({bb_middle:.4f})"
+                
+        if exit_signal:
+            return {
+                "exit_signal": True,
+                "reason": reason
+            }
+        return None

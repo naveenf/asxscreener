@@ -527,7 +527,9 @@ def load_and_calculate_indicators(
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'], utc=True)
         df.set_index('Date', inplace=True)
-        df.index = df.index.tz_localize(None).floor('D')
+        if df.index.tz is not None:
+            df.index = df.index.tz_convert(None)
+        df.index = df.index.floor('D')
     
     df.sort_index(inplace=True)
     df = TechnicalIndicators.add_all_indicators(df, adx_period, sma_period)
