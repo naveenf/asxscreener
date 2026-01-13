@@ -337,6 +337,7 @@ def start_backend():
 
     cmd = [
         str(venv_python),
+        '-u', # Force unbuffered stdout
         '-m', 'uvicorn',
         'app.main:app',
         '--host', '0.0.0.0',
@@ -347,10 +348,10 @@ def start_backend():
         backend_process = subprocess.Popen(
             cmd,
             cwd=str(backend_dir),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stdout=sys.stdout, # Pipe directly to console
+            stderr=sys.stderr, # Pipe directly to console
             text=True,
-            bufsize=1
+            bufsize=0 # Unbuffered
         )
         print_info(f"Backend server starting on port {BACKEND_PORT}...")
 
@@ -411,10 +412,10 @@ def start_frontend():
         frontend_process = subprocess.Popen(
             cmd,
             cwd=str(frontend_dir),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
             text=True,
-            bufsize=1
+            bufsize=0
         )
         print_info(f"Frontend server starting on port {FRONTEND_PORT}...")
 
