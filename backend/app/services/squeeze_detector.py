@@ -55,10 +55,31 @@ class SqueezeDetector(ForexStrategy):
         
         if not htf_confirmed: return None
 
-        # 4. Volume Confirmation
+        # 4. Volume Confirmation (Dynamic based on Asset Class)
+        # Research Findings (2026-01-13):
+        # - Gold/Forex: Requires Volume (Original 5-candle avg)
+        # - Indices: Requires Volume (Faster 3-candle avg)
+        # - Commodities (Oil, Copper, Ag): Volume filter hurts performance. Disabled.
+        
+        indices = ['NAS100_USD', 'JP225_USD', 'UK100_GBP']
+        commodities_no_vol = ['BCO_USD', 'XCU_USD', 'CORN_USD', 'SOYBN_USD', 'WHEAT_USD']
+        
         vol_confirmed = True
-        if 'Volume' in df.columns and latest['Volume'] > 0:
-            avg_vol = df['Volume'].iloc[-6:-1].mean()
+        
+        if symbol in commodities_no_vol:
+            # Disable volume filter for Commodities (except Precious Metals)
+            pass
+            
+        elif 'Volume' in df.columns and latest['Volume'] > 0:
+            if symbol in indices:
+                # Indices: Use 3-candle average (more sensitive)
+                # iloc[-4:-1] takes the 3 candles before current (-4, -3, -2)
+                avg_vol = df['Volume'].iloc[-4:-1].mean()
+            else:
+                # Default (Gold/Forex): Use 5-candle average (more robust)
+                # iloc[-6:-1] takes the 5 candles before current (-6, -5, -4, -3, -2)
+                avg_vol = df['Volume'].iloc[-6:-1].mean()
+                
             if avg_vol > 0 and latest['Volume'] < avg_vol * 1.2:
                 vol_confirmed = False 
         

@@ -98,17 +98,47 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
   const handleRefreshPrice = async (item) => {
       try {
           const data = await fetchForexPrice(item.symbol);
-          // Update local state temporarily
+          const newPrice = data.price;
+
+          // Find AUD_USD rate for conversion
+          // Logic: Look through existing portfolio or use a default
+          let audUsdRate = 1.0;
+          const audUsdItem = forexPortfolio.find(p => p.symbol === 'AUD_USD');
+          if (audUsdItem && audUsdItem.current_price) {
+              audUsdRate = audUsdItem.current_price;
+          }
+
           setForexPortfolio(prev => prev.map(p => {
               if (p.symbol === item.symbol && p.status === 'OPEN') {
-                  // Re-calculate basic metrics if needed, or just update price for display
-                  // Ideally we re-calculate gain/loss but that logic is complex in frontend.
-                  // For now, just updating current_price property.
-                  return { ...p, current_price: data.price };
+                  // 1. Calculate native profit (usually in USD)
+                  let nativeGainLoss = 0;
+                  if (p.direction === 'BUY') {
+                      nativeGainLoss = (newPrice - p.buy_price) * p.quantity;
+                  } else {
+                      nativeGainLoss = (p.buy_price - newPrice) * p.quantity;
+                  }
+
+                  // 2. Convert to AUD
+                  // Assume XXX_USD pairs. Profit is in USD. AUD = USD / AUD_USD_Rate
+                  const quoteCurrency = p.symbol.split('_')[1] || 'USD';
+                  let gainLossAud = nativeGainLoss;
+                  if (quoteCurrency === 'USD') {
+                      gainLossAud = nativeGainLoss / audUsdRate;
+                  }
+
+                  const costBasis = p.buy_price * p.quantity;
+                  const gainLossPercent = (nativeGainLoss / costBasis) * 100;
+
+                  return { 
+                      ...p, 
+                      current_price: newPrice,
+                      gain_loss_aud: gainLossAud,
+                      gain_loss_percent: gainLossPercent
+                  };
               }
               return p;
           }));
-          if (onShowToast) onShowToast({message: `Price updated for ${item.symbol}`, type: 'success'});
+          if (onShowToast) onShowToast({message: `Refreshed ${item.symbol}: ${newPrice.toFixed(5)}`, type: 'success'});
       } catch (err) {
           console.error(err);
           if (onShowToast) onShowToast({message: "Failed to fetch live price", type: 'error'});
