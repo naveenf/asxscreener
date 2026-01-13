@@ -94,7 +94,18 @@ class ForexScreener:
         """Orchestrate full download and screening cycle."""
         # 1. Download fresh data
         script_path = project_root / "scripts" / "download_forex.py"
-        subprocess.run([sys.executable, str(script_path)], check=True)
+        print(f"Starting data download via subprocess: {script_path}")
+        
+        try:
+            # Add timeout (e.g., 5 minutes) to prevent hanging forever
+            subprocess.run([sys.executable, str(script_path)], check=True, timeout=300)
+            print("Data download subprocess completed successfully.")
+        except subprocess.TimeoutExpired:
+            print("❌ Data download subprocess TIMED OUT after 300s. Proceeding with existing data.")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Data download subprocess FAILED: {e}")
+        except Exception as e:
+            print(f"❌ Data download subprocess encountered unexpected error: {e}")
 
         # 2. Run screener
         screener = ForexScreener(

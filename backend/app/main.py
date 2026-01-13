@@ -5,18 +5,22 @@ Main application entry point for the ASX Stock Screener API.
 """
 
 # ASX Stock Screener API - Main Application
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import logging
+import time
 
 from .api.routes import router
 from .config import settings
 from .services.tasks import run_forex_refresh_task, run_stock_refresh_task
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("asx_api")
 
 # Create FastAPI app
 app = FastAPI(
@@ -27,6 +31,19 @@ app = FastAPI(
 
 # Initialize scheduler
 scheduler = AsyncIOScheduler()
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests and their duration."""
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = (time.time() - start_time) * 1000
+    
+    logger.info(
+        f"Request: {request.method} {request.url.path} "
+        f"- Status: {response.status_code} - Time: {process_time:.2f}ms"
+    )
+    return response
 
 @app.on_event("startup")
 async def startup_event():
