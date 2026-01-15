@@ -227,7 +227,7 @@ def download_data():
     """
     Download stock data using the existing download script.
     """
-    print_info("Downloading stock data (this may take a few minutes)...")
+    print_info("Updating stock data (Incremental)...")
 
     download_script = PROJECT_ROOT / 'scripts' / 'download_data.py'
 
@@ -582,27 +582,21 @@ def main():
     print("1. Checking prerequisites...")
     check_prerequisites()
 
-    # Step 2: Check data freshness
-    print("\n2. Checking data freshness...")
-    needs_update = check_data_freshness()
-
+    # Step 2: Update Data
+    print("\n2. Updating market data...")
     relevant_files = get_relevant_csv_files()
-    if needs_update:
-        if not relevant_files:
-            print_warning("No active stock data found")
-        else:
-            oldest_file = min(relevant_files, key=lambda f: f.stat().st_mtime)
-            age_days = int((time.time() - oldest_file.stat().st_mtime) / 86400)
-            print_warning(f"Active stock data is outdated (last updated: {age_days} days ago)")
-
-        download_data() # Downloads Stocks + Forex
+    
+    if not relevant_files:
+        print_warning("No active stock data found. Performing full initial download...")
     else:
         oldest_file = min(relevant_files, key=lambda f: f.stat().st_mtime)
         age_days = int((time.time() - oldest_file.stat().st_mtime) / 86400)
-        print_success(f"Active stock data is fresh (last updated: {age_days} day{'s' if age_days != 1 else ''} ago)")
-        
-        # Even if stocks are fresh, ensure Forex is up to the minute
-        download_forex_data()
+        if age_days > 0:
+            print_info(f"Active stock data is {age_days} day{'s' if age_days != 1 else ''} old. Updating...")
+        else:
+            print_info("Active stock data is from today. Checking for latest increments...")
+
+    download_data() # Performs fast incremental update for Stocks + Forex
 
     # Step 2.5: Run screener
     run_screener()
