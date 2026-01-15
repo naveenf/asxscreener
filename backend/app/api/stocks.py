@@ -42,17 +42,28 @@ async def search_stocks(q: str = Query(..., min_length=1)):
     try:
         # Collection group query for all portfolios
         portfolio_docs = db.collection_group('portfolio').stream()
-        portfolio_tickers = set()
         for doc in portfolio_docs:
             item = doc.to_dict()
             t = item.get('ticker', '').upper().strip()
-            if t and q in t and t not in [r['ticker'] for r in results]:
-                # Construct a result if it's not already in results
-                results.append({
-                    "ticker": t,
-                    "name": f"Portfolio Stock: {t}",
-                    "sector": "Portfolio"
-                })
+            if not t: continue
+            
+            # Normalize for deduplication
+            norm_t = t
+            if not t.endswith('.AX') and not t.endswith('.F') and '.' not in t:
+                norm_t = f"{t}.AX"
+
+            if q in t:
+                # Check if normalized version or original is already in results
+                already_in = any(r['ticker'].upper() == norm_t for r in results) or \
+                             any(r['ticker'].upper() == t for r in results)
+                
+                if not already_in:
+                    # Construct a result if it's not already in results
+                    results.append({
+                        "ticker": t,
+                        "name": f"Portfolio Stock: {t}",
+                        "sector": "Portfolio"
+                    })
     except Exception as e:
         print(f"Error searching portfolio stocks: {e}")
 
@@ -63,11 +74,11 @@ async def search_stocks(q: str = Query(..., min_length=1)):
     name_matches = [s for s in local_stocks if q in s['name'].upper() and s not in results]
     results.extend(name_matches)
 
-    # 4. Fallback: If it looks like a ticker (3-4 chars) but not found, suggest it
+    # 4. Fallback: If it looks like a ticker (3-5 chars) but not found, suggest it
     if len(q) >= 3 and len(q) <= 5 and not any(r['ticker'].split('.')[0] == q for r in results):
         results.append({
             "ticker": f"{q}.AX",
-            "name": f"Analyze '{q}.AX'",
+            "name": f"Analyze '{q}.AX' (ASX Stock)",
             "sector": "New Search"
         })
             

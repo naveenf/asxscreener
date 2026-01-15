@@ -43,14 +43,19 @@ def get_stock_name(ticker: str) -> str:
         return ticker
 
 def download_single_stock(ticker: str) -> pd.DataFrame:
-    """Download history for a single stock."""
+    """Download history for a single stock and save to CSV."""
     try:
-        stock = yf.Ticker(normalize_ticker(ticker))
+        norm_ticker = normalize_ticker(ticker)
+        stock = yf.Ticker(norm_ticker)
         df = stock.history(period="2y", interval="1d")
         
         if df.empty:
             raise ValueError("No data found")
             
+        # Save to CSV for future use
+        csv_path = settings.RAW_DATA_DIR / f"{norm_ticker}.csv"
+        df.to_csv(csv_path)
+        
         return df
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Failed to download data for {ticker}: {str(e)}")
@@ -118,7 +123,13 @@ async def analyze_stock(ticker: str):
             pass # Force re-download on error
     
     if df is None or df.empty:
-        raise HTTPException(status_code=404, detail=f"No data found for {ticker_input}")
+        # Data not found in cache or stale, download it
+        try:
+            df = download_single_stock(ticker)
+        except HTTPException as e:
+            raise e
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"No data found for {ticker_input}: {str(e)}")
 
     # Standardize format: strictly timezone-naive and floored to midnight
     df.index = pd.to_datetime(df.index, utc=True).tz_localize(None).normalize()

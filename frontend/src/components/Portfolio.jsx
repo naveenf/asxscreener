@@ -743,7 +743,7 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
                                                 <td colSpan="4" className="details-cell">
                                                     <div className="details-container">
                                                         <div className="tax-disclaimer">
-                                                            * Realized Gain is net of brokerage fees. Assessable Gain includes 50% CGT discount for assets held > 12 months.
+                                                            * Realized Gain is net of brokerage fees. Assessable Gain includes 50% CGT discount for assets held &gt; 12 months.
                                                         </div>
                                                         <table className="details-table">
                                                             <thead>

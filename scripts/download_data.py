@@ -115,10 +115,30 @@ def download_stock_data(ticker: str, period: str = '2y', interval: str = '1d', f
                 # If last update was today or later, we can potentially skip 
                 # but markets might still be open/updating. 
                 # Since this is daily data, if last_date is yesterday, we update.
-                if last_date.date() >= datetime.now().date():
-                    # We might still want to update if it's currently market hours and we only have EOD from yesterday
-                    # but for 1d interval, typically we wait for EOD.
-                    pass 
+                now = datetime.now()
+                is_fresh = False
+
+                if last_date.date() == now.date():
+                    # We have today's data. 
+                    # If it's after market close (17:00), we might want to ensure it's the final EOD candle,
+                    # but typically yfinance updates existing daily candle.
+                    # For efficiency, if we ran it today, we consider it fresh.
+                    is_fresh = True
+                
+                elif (now.date() - last_date.date()).days == 1:
+                    # Last data is yesterday.
+                    # If it's before 17:00 (5 PM), today's market is still open or pre-market.
+                    # We don't want partial intraday data if we only care about EOD.
+                    if now.hour < 17:
+                        is_fresh = True
+                
+                if is_fresh:
+                    # Only print if verbose or just silently skip? 
+                    # For progress bar context, maybe just return True
+                    # But the user sees "Updating..." if we don't return here.
+                    # Actually, the caller prints "Downloading stocks...".
+                    # We should probably just return True.
+                    return True
         except Exception as e:
             print(f"⚠️ Warning: Could not read {output_file}: {e}")
             existing_df = None
