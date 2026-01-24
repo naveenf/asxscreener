@@ -193,6 +193,10 @@ function App() {
               onAddStock={(stock) => setSelectedStockToAdd(stock)} 
               onAddForex={(fx) => setSelectedForexToAdd(fx)}
               onShowToast={setToast}
+              onAnalyze={(ticker) => {
+                setSearchModalTicker(ticker);
+                setShowSearchModal(true);
+              }}
             />
           } />
           <Route path="/insider-trades" element={

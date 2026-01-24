@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import './InsiderTrades.css';
 
-function InsiderTrades({ onAnalyze }) {
+function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant Insider Trades" }) {
   const [groups, setGroupedTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTickers, setExpandedTickers] = useState(new Set());
@@ -43,7 +43,16 @@ function InsiderTrades({ onAnalyze }) {
   };
 
   const sortedGroups = useMemo(() => {
-    let sorted = [...groups];
+    let filtered = [...groups];
+    
+    // Apply ticker filter if provided
+    if (filterTickers && filterTickers.length > 0) {
+      filtered = filtered.filter(g => filterTickers.includes(g.ticker));
+    } else if (filterTickers && filterTickers.length === 0) {
+      return []; // Empty filter list means show nothing
+    }
+
+    let sorted = filtered;
     switch (sortOption) {
       case 'value_desc': // Top Buyers
         sorted.sort((a, b) => b.net_value - a.net_value);
@@ -67,17 +76,17 @@ function InsiderTrades({ onAnalyze }) {
         break;
     }
     return sorted;
-  }, [groups, sortOption]);
+  }, [groups, sortOption, filterTickers]);
 
   if (loading) {
-    return <div className="loading">Loading significant insider trades...</div>;
+    return <div className="loading">Loading insider trades...</div>;
   }
 
   return (
     <div className="insider-trades-container">
       <div className="insider-header">
         <div className="header-title-section">
-          <h2>Significant Insider Trades</h2>
+          <h2>{title}</h2>
           <div className="insider-summary">
             Last 30 Days • On-market trades &gt; $50,000
           </div>
@@ -102,7 +111,11 @@ function InsiderTrades({ onAnalyze }) {
 
       {sortedGroups.length === 0 ? (
         <div className="no-trades">
-          <p>No significant on-market director trades detected in the last 30 days.</p>
+          <p>
+            {filterTickers 
+              ? "No significant director trades detected for your holdings." 
+              : "No significant on-market director trades detected in the last 30 days."}
+          </p>
         </div>
       ) : (
         <div className="trades-list">
