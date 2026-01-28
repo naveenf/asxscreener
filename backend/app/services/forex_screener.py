@@ -129,6 +129,7 @@ class ForexScreener:
         """
         pairs = self.load_pairs()
         all_signals = []
+        all_prices = {} # Symbol -> Current Price
         
         # Load existing signals to avoid wiping out the others during a sniper-only run
         if mode == 'sniper' and self.output_path.exists():
@@ -136,6 +137,7 @@ class ForexScreener:
                 with open(self.output_path, 'r') as f:
                     old_results = json.load(f)
                     all_signals = old_results.get('signals', [])
+                    all_prices = old_results.get('all_prices', {})
             except Exception:
                 all_signals = []
 
@@ -181,6 +183,9 @@ class ForexScreener:
             if data['base'] is None:
                 continue
 
+            # Record current price for exit tracking
+            all_prices[symbol] = float(data['base']['Close'].iloc[-1])
+
             strategy = self.strategies.get(strategy_name, self.strategies["TrendFollowing"])
             
             try:
@@ -216,7 +221,8 @@ class ForexScreener:
             "total_symbols": len(pairs),
             "analyzed_count": total_analyzed if mode != 'sniper' else len(all_signals),
             "signals_count": len(all_signals),
-            "signals": all_signals
+            "signals": all_signals,
+            "all_prices": all_prices
         }
         
         # Save to file

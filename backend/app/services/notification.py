@@ -24,7 +24,7 @@ class EmailService:
     _last_sent_file = settings.PROCESSED_DATA_DIR / "last_sent_signals.json"
 
     @classmethod
-    def filter_new_signals(cls, current_signals: List[Dict]) -> Dict[str, List[Dict]]:
+    def filter_new_signals(cls, current_signals: List[Dict], all_prices: Dict[str, float] = None) -> Dict[str, List[Dict]]:
         """
         Return a dict with 'entries' and 'exits'.
         - entries: signals that are brand new.
@@ -33,6 +33,7 @@ class EmailService:
         last_sent = cls.load_last_sent_signals() # Symbol -> Full signal dict
         new_entries = []
         exits = []
+        all_prices = all_prices or {}
         
         current_symbols = {s['symbol'] for s in current_signals}
         
@@ -44,13 +45,13 @@ class EmailService:
                 if current_sig['signal'] != last_sig['signal']:
                     # Reversal!
                     last_sig['exit_reason'] = f"REVERSAL ({current_sig['signal']})"
-                    last_sig['exit_price'] = current_sig['price']
+                    cls._enrich_exit_data(last_sig, current_sig['price'])
                     exits.append(last_sig)
             else:
                 # Symbol dropped out of signals - might have hit SL/TP or just lost momentum
-                # In a real system, we'd check raw price data here. 
-                # For now, if it's gone from signals, we consider it a 'CLOSED' signal.
+                exit_price = all_prices.get(symbol, last_sig.get('price')) # Fallback to entry if price not found
                 last_sig['exit_reason'] = "SIGNAL EXPIRED / MOMENTUM LOST"
+                cls._enrich_exit_data(last_sig, exit_price)
                 exits.append(last_sig)
 
         # 2. Check for NEW ENTRIES
@@ -63,6 +64,54 @@ class EmailService:
                 new_entries.append(signal)
         
         return {"entries": new_entries, "exits": exits}
+
+    @classmethod
+    def _enrich_exit_data(cls, signal: Dict, exit_price: float):
+        """Calculate PnL, Result and R:R for an exit."""
+        # Defensive numeric checks
+        try:
+            entry_price = float(signal.get('price', 0.0))
+            exit_price = float(exit_price) if exit_price is not None else entry_price
+        except (TypeError, ValueError):
+            entry_price = 0.0
+            exit_price = 0.0
+
+        direction = signal.get('signal', 'BUY')
+        sl = signal.get('stop_loss')
+        tp = signal.get('take_profit')
+        
+        pnl = 0.0
+        if direction == "BUY":
+            pnl = exit_price - entry_price
+        else:
+            pnl = entry_price - exit_price
+            
+        signal['exit_price'] = exit_price
+        signal['pnl'] = pnl
+        signal['result'] = "PROFIT" if pnl > 0 else "LOSS"
+        
+        # Calculate R:R achieved
+        try:
+            risk = abs(entry_price - float(sl)) if sl is not None and entry_price != float(sl) else None
+            if risk and risk > 0:
+                signal['rr_achieved'] = pnl / risk
+            else:
+                signal['rr_achieved'] = 0.0
+        except (TypeError, ValueError):
+            signal['rr_achieved'] = 0.0
+            
+        # Refine reason if it actually hit TP or SL
+        try:
+            if tp is not None:
+                tp_val = float(tp)
+                if (direction == "BUY" and exit_price >= tp_val) or (direction == "SELL" and exit_price <= tp_val):
+                    signal['exit_reason'] = "TAKE PROFIT HIT 🎯"
+            if sl is not None:
+                sl_val = float(sl)
+                if (direction == "BUY" and exit_price <= sl_val) or (direction == "SELL" and exit_price >= sl_val):
+                    signal['exit_reason'] = "STOP LOSS HIT 🛑"
+        except (TypeError, ValueError):
+            pass
 
     @classmethod
     def save_last_sent_signals(cls, signals: List[Dict]):
@@ -95,28 +144,53 @@ class EmailService:
         
         html_body = f"""
         <html>
+        <head>
+            <style>
+                table {{ border-collapse: collapse; width: 100%; font-family: sans-serif; }}
+                th, td {{ padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }}
+                th {{ background-color: #f8f9fa; color: #333; }}
+                .profit {{ color: #28a745; font-weight: bold; }}
+                .loss {{ color: #dc3545; font-weight: bold; }}
+                .neutral {{ color: #6c757d; }}
+            </style>
+        </head>
         <body>
             <h2>Trade Exit Notifications</h2>
-            <table border="1" style="border-collapse: collapse; width: 100%;">
-                <tr style="background-color: #f2f2f2;">
+            <p>The following positions have been closed:</p>
+            <table>
+                <tr>
                     <th>Symbol</th>
-                    <th>Original Side</th>
-                    <th>Entry Price</th>
+                    <th>Side</th>
+                    <th>Entry</th>
+                    <th>Exit</th>
+                    <th>Result</th>
+                    <th>R:R</th>
                     <th>Reason</th>
-                    <th>Close Time</th>
+                    <th>Time</th>
                 </tr>
         """
         for e in exits:
+            res_class = e.get('result', 'LOSS').lower()
+            rr = e.get('rr_achieved', 0.0)
+            
             html_body += f"""
                 <tr>
                     <td><b>{e['symbol']}</b></td>
                     <td>{e['signal']}</td>
                     <td>{e['price']:.4f}</td>
+                    <td>{e.get('exit_price', 0.0):.4f}</td>
+                    <td class="{res_class}">{e.get('result', 'LOSS')}</td>
+                    <td class="{res_class}">{rr:.2f}R</td>
                     <td>{e.get('exit_reason', 'Unknown')}</td>
                     <td>{datetime.now().strftime("%H:%M %d/%m")}</td>
                 </tr>
             """
-        html_body += "</table></body></html>"
+        html_body += """
+            </table>
+            <p><a href="http://localhost:5173">View Portfolio Dashboard</a></p>
+        </body>
+        </html>
+        """
         
         cls._send_email(recipients, subject, html_body)
 

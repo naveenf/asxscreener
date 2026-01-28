@@ -101,7 +101,7 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
             logger.error(f"[{task_id}] Auto-trade execution failed: {te}")
 
         # --- Email Notification Logic ---
-        diff = EmailService.filter_new_signals(all_signals)
+        diff = EmailService.filter_new_signals(all_signals, results.get('all_prices', {}))
         new_entries = diff['entries']
         exits = diff['exits']
         

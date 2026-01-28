@@ -107,6 +107,7 @@ class SniperDetector(ForexStrategy):
         
         # Calculate initial SL based on EMA13
         stop_loss = ema13
+        signal_type = "BUY" if is_buy else "SELL"
         
         # HARDENING: Ensure minimum distance for SL (0.5% for commodities/forex)
         min_dist = price * 0.005

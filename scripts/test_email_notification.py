@@ -79,20 +79,43 @@ def test_email():
     
     # Try adding a NEW signal
     new_batch = mock_signals + [{
-        "symbol": "AUD_USD",
-        "strategy": "Squeeze",
+        "symbol": "EUR_USD",
+        "strategy": "TrendFollowing",
         "signal": "BUY",
         "score": 75.0, 
-        "price": 0.6700,
+        "price": 1.0850,
+        "stop_loss": 1.0800,
+        "take_profit": 1.1000,
         "timestamp": "2026-01-11T15:00:00Z"
     }]
-    diff2 = EmailService.filter_new_signals(new_batch)
-    filtered = diff2['entries']
-    print(f"Filtering with 1 new signal (Expected 1 entry): Found {len(filtered)}")
-    if len(filtered) == 1 and filtered[0]['symbol'] == "AUD_USD":
-        print("✅ Diff Logic working correctly.")
+    
+    # 6. Test Exit Logic
+    print("\nTesting Exit Logic...")
+    # Simulate XAG_USD dropping out (Exiting)
+    current_signals = [new_batch[1], new_batch[2]] # AUD_USD (SELL) and EUR_USD (BUY). XAG_USD is gone.
+    all_prices = {
+        "XAG_USD": 24.5000, # This would be a PROFIT (Entry 23.4520)
+        "AUD_USD": 0.6710,
+        "EUR_USD": 1.0850
+    }
+    
+    diff_exit = EmailService.filter_new_signals(current_signals, all_prices)
+    exits = diff_exit['exits']
+    print(f"Detected {len(exits)} exits (Expected 1: XAG_USD).")
+    
+    if len(exits) > 0:
+        print(f"Exit Result for {exits[0]['symbol']}: {exits[0].get('result')} | PnL: {exits[0].get('pnl'):.4f} | R:R: {exits[0].get('rr_achieved'):.2f}R")
+        print(f"Exit Reason: {exits[0].get('exit_reason')}")
+        
+        # Test sending exit email
+        print(f"Sending exit alert to: {recipient}")
+        EmailService.send_exit_alert([recipient], exits)
+        print("✅ Exit Email send routine completed.")
+    
+    if len(diff_exit['entries']) == 1 and diff_exit['entries'][0]['symbol'] == "EUR_USD":
+        print("✅ New Entry Detection working correctly.")
     else:
-        print("❌ Diff Logic Failed.")
+        print("❌ New Entry Detection Failed.")
 
 if __name__ == "__main__":
     test_email()
