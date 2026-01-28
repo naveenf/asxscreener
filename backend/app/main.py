@@ -50,11 +50,15 @@ async def startup_event():
     """Run on application startup."""
     # Add scheduled tasks
     
-    # 1. Forex Refresh: Run at minutes 1, 16, 31, 46 past the hour
+    # 1. High-Frequency Sniper Refresh (Every 5 minutes)
+    # This ensures Wheat, Silver, and BCO are analyzed on 5m timeframe
+    scheduler.add_job(run_forex_refresh_task, 'cron', minute='*/5', args=['sniper'])
+    
+    # 2. General Forex Refresh (Every 15 minutes)
+    # Run at minutes 1, 16, 31, 46 past the hour for the rest of the universe
     scheduler.add_job(run_forex_refresh_task, 'cron', minute='1,16,31,46', args=['dynamic'])
     
-    # 2. Stock Refresh: Run daily at 18:00 AEST (8:00 UTC approximately, but scheduler uses local time by default if not specified)
-    # Market closes at 17:00 AEST.
+    # 3. Stock Refresh: Run daily at 18:00 AEST
     scheduler.add_job(run_stock_refresh_task, 'cron', hour=18, minute=0)
     
     scheduler.start()

@@ -92,7 +92,7 @@ class ForexScreener:
         data_dir: Path,
         config_path: Path,
         output_path: Path,
-        mode: str = 'dynamic' # Deprecated param kept for compatibility
+        mode: str = 'dynamic'
     ):
         """Orchestrate full download and screening cycle."""
         # 1. Download fresh data
@@ -116,31 +116,50 @@ class ForexScreener:
             config_path=config_path,
             output_path=output_path
         )
-        return screener.screen_all()
+        return screener.screen_all(mode=mode)
 
     def load_pairs(self) -> List[Dict]:
         with open(self.config_path, 'r') as f:
             return json.load(f)['pairs']
 
-    def screen_all(self) -> Dict:
+    def screen_all(self, mode: str = 'dynamic') -> Dict:
+        """
+        Screen assets. 
+        If mode='sniper', only screen assets that use Sniper or SilverSniper strategy.
+        """
         pairs = self.load_pairs()
         all_signals = []
+        
+        # Load existing signals to avoid wiping out the others during a sniper-only run
+        if mode == 'sniper' and self.output_path.exists():
+            try:
+                with open(self.output_path, 'r') as f:
+                    old_results = json.load(f)
+                    all_signals = old_results.get('signals', [])
+            except Exception:
+                all_signals = []
+
         total_analyzed = 0
 
-        print(f"\n🚀 Starting Dynamic Forex Screener ({len(pairs)} pairs)")
+        print(f"\n🚀 Starting Dynamic Forex Screener ({len(pairs)} pairs, mode={mode})")
         print(f"Strategy Map Loaded: {len(self.strategy_map)} entries")
 
         for pair in pairs:
             symbol = pair['symbol']
             
+            # Determine Strategy and Timeframe from Config
+            config = self.strategy_map.get(symbol, {"strategy": "TrendFollowing", "timeframe": "15m", "target_rr": 2.0})
+            strategy_name = config.get("strategy", "TrendFollowing")
+            
+            # FILTER: If sniper mode, skip non-sniper assets
+            if mode == 'sniper' and strategy_name not in ['Sniper', 'SilverSniper']:
+                continue
+
             # Load Data
             raw_data = self._load_data_mtf(symbol)
             if not raw_data:
                 continue
 
-            # Determine Strategy and Timeframe from Config
-            config = self.strategy_map.get(symbol, {"strategy": "TrendFollowing", "timeframe": "15m", "target_rr": 2.0})
-            strategy_name = config.get("strategy", "TrendFollowing")
             base_tf = config.get("timeframe", "15m")
             target_rr = config.get("target_rr", 2.0)
             
@@ -169,6 +188,11 @@ class ForexScreener:
                 result = strategy.analyze(data, symbol, target_rr=target_rr)
                 total_analyzed += 1
 
+                # Update existing signal or add new one
+                if mode == 'sniper':
+                    # Remove old signal for this symbol if exists
+                    all_signals = [s for s in all_signals if s['symbol'] != symbol]
+
                 if result and result.get('signal'):
                     # Add pair metadata
                     result['name'] = pair.get('name', symbol)
@@ -190,7 +214,7 @@ class ForexScreener:
             "generated_at": datetime.now().isoformat(),
             "mode": "dynamic_mtf",
             "total_symbols": len(pairs),
-            "analyzed_count": total_analyzed,
+            "analyzed_count": total_analyzed if mode != 'sniper' else len(all_signals),
             "signals_count": len(all_signals),
             "signals": all_signals
         }

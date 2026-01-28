@@ -25,11 +25,12 @@ def run_stock_refresh_task():
     task_id = str(uuid.uuid4())[:8]
     logger.info(f"[{task_id}] Starting stock refresh task at {datetime.now()}")
     
-    try:
-        if refresh_manager.is_refreshing_stocks:
-            logger.warning(f"[{task_id}] Stock refresh already in progress, skipping.")
-            return
+    # Acquire lock or skip if already running
+    if not refresh_manager.stocks_lock.acquire(blocking=False):
+        logger.warning(f"[{task_id}] Stock refresh already in progress (lock held), skipping.")
+        return
 
+    try:
         refresh_manager.start_stocks_refresh()
         
         # Create screener
@@ -64,17 +65,20 @@ def run_stock_refresh_task():
     except Exception as e:
         logger.error(f"[{task_id}] Stock refresh task failed: {e}")
         refresh_manager.complete_stocks_refresh(error=str(e))
+    finally:
+        refresh_manager.stocks_lock.release()
 
 def run_forex_refresh_task(mode: str = 'dynamic'):
     """Logic for forex refresh."""
     task_id = str(uuid.uuid4())[:8]
     logger.info(f"[{task_id}] Starting forex refresh task ({mode}) at {datetime.now()}")
     
-    try:
-        if refresh_manager.is_refreshing_forex:
-            logger.warning(f"[{task_id}] Forex refresh already in progress, skipping.")
-            return
+    # Acquire lock or skip if already running
+    if not refresh_manager.forex_lock.acquire(blocking=False):
+        logger.warning(f"[{task_id}] Forex refresh already in progress (lock held), skipping ({mode}).")
+        return
 
+    try:
         refresh_manager.start_forex_refresh()
         
         logger.info(f"[{task_id}] Running orchestrator...")
@@ -131,3 +135,5 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
     except Exception as e:
         logger.error(f"[{task_id}] Forex refresh task failed: {e}")
         refresh_manager.complete_forex_refresh(error=str(e))
+    finally:
+        refresh_manager.forex_lock.release()

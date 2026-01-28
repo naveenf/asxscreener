@@ -6,6 +6,7 @@ Singleton service to track background refresh tasks for Stocks and Forex.
 
 from datetime import datetime
 from typing import Optional
+import threading
 
 class RefreshStatusManager:
     _instance = None
@@ -19,6 +20,8 @@ class RefreshStatusManager:
             cls._instance.last_forex_refresh = None
             cls._instance.stocks_error = None
             cls._instance.forex_error = None
+            cls._instance.forex_lock = threading.Lock()
+            cls._instance.stocks_lock = threading.Lock()
         return cls._instance
 
     def start_stocks_refresh(self):
