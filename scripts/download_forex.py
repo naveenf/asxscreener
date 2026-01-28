@@ -97,6 +97,10 @@ def update_dataset(api, symbol, oanda_symbol, granularity, label):
         suffix = "1_Hour"
     elif granularity == "H4":
         suffix = "4_Hour"
+    elif granularity == "M3":
+        suffix = "3_Min"
+    elif granularity == "M5":
+        suffix = "5_Min"
     else:
         suffix = granularity
 
@@ -189,6 +193,14 @@ def main():
             
         # H4 Update
         update_dataset(api, symbol, oanda_symbol, "H4", "4_Hour")
+
+        # Intraday M5 for all assets
+        update_dataset(api, symbol, oanda_symbol, "M5", "5_Min")
+
+        # Special Case: Silver (XAG_USD) Intraday M3
+        if symbol == "XAG_USD":
+            print(f"  [Intraday] Fetching M3 for Silver...")
+            update_dataset(api, symbol, oanda_symbol, "M3", "3_Min")
             
         # Rate limit kindness
         time.sleep(0.2)

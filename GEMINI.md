@@ -81,14 +81,32 @@ asx-screener/
 *   **Indicators:** Bollinger Bands (Volatility/Extreme Price), RSI (>70).
 *   **Best For:** Range-bound markets.
 
-### 3. Squeeze Strategy (Volatility Compression)
-*   **Logic:** Identifies periods of low volatility (squeeze) followed by an explosive breakout.
-*   **Indicators:** Bollinger Band Width, Volume, MTF Confirmation.
+### 3. Squeeze Strategy (Volatility Compression Breakout)
+*   **Logic:** Identifies periods of low volatility (squeeze) using TTM Squeeze logic, followed by an explosive breakout confirmed by momentum.
+*   **Indicators:** Bollinger Bands (20, 2.0), Keltner Channels (20, 1.2 multiplier), Momentum Oscillator (Close - SMA 14).
 *   **Rules:**
-    *   **Entry:** Breakout from narrow Bollinger Bands.
-    *   **Exit:** 3.0x Risk (Commodities/Indices) or 1.5x Risk (Forex).
+    *   **Squeeze:** Bollinger Bands must be inside Keltner Channels within the last 5 candles.
+    *   **Entry:** Breakout from Bollinger Bands with Momentum alignment (Momentum > 0 for BUY, < 0 for SELL).
+    *   **Exit:** 2.0x Risk (Default) or 3.0x Risk (Gold/Commodities).
     *   **Stop Loss:** Middle Bollinger Band (SMA 20).
-*   **Best For:** Silver, Nasdaq, Oil, USD/JPY (High Volatility).
+*   **Best For:** Gold, Copper, Nasdaq, Oil, UK100.
+
+## Latest Test Results (2026-01-28)
+
+### 1H Squeeze Algo Optimization (Multiplier 1.2)
+| Symbol | Best RR | Profit (Units) | Status |
+| :--- | :--- | :--- | :--- |
+| **XAU_USD (Gold)** | 3.0 | **+7.9** | **Top Performer** |
+| **XCU_USD (Copper)** | 2.0 | **+6.1** | **Strong Profit** |
+| **UK100_GBP** | 2.0 | **+2.1** | Profitable |
+| **SOYBN_USD** | 1.5 | **+1.2** | Profitable |
+| **NAS100_USD** | 2.0 | -0.6 | Near Break-even |
+| **USD_JPY** | 2.0 | -5.0 | Needs Tuning |
+
+### 5/15m Sniper Algo Optimization
+*   **XAG_USD (Silver):** Optimized for 15m/1h with RR 3.0.
+*   **BCO_USD (Oil):** Optimized for 15m with RR 3.0.
+*   **WHEAT_USD:** Optimized for 15m with RR 3.0.
 
 ## Key Workflows
 

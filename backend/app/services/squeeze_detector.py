@@ -29,14 +29,17 @@ class SqueezeDetector(ForexStrategy):
 
         # Add indicators to base timeframe
         df = TechnicalIndicators.add_all_indicators(df)
+        df = df.copy() # Ensure we work on a copy to avoid SettingWithCopyWarning
         
         latest = df.iloc[-1]
         prev = df.iloc[-2]
         
-        # 1. Detect Squeeze Condition (Recent Low Volatility)
-        # Calculate recent min width
-        min_width_96 = df['BB_Width'].iloc[-96:].min()
-        is_narrow = latest['BB_Width'] <= min_width_96 * 1.5
+        # 1. Detect Squeeze Condition (TTM Squeeze Style)
+        # Squeeze = BB inside Keltner Channel
+        df['is_sqz'] = (df['BB_Upper'] < df['KC_Upper']) & (df['BB_Lower'] > df['KC_Lower'])
+        
+        # We want to see a squeeze in the last 5 candles
+        had_squeeze = df['is_sqz'].iloc[-6:-1].any()
         
         # 2. Detect Breakout (Expansion)
         # Price breaking out of Bands (INITIAL CROSS ONLY)
@@ -44,18 +47,34 @@ class SqueezeDetector(ForexStrategy):
         breakout_down = (latest['Close'] < latest['BB_Lower']) and (prev['Close'] >= prev['BB_Lower'])
         
         if not (breakout_up or breakout_down): return None
+        if not had_squeeze: return None
+
+        # 3. Momentum Confirmation
+        # Ensure momentum is positive for BUYS and negative for SELLS
+        mom_confirmed = False
+        if breakout_up and latest['Momentum'] > 0:
+            mom_confirmed = True
+        elif breakout_down and latest['Momentum'] < 0:
+            mom_confirmed = True
+            
+        if not mom_confirmed: return None
         
-        # 3. HTF Confirmation (Energy Building)
+        # 4. HTF Confirmation
         htf_confirmed = True
         if df_htf is not None and len(df_htf) > 20:
             df_htf = TechnicalIndicators.add_all_indicators(df_htf)
             latest_htf = df_htf.iloc[-1]
-            if latest_htf['ADX'] > 40: 
-                htf_confirmed = False 
+            # HTF Trend alignment: ADX > 20 and DI alignment
+            if latest_htf['ADX'] < 20:
+                htf_confirmed = False
+            elif breakout_up and latest_htf['DIPlus'] < latest_htf['DIMinus']:
+                htf_confirmed = False
+            elif breakout_down and latest_htf['DIMinus'] < latest_htf['DIPlus']:
+                htf_confirmed = False
         
         if not htf_confirmed: return None
 
-        # 4. Volume Confirmation (Dynamic based on Asset Class)
+        # 5. Volume Confirmation (Dynamic based on Asset Class)
         # Research Findings (2026-01-13):
         # - Gold/Forex: Requires Volume (Original 5-candle avg)
         # - Indices: Requires Volume (Faster 3-candle avg)

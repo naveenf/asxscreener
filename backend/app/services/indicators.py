@@ -377,6 +377,30 @@ class TechnicalIndicators:
         return df
 
     @staticmethod
+    def calculate_fvg(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate Fair Value Gaps (FVG) / 3-candle imbalance.
+        Bullish FVG: Low(i) > High(i-2)
+        Bearish FVG: High(i) < Low(i-2)
+        """
+        df = df.copy()
+        
+        # Bullish FVG: Gap between Candle 1 High and Candle 3 Low
+        # i-2 = Candle 1, i-1 = Candle 2, i = Candle 3
+        df['prev_high_2'] = df['High'].shift(2)
+        df['Bull_FVG'] = (df['Low'] > df['prev_high_2']).astype(int)
+        df['Bull_FVG_Top'] = df['Low']
+        df['Bull_FVG_Bottom'] = df['prev_high_2']
+        
+        # Bearish FVG: Gap between Candle 1 Low and Candle 3 High
+        df['prev_low_2'] = df['Low'].shift(2)
+        df['Bear_FVG'] = (df['High'] < df['prev_low_2']).astype(int)
+        df['Bear_FVG_Top'] = df['prev_low_2']
+        df['Bear_FVG_Bottom'] = df['High']
+        
+        return df
+
+    @staticmethod
     def detect_crossover(series1: pd.Series, series2: pd.Series) -> pd.Series:
         """
         Detect when series1 crosses above series2.
@@ -438,6 +462,33 @@ class TechnicalIndicators:
         return (upper - lower) / middle
 
     @staticmethod
+    def calculate_keltner_channels(
+        df: pd.DataFrame,
+        period: int = 20,
+        atr_period: int = 20,
+        multiplier: float = 1.2
+    ) -> tuple[pd.Series, pd.Series, pd.Series]:
+        """
+        Calculate Keltner Channels.
+        Middle: EMA(period)
+        Upper/Lower: Middle +/- multiplier * ATR(atr_period)
+        """
+        middle = TechnicalIndicators.calculate_ema(df, period=period)
+        atr = TechnicalIndicators.calculate_atr(df, period=atr_period)
+        upper = middle + (multiplier * atr)
+        lower = middle - (multiplier * atr)
+        return middle, upper, lower
+
+    @staticmethod
+    def calculate_momentum_oscillator(df: pd.DataFrame, period: int = 14) -> pd.Series:
+        """
+        Calculate a simple momentum oscillator (Price relative to SMA).
+        """
+        sma = TechnicalIndicators.calculate_sma(df, period=period)
+        momentum = df['Close'] - sma
+        return momentum
+
+    @staticmethod
     def resample_to_1h(df: pd.DataFrame) -> pd.DataFrame:
         """Resample 15m data to 1h for HTF filtering."""
         df_1h = df.resample('1h').agg({
@@ -467,6 +518,10 @@ class TechnicalIndicators:
         """
         Add all indicators to DataFrame in one call.
         """
+        # Optimized: Skip if already calculated
+        if 'ADX' in df.columns and 'BB_Width' in df.columns and 'KC_Upper' in df.columns and 'PP_Trend' in df.columns:
+            return df
+
         # Add ADX indicators
         df = TechnicalIndicators.calculate_adx(df, period=adx_period)
 
@@ -499,10 +554,21 @@ class TechnicalIndicators:
         df['BB_Lower'] = bb_lower
         df['BB_Width'] = TechnicalIndicators.calculate_bb_width(df)
 
+        # Add Keltner Channels
+        kc_mid, kc_upper, kc_lower = TechnicalIndicators.calculate_keltner_channels(df)
+        df['KC_Upper'] = kc_upper
+        df['KC_Lower'] = kc_lower
+
+        # Add Momentum
+        df['Momentum'] = TechnicalIndicators.calculate_momentum_oscillator(df)
+
         # Add Triple Trend Indicators
         df = TechnicalIndicators.calculate_fibonacci_structure_trend(df, period=fib_period)
         df = TechnicalIndicators.calculate_pivot_supertrend(df, prd=st_prd, factor=st_factor)
         df = TechnicalIndicators.calculate_ehlers_instant_trend(df, alpha=it_alpha)
+
+        # Add FVG Indicators
+        df = TechnicalIndicators.calculate_fvg(df)
 
         return df
 

@@ -19,6 +19,7 @@ from .forex_detector import ForexDetector
 from .sniper_detector import SniperDetector
 from .triple_trend_detector import TripleTrendDetector
 from .squeeze_detector import SqueezeDetector
+from .silver_sniper_detector import SilverSniperDetector
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -38,7 +39,8 @@ class ForexScreener:
             "Sniper": SniperDetector(),
             "TripleTrend": TripleTrendDetector(),
             "TrendFollowing": ForexDetector(),
-            "Squeeze": SqueezeDetector()
+            "Squeeze": SqueezeDetector(),
+            "SilverSniper": SilverSniperDetector()
         }
         
         # Load Strategy Map
@@ -62,6 +64,7 @@ class ForexScreener:
         # Assuming download_forex.py creates {symbol}_15_Min.csv etc.
         
         files = {
+            '5m': f"{symbol}_5_Min.csv",
             '15m': f"{symbol}_15_Min.csv",
             '1h': f"{symbol}_1_Hour.csv",
             '4h': f"{symbol}_4_Hour.csv"
@@ -142,12 +145,16 @@ class ForexScreener:
             target_rr = config.get("target_rr", 2.0)
             
             # Map timeframes for the detector
+            # 5m  -> base=5m,  htf=15m
             # 15m -> base=15m, htf=1h
             # 1h  -> base=1h,  htf=4h
             data = {}
             if base_tf == "1h":
                 data['base'] = raw_data.get('1h')
                 data['htf'] = raw_data.get('4h')
+            elif base_tf == "5m":
+                data['base'] = raw_data.get('5m')
+                data['htf'] = raw_data.get('15m')
             else:
                 data['base'] = raw_data.get('15m')
                 data['htf'] = raw_data.get('1h')
