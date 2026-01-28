@@ -50,12 +50,12 @@ async def startup_event():
     """Run on application startup."""
     # Add scheduled tasks
     
-    # 1. High-Frequency Sniper Refresh (Every 5 minutes)
-    # This ensures Wheat, Silver, and BCO are analyzed on 5m timeframe
-    scheduler.add_job(run_forex_refresh_task, 'cron', minute='*/5', args=['sniper'])
+    # 1. High-Frequency Sniper Refresh (Every 5 minutes, offset by 1m)
+    # This runs for 5m strategy assets only (Silver, BCO) on the in-between intervals
+    scheduler.add_job(run_forex_refresh_task, 'cron', minute='6,11,21,26,36,41,51,56', args=['sniper'])
     
-    # 2. General Forex Refresh (Every 15 minutes)
-    # Run at minutes 1, 16, 31, 46 past the hour for the rest of the universe
+    # 2. General Forex Refresh (Every 15 minutes - Full Universe)
+    # Run at minutes 1, 16, 31, 46 past the hour to capture closed 15m/1h candles for all pairs
     scheduler.add_job(run_forex_refresh_task, 'cron', minute='1,16,31,46', args=['dynamic'])
     
     # 3. Stock Refresh: Run daily at 18:00 AEST
