@@ -103,9 +103,18 @@ class SniperDetector(ForexStrategy):
             else: return None
 
         price = float(latest_15['Close'])
-        stop_loss = float(latest_15['EMA13'])
-        signal_type = "BUY" if is_buy else "SELL"
+        ema13 = float(latest_15['EMA13'])
         
+        # Calculate initial SL based on EMA13
+        stop_loss = ema13
+        
+        # HARDENING: Ensure minimum distance for SL (0.5% for commodities/forex)
+        min_dist = price * 0.005
+        if signal_type == "BUY":
+            stop_loss = min(stop_loss, price - min_dist)
+        else: # SELL
+            stop_loss = max(stop_loss, price + min_dist)
+
         # Calculate TP
         risk = abs(price - stop_loss)
         take_profit = price + (risk * target_rr if signal_type == "BUY" else -risk * target_rr)

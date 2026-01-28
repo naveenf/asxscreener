@@ -124,18 +124,21 @@ class EmailService:
     def _send_email(cls, recipients: List[str], subject: str, html_body: str):
         if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD: return
 
-        msg = MIMEMultipart()
-        msg['From'] = settings.EMAIL_FROM
-        msg['Subject'] = subject
-        msg.attach(MIMEText(html_body, 'html'))
-
         try:
             server = smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT)
             server.starttls()
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            
             for email in recipients:
+                # Create a fresh message for each recipient to avoid multiple 'To' headers
+                msg = MIMEMultipart()
+                msg['From'] = settings.EMAIL_FROM
                 msg['To'] = email
+                msg['Subject'] = subject
+                msg.attach(MIMEText(html_body, 'html'))
+                
                 server.sendmail(settings.EMAIL_FROM, email, msg.as_string())
+            
             server.quit()
         except Exception as e:
             logger.error(f"Email error: {e}")

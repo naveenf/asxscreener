@@ -36,7 +36,7 @@
   },
   "CORN_USD": {
     "strategy": "Squeeze",
-    "timeframe": "15m",
+    "timeframe": "1h",
     "target_rr": 3.0
   },
   "SOYBN_USD": {
@@ -45,8 +45,8 @@
     "target_rr": 3.0
   },
   "WHEAT_USD": {
-    "strategy": "Sniper",
-    "timeframe": "5m",
+    "strategy": "Squeeze",
+    "timeframe": "1h",
     "target_rr": 3.0
   },
   "USD_JPY": {

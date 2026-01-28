@@ -79,7 +79,17 @@ class SilverSniperDetector(ForexStrategy):
 
         signal = "BUY" if breakout_up else "SELL"
         price = float(latest_5m['Close'])
-        stop_loss = float(latest_5m['BB_Middle']) # Standard squeeze exit
+        bb_middle = float(latest_5m['BB_Middle'])
+        
+        # Calculate initial SL
+        stop_loss = bb_middle
+        
+        # HARDENING: Ensure minimum distance for SL (0.5%)
+        min_dist = price * 0.005
+        if signal == "BUY":
+            stop_loss = min(stop_loss, price - min_dist)
+        else: # SELL
+            stop_loss = max(stop_loss, price + min_dist)
         
         risk = abs(price - stop_loss)
         if risk == 0: return None
