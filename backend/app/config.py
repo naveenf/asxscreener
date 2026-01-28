@@ -63,7 +63,12 @@ class Settings(BaseSettings):
 
     # OANDA settings
     OANDA_ACCESS_TOKEN: str = ""
+    OANDA_ACCOUNT_ID: str = ""
     OANDA_ENV: str = "live"
+
+    # Auto-trading settings
+    AUTHORIZED_AUTO_TRADER_EMAIL: str = "naveenf.opt@gmail.com"
+    MAX_CONCURRENT_TRADES: int = 3
 
     # Email Settings
     SMTP_SERVER: str = "smtp.gmail.com"

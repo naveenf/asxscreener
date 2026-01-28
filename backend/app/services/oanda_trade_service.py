@@ -1,0 +1,200 @@
+"""
+OANDA Trade Service (Hardened)
+
+Handles risk management, unit calculation, and trade orchestration.
+"""
+
+import logging
+from typing import List, Dict, Optional, Any
+from .oanda_price import OandaPriceService
+from ..config import settings
+from ..firebase_setup import db
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+class OandaTradeService:
+    @staticmethod
+    def calculate_units(symbol: str, entry_price: float, stop_loss: float, balance_aud: float, margin_avail_aud: float) -> int:
+        """
+        Calculate position units based on 2% risk of AUD balance.
+        Formula: Units = (Risk_AUD) / (Risk_per_Unit_AUD)
+        """
+        try:
+            risk_pct = 0.02
+            risk_amount_aud = balance_aud * risk_pct
+            
+            # Risk per unit in Quote currency
+            risk_per_unit_quote = abs(entry_price - stop_loss)
+            if risk_per_unit_quote == 0:
+                return 0
+
+            # Convert Risk per unit to AUD
+            quote_currency = symbol.split('_')[-1]
+            
+            if quote_currency == 'AUD':
+                quote_to_aud = 1.0
+            else:
+                # Try AUD_<Quote> or <Quote>_AUD
+                quote_to_aud = None
+                
+                # Check AUD_<Quote>
+                pair_name = f"AUD_{quote_currency}"
+                rate = OandaPriceService.get_current_price(pair_name)
+                if rate:
+                    quote_to_aud = 1.0 / rate
+                else:
+                    # Check <Quote>_AUD
+                    pair_name = f"{quote_currency}_AUD"
+                    rate = OandaPriceService.get_current_price(pair_name)
+                    if rate:
+                        quote_to_aud = rate
+
+                if quote_to_aud is None:
+                    logger.error(f"FAIL-SAFE: Could not fetch conversion rate for {quote_currency} to AUD. Aborting trade for {symbol}.")
+                    return 0
+
+            risk_per_unit_aud = risk_per_unit_quote * quote_to_aud
+            
+            units = int(risk_amount_aud / risk_per_unit_aud)
+            
+            # --- Margin Requirement Check ---
+            inst_info = OandaPriceService.get_instrument_details(symbol)
+            if inst_info:
+                margin_rate = float(inst_info.get('marginRate', 0.1))
+                # Required margin in AUD = Units * EntryPrice * QuoteToAUD * MarginRate
+                required_margin = units * entry_price * quote_to_aud * margin_rate
+                
+                # Safety: Don't use more than 50% of REMAINING available margin for a single trade
+                margin_limit = margin_avail_aud * 0.5
+                
+                if required_margin > margin_limit:
+                    units = int(margin_limit / (entry_price * quote_to_aud * margin_rate))
+                    logger.info(f"Units capped by available margin for {symbol}: {units} (Required: {required_margin:.2f} > Limit: {margin_limit:.2f})")
+
+            return units
+
+        except Exception as e:
+            logger.error(f"Error calculating units for {symbol}: {e}")
+            return 0
+
+    @classmethod
+    def execute_trades(cls, signals: List[Dict[str, Any]]):
+        """
+        Orchestrate trade execution for authorized users.
+        """
+        # 1. Authorization & Environment Check
+        auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
+        if not auth_email:
+            logger.info("Auto-trading skipped: No authorized email configured.")
+            return
+
+        # 2. Filter & Rank Signals
+        valid_signals = [s for s in signals if s.get('stop_loss') and s.get('take_profit')]
+        if not valid_signals:
+            return
+
+        # Sort by score descending (Higher score = higher priority)
+        valid_signals.sort(key=lambda x: x.get('score', 0), reverse=True)
+        
+        # 3. Get Account Info (Source of Truth for Balance & Margin)
+        summary = OandaPriceService.get_account_summary()
+        if not summary:
+            logger.error("Could not fetch Oanda account summary. Aborting auto-trade execution.")
+            return
+
+        balance = float(summary.get('balance', 0))
+        margin_avail = float(summary.get('marginAvailable', 0))
+        open_trades_count = int(summary.get('openTradeCount', 0))
+
+        if open_trades_count >= settings.MAX_CONCURRENT_TRADES:
+            logger.info(f"Max concurrent trades reached ({open_trades_count}). Skipping new entries.")
+            return
+
+        # 4. Source of Truth for Existing Positions
+        # Check Oanda directly to prevent duplicates if Firestore failed last time
+        oanda_open_symbols = OandaPriceService.get_open_trades()
+        
+        # Also check Firestore for local tracking
+        try:
+            portfolio_ref = db.collection('users').document(auth_email).collection('forex_portfolio')
+            open_docs = portfolio_ref.where('status', '==', 'OPEN').stream()
+            firestore_open_symbols = [doc.to_dict().get('symbol') for doc in open_docs]
+        except Exception as e:
+            logger.error(f"Error fetching Firestore portfolio: {e}")
+            firestore_open_symbols = []
+
+        # Combined check
+        existing_symbols = list(set(oanda_open_symbols + firestore_open_symbols))
+
+        # 5. Execute top N signals
+        executed_count = 0
+        limit = settings.MAX_CONCURRENT_TRADES - len(oanda_open_symbols)
+        
+        for signal in valid_signals:
+            if executed_count >= limit:
+                break
+                
+            symbol = signal['symbol']
+            if symbol in existing_symbols:
+                logger.info(f"Skipping {symbol}: Trade already open in Oanda or Firestore.")
+                continue
+
+            # Calculate Units with margin awareness
+            entry_price = signal['price']
+            stop_loss = signal['stop_loss']
+            take_profit = signal['take_profit']
+            direction = signal['signal']
+            
+            units = cls.calculate_units(symbol, entry_price, stop_loss, balance, margin_avail)
+            if units <= 0:
+                logger.warning(f"Calculated 0 units for {symbol}. Insufficient risk/margin.")
+                continue
+
+            # Adjust units for direction
+            oanda_units = units if direction == 'BUY' else -units
+
+            logger.info(f"EXECUTION: {direction} {symbol} ({units} units) | Risk 2% | Balance: {balance:.2f} AUD")
+            
+            # Place Order
+            response = OandaPriceService.place_market_order(symbol, oanda_units, stop_loss, take_profit)
+            
+            if response and 'orderFillTransaction' in response:
+                fill = response['orderFillTransaction']
+                exec_price = float(fill.get('price'))
+                trade_id = fill.get('id')
+                
+                logger.info(f"SUCCESS: {symbol} Trade ID {trade_id} filled at {exec_price}")
+                
+                # Add to Firestore Portfolio (Local Sync)
+                cls._log_to_portfolio(auth_email, signal, units, exec_price, trade_id)
+                executed_count += 1
+            else:
+                logger.error(f"FAILURE: Order placement for {symbol} failed.")
+
+    @staticmethod
+    def _log_to_portfolio(email: str, signal: Dict, units: int, exec_price: float, trade_id: str):
+        """Add the executed trade to the user's Firestore portfolio."""
+        try:
+            portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
+            
+            doc_data = {
+                'symbol': signal['symbol'],
+                'direction': signal['signal'],
+                'buy_date': datetime.utcnow().strftime("%Y-%m-%d"),
+                'buy_price': exec_price,
+                'quantity': units,
+                'notes': f"Auto-traded via Bot. Strategy: {signal.get('strategy')}. Oanda ID: {trade_id}",
+                'strategy': signal.get('strategy', 'Unknown'),
+                'timeframe': signal.get('timeframe_used', 'Unknown'),
+                'status': 'OPEN',
+                'oanda_trade_id': trade_id,
+                'stop_loss': signal.get('stop_loss'),
+                'take_profit': signal.get('take_profit'),
+                'created_at': datetime.utcnow()
+            }
+            
+            portfolio_ref.add(doc_data)
+            logger.info(f"SYNC: Logged trade {trade_id} to Firestore for {email}")
+        except Exception as e:
+            logger.error(f"DATABASE ERROR: Failed to log trade {trade_id} to Firestore: {e}")

@@ -104,9 +104,9 @@ asx-screener/
 | **USD_JPY** | 2.0 | -5.0 | Needs Tuning |
 
 ### 5/15m Sniper Algo Optimization
-*   **XAG_USD (Silver):** Optimized for 15m/1h with RR 3.0.
-*   **BCO_USD (Oil):** Optimized for 15m with RR 3.0.
-*   **WHEAT_USD:** Optimized for 15m with RR 3.0.
+*   **XAG_USD (Silver):** Optimized for **5m** with RR 3.0 (SilverSniper strategy).
+*   **BCO_USD (Oil):** Optimized for **5m** with RR 3.0 (Sniper strategy).
+*   **WHEAT_USD:** Optimized for **5m** with RR 3.0 (Sniper strategy).
 
 ## Key Workflows
 
@@ -124,12 +124,23 @@ asx-screener/
 *   **Refresh Logic (NEW):**
     *   **Asynchronous Processing:** Long-running downloads and screening tasks move to non-blocking background threads via FastAPI `BackgroundTasks`.
     *   **Automated Scheduling:** 
-        *   Forex: Refreshes every 15 minutes (at :01, :16, :31, :46) to capture closed candles.
-        *   ASX Stocks: Refreshes daily at 18:00 AEST once EOD data is available.
+        *   **High-Frequency Sniper:** Refreshes every 5 minutes (at :00, :05, :10...) for Silver, Oil, and Wheat.
+        *   **Forex Universe:** Refreshes every 15 minutes (at :01, :16, :31, :46) to capture closed candles.
+        *   **ASX Stocks:** Refreshes daily at 18:00 AEST once EOD data is available.
     *   **Portfolio Instant Price:** Individual holdings can be updated on-demand with a 1-minute server-side cache to prevent API throttling.
     *   **UI Feedback:** Real-time polling of refresh status with Toast notifications upon completion.
 
-### 3. Data Pipeline
+### 3. Oanda Auto-Trading Bot
+*   **Orchestrator:** `app.services.oanda_trade_service.py` executes trades for authorized users.
+*   **Execution Rules:**
+    *   **Risk Management:** 2% risk of AUD balance per trade.
+    *   **Position Sizing:** Margin-aware calculation; capped at 50% of available margin.
+    *   **Duplicate Prevention:** Checks both Oanda live trades and Firestore portfolio before execution (Source of Truth).
+    *   **Trade Protection:** Every order includes hard Stop Loss and Take Profit (GTC) with Fill-or-Kill (FOK) execution.
+    *   **Ranking:** Prioritizes trades based on Backtest performance score.
+*   **Supported User:** naveenf.opt@gmail.com.
+
+### 4. Data Pipeline
 *   **Download:** `scripts/download_data.py` (Stocks) and `scripts/download_forex.py` (Forex/Commodities).
 *   **Freshness:** Checked automatically on startup (>1 day old = refresh).
 

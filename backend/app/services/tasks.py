@@ -14,6 +14,7 @@ from .screener import StockScreener
 from .market_data import update_all_stocks_data
 from .insider_trades import InsiderTradesService
 from .forex_screener import ForexScreener
+from .oanda_trade_service import OandaTradeService
 from .notification import EmailService
 from .refresh_manager import refresh_manager
 from ..firebase_setup import db
@@ -91,8 +92,15 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
         )
         logger.info(f"[{task_id}] Orchestrator finished.")
         
-        # --- Email Notification Logic ---
+        # --- Auto-Trading Execution ---
         all_signals = results.get('signals', [])
+        try:
+            logger.info(f"[{task_id}] Attempting auto-trade execution for {len(all_signals)} signals...")
+            OandaTradeService.execute_trades(all_signals)
+        except Exception as te:
+            logger.error(f"[{task_id}] Auto-trade execution failed: {te}")
+
+        # --- Email Notification Logic ---
         diff = EmailService.filter_new_signals(all_signals)
         new_entries = diff['entries']
         exits = diff['exits']
