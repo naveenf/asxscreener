@@ -5,6 +5,7 @@ import time
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from functools import wraps
 from dotenv import load_dotenv
 from oandapyV20 import API
 import oandapyV20.endpoints.instruments as instruments
@@ -25,23 +26,47 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 # OANDA Limits
 MAX_CANDLES = 5000
 
+def retry_request(retries=3, delay=5):
+    """Decorator to retry OANDA API calls on network-related errors."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_err = None
+            for i in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_err = e
+                    err_msg = str(e).lower()
+                    # Retry on connection, DNS (name resolution), or SSL errors
+                    if any(x in err_msg for x in ["connection", "name resolution", "ssl", "timeout", "remote end"]):
+                        print(f"  [Retry] Attempt {i+1} failed: {e}. Retrying in {delay}s...")
+                        time.sleep(delay)
+                    else:
+                        # For auth or logic errors, don't retry
+                        break
+            print(f"  [Error] Failed after {retries} attempts: {last_err}")
+            return []
+        return wrapper
+    return decorator
+
 def get_oanda_api():
     token = os.environ.get("OANDA_ACCESS_TOKEN")
     env = os.environ.get("OANDA_ENV", "live")
     if not token:
         print("Error: OANDA_ACCESS_TOKEN not found.")
         return None
-    return API(access_token=token, environment=env)
+    # Use a longer timeout for the downloader
+    return API(access_token=token, environment=env, request_params={"timeout": 30})
 
 def load_pairs():
     with open(CONFIG_PATH, 'r') as f:
         return json.load(f)['pairs']
 
+@retry_request(retries=4, delay=5)
 def fetch_candles(api, instrument, granularity, start_time=None, count=5000):
     """
     Fetch candles from OANDA.
-    If start_time is provided (datetime), fetch candles since then.
-    Otherwise fetch 'count' most recent candles.
     """
     params = {
         "granularity": granularity,
@@ -49,27 +74,15 @@ def fetch_candles(api, instrument, granularity, start_time=None, count=5000):
     }
 
     if start_time:
-        # OANDA 'from' parameter expects RFC3339 format
-        # Ensure we request data slightly AFTER the last known candle to avoid duplicates
-        # But OANDA includes the 'from' candle if it matches exactly, so we'll filter later.
         from_str = start_time.strftime("%Y-%m-%dT%H:%M:%S.000000000Z")
         params["from"] = from_str
-        # 'count' cannot be used with 'from' in some endpoints, or it works as a limit.
-        # In InstrumentsCandles, if 'from' is specified, 'to' defaults to now.
-        # 'count' is optional if both from/to are used, but if only 'from' is used, 
-        # it might return up to 5000.
-        # Let's try without count first if start_time is set, but max is 5000.
         params["count"] = count 
     else:
         params["count"] = count
 
-    try:
-        r = instruments.InstrumentsCandles(instrument=instrument, params=params)
-        api.request(r)
-        return r.response.get('candles', [])
-    except Exception as e:
-        print(f"Error fetching {instrument} ({granularity}): {e}")
-        return []
+    r = instruments.InstrumentsCandles(instrument=instrument, params=params)
+    api.request(r)
+    return r.response.get('candles', [])
 
 def parse_candles(candles):
     records = []
