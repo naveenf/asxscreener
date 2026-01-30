@@ -3,10 +3,12 @@
 ## Project Overview
 The ASX Stock Screener is a full-stack application designed to identify trading opportunities on the Australian Securities Exchange (ASX) and Global Forex/Commodity markets. It uses a **Dynamic Strategy Selection** engine to apply the most effective algorithm for each asset class.
 
-The system implements three core trading strategies:
+The system implements five core trading strategies:
 1.  **Trend Following** (ADX/DI)
 2.  **Mean Reversion** (Bollinger Bands/RSI)
 3.  **Squeeze** (Volatility Compression Breakout)
+4.  **Silver Sniper / Sniper** (High-Precision 5m Squeeze + FVG)
+5.  **Triple Trend** (Fibonacci + Supertrend + Instant Trend)
 
 Calculations match **Pine Script** (TradingView) standards, using "Wilder's Smoothing" for technical accuracy.
 
@@ -91,21 +93,41 @@ asx-screener/
     *   **Stop Loss:** Middle Bollinger Band (SMA 20).
 *   **Best For:** Gold, Copper, Nasdaq, Oil, UK100.
 
-## Latest Test Results (2026-01-28)
+### 4. Silver Sniper / Sniper (Intraday Momentum)
+*   **Logic:** Identifies high-probability breakouts on lower timeframes by aligning with higher timeframe trends and institutional order blocks (FVG).
+*   **Indicators:** 5m Squeeze, 15m ADX (>20), 5m Fair Value Gap (FVG).
+*   **Rules:**
+    *   **Squeeze:** BB width at 24-hour lows on 5m.
+    *   **Confirmation:** 15m Trend must match breakout direction.
+    *   **Mitigation:** Entry must occur within a recent 5m FVG (Order Block confirmation).
+    *   **Exit:** 3.0x Risk (Fixed) or BB Middle cross.
+*   **Best For:** Silver (XAG_USD), Oil (BCO_USD), Wheat.
+
+### 5. Triple Trend (Structural Alignment)
+*   **Logic:** A robust trend-following system using three layers of confirmation.
+*   **Indicators:** Fibonacci Structure (50-bar), Pivot Point Supertrend (Factor 3.0), Ehlers Instantaneous Trend.
+*   **Rules:**
+    *   **Anchor:** Fibonacci position must be positive for BUY, negative for SELL.
+    *   **Confirmation:** Supertrend must align with the Anchor.
+    *   **Trigger:** Instant Trend Trigger must cross the Instant Trend line.
+*   **Best For:** Steady trending stocks and FX pairs.
+
+## Latest Test Results (2026-01-30)
+
+### Sniper Optimization (M5 Base, M15 HTF)
+*   **XAG_USD (Silver):** Optimized for **5m** with RR 3.0. Win Rate: **66.7%** (SilverSniper strategy).
+*   **BCO_USD (Oil):** Optimized for **5m** with RR 3.0. (Sniper strategy).
+*   **WHEAT_USD:** Optimized for **5m** with RR 3.0. (Sniper strategy).
 
 ### 1H Squeeze Algo Optimization (Multiplier 1.2)
 | Symbol | Best RR | Profit (Units) | Status |
 | :--- | :--- | :--- | :--- |
 | **XAU_USD (Gold)** | 3.0 | **+7.9** | **Top Performer** |
 | **XCU_USD (Copper)** | 2.0 | **+6.1** | **Strong Profit** |
+| **AUD_USD** | 1.5 | +2.2 | Consistent |
+| **USD_JPY** | 1.5 | -1.2 | Defensive |
 | **UK100_GBP** | 2.0 | **+2.1** | Profitable |
-| **NAS100_USD** | 2.0 | -0.6 | Near Break-even |
-| **USD_JPY** | 2.0 | -5.0 | Needs Tuning |
 
-### 5/15m Sniper Algo Optimization
-*   **XAG_USD (Silver):** Optimized for **5m** with RR 3.0 (SilverSniper strategy).
-*   **BCO_USD (Oil):** Optimized for **5m** with RR 3.0 (Sniper strategy).
-*   **WHEAT_USD:** Optimized for **5m** with RR 3.0 (Sniper strategy).
 
 ## Key Workflows
 
@@ -134,12 +156,18 @@ asx-screener/
 *   **Execution Rules:**
     *   **Risk Management:** 2% risk of AUD balance per trade.
     *   **Position Sizing:** Margin-aware calculation; capped at 50% of available margin.
-    *   **Duplicate Prevention:** Checks both Oanda live trades and Firestore portfolio before execution (Source of Truth).
+    *   **Source of Truth:** **Oanda is the Absolute Source of Truth**. The bot fetches live open trades directly from the API.
+    *   **Firestore Sync (NEW):** If Firestore shows a trade as `OPEN` but Oanda says it is closed (e.g., manual intervention), the bot automatically syncs Firestore to `CLOSED` to maintain data integrity.
     *   **Trade Protection:** Every order includes hard Stop Loss and Take Profit (GTC) with Fill-or-Kill (FOK) execution.
     *   **Ranking:** Prioritizes trades based on Backtest performance score.
 *   **Supported User:** naveenf.opt@gmail.com.
 
-### 4. Data Pipeline
+### 4. Email Notifications
+*   **Service:** `app.services.notification.py` sends HTML alerts via SMTP.
+*   **Smart Diff Logic:** Only notifies users of *new* signals or *exits* to prevent spam.
+*   **Rich Content:** Includes Entry, SL, TP, and Strategy name for new signals; PnL and R:R achieved for exits.
+
+### 5. Data Pipeline
 *   **Download:** `scripts/download_data.py` (Stocks) and `scripts/download_forex.py` (Forex/Commodities).
 *   **Freshness:** Checked automatically on startup (>1 day old = refresh).
 

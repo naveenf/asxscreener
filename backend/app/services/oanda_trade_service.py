@@ -115,17 +115,28 @@ class OandaTradeService:
         # Check Oanda directly to prevent duplicates if Firestore failed last time
         oanda_open_symbols = OandaPriceService.get_open_trades()
         
-        # Also check Firestore for local tracking
+        # Also check Firestore for local tracking and sync if needed
         try:
             portfolio_ref = db.collection('users').document(auth_email).collection('forex_portfolio')
-            open_docs = portfolio_ref.where('status', '==', 'OPEN').stream()
-            firestore_open_symbols = [doc.to_dict().get('symbol') for doc in open_docs]
+            open_docs = list(portfolio_ref.where('status', '==', 'OPEN').stream())
+            
+            for doc in open_docs:
+                data = doc.to_dict()
+                symbol = data.get('symbol')
+                if symbol not in oanda_open_symbols:
+                    # Sync: Oanda says it's closed, but Firestore says it's open
+                    logger.info(f"SYNC: {symbol} found open in Firestore but not in Oanda. Marking as CLOSED.")
+                    doc.reference.update({
+                        'status': 'CLOSED',
+                        'sell_price': 0,
+                        'sell_date': datetime.utcnow().strftime("%Y-%m-%d"),
+                        'notes': (data.get('notes', '') or '') + " | Auto-closed: Not found in Oanda open trades."
+                    })
         except Exception as e:
-            logger.error(f"Error fetching Firestore portfolio: {e}")
-            firestore_open_symbols = []
+            logger.error(f"Error fetching/syncing Firestore portfolio: {e}")
 
-        # Combined check
-        existing_symbols = list(set(oanda_open_symbols + firestore_open_symbols))
+        # Absolute Truth: Use Oanda for "already open" check
+        existing_symbols = list(oanda_open_symbols)
 
         # 5. Execute top N signals
         executed_count = 0
@@ -137,7 +148,7 @@ class OandaTradeService:
                 
             symbol = signal['symbol']
             if symbol in existing_symbols:
-                logger.info(f"Skipping {symbol}: Trade already open in Oanda or Firestore.")
+                logger.info(f"Skipping {symbol}: Trade already open in Oanda.")
                 continue
 
             # Calculate Units with margin awareness
@@ -169,6 +180,7 @@ class OandaTradeService:
                 # Add to Firestore Portfolio (Local Sync)
                 cls._log_to_portfolio(auth_email, signal, units, exec_price, trade_id)
                 executed_count += 1
+                existing_symbols.append(symbol)
             else:
                 logger.error(f"FAILURE: Order placement for {symbol} failed.")
 
