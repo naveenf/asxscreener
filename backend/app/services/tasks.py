@@ -15,6 +15,7 @@ from .market_data import update_all_stocks_data
 from .insider_trades import InsiderTradesService
 from .forex_screener import ForexScreener
 from .oanda_trade_service import OandaTradeService
+from .portfolio_monitor import PortfolioMonitor
 from .notification import EmailService
 from .refresh_manager import refresh_manager
 from ..firebase_setup import db
@@ -100,8 +101,18 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
         except Exception as te:
             logger.error(f"[{task_id}] Auto-trade execution failed: {te}")
 
+        # --- Portfolio Exit Monitoring (New: For better exit reasons) ---
+        portfolio_exits = []
+        auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
+        if auth_email:
+            try:
+                monitor = PortfolioMonitor()
+                portfolio_exits = monitor.check_portfolio_exits(auth_email)
+            except Exception as pe:
+                logger.error(f"[{task_id}] Portfolio exit check failed: {pe}")
+
         # --- Email Notification Logic ---
-        diff = EmailService.filter_new_signals(all_signals, results.get('all_prices', {}))
+        diff = EmailService.filter_new_signals(all_signals, results.get('all_prices', {}), portfolio_exits)
         new_entries = diff['entries']
         exits = diff['exits']
         

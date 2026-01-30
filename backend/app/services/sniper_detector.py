@@ -103,14 +103,14 @@ class SniperDetector(ForexStrategy):
             else: return None
 
         price = float(latest_15['Close'])
-        ema13 = float(latest_15['EMA13'])
+        bb_middle = float(latest_15['BB_Middle'])
         
-        # Calculate initial SL based on EMA13 (Standard for Sniper Strategy)
-        stop_loss = ema13
+        # Calculate initial SL based on BB_Middle (Standard for Sniper Strategy)
+        stop_loss = bb_middle
         signal_type = "BUY" if is_buy else "SELL"
         
         # SPREAD / PADDING CONFIGURATION
-        # User requirement: "SL should be EMA13/Middle BB + spread"
+        # User requirement: "SL should be BB_Middle + spread"
         # Use provided spread or default to 0.05% of price if missing/zero
         padding = spread if spread > 0 else (price * 0.0005)
 
@@ -155,29 +155,29 @@ class SniperDetector(ForexStrategy):
 
     def check_exit(self, data: Dict[str, pd.DataFrame], direction: str, entry_price: float) -> Optional[Dict]:
         """
-        Exit if price crosses EMA13 (Trailing Stop).
+        Exit if price crosses BB_Middle (SMA 20) (Trailing Stop).
         """
         df = data.get('base')
         if df is None or len(df) < 50: return None
         
-        if 'EMA13' not in df.columns:
+        if 'BB_Middle' not in df.columns:
             df = TechnicalIndicators.add_all_indicators(df)
             
         latest = df.iloc[-1]
         close = float(latest['Close'])
-        ema13 = float(latest['EMA13'])
+        bb_middle = float(latest['BB_Middle'])
         
         exit_signal = False
         reason = None
         
         if direction == "BUY":
-            if close < ema13:
+            if close < bb_middle:
                 exit_signal = True
-                reason = f"Price ({close:.4f}) crossed below EMA13 ({ema13:.4f})"
+                reason = f"Price ({close:.4f}) crossed below BB Middle ({bb_middle:.4f})"
         elif direction == "SELL":
-            if close > ema13:
+            if close > bb_middle:
                 exit_signal = True
-                reason = f"Price ({close:.4f}) crossed above EMA13 ({ema13:.4f})"
+                reason = f"Price ({close:.4f}) crossed above BB Middle ({bb_middle:.4f})"
                 
         if exit_signal:
             return {

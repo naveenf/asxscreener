@@ -24,7 +24,7 @@ class EmailService:
     _last_sent_file = settings.PROCESSED_DATA_DIR / "last_sent_signals.json"
 
     @classmethod
-    def filter_new_signals(cls, current_signals: List[Dict], all_prices: Dict[str, float] = None) -> Dict[str, List[Dict]]:
+    def filter_new_signals(cls, current_signals: List[Dict], all_prices: Dict[str, float] = None, portfolio_exits: List[Dict] = None) -> Dict[str, List[Dict]]:
         """
         Return a dict with 'entries' and 'exits'.
         - entries: signals that are brand new.
@@ -34,6 +34,10 @@ class EmailService:
         new_entries = []
         exits = []
         all_prices = all_prices or {}
+        portfolio_exits = portfolio_exits or []
+        
+        # Create a map for quick lookup of specific exit reasons from portfolio monitor
+        portfolio_exit_map = {e['symbol']: e['exit_reason'] for e in portfolio_exits}
         
         current_symbols = {s['symbol'] for s in current_signals}
         
@@ -48,9 +52,16 @@ class EmailService:
                     cls._enrich_exit_data(last_sig, current_sig['price'])
                     exits.append(last_sig)
             else:
-                # Symbol dropped out of signals - might have hit SL/TP or just lost momentum
-                exit_price = all_prices.get(symbol, last_sig.get('price')) # Fallback to entry if price not found
-                last_sig['exit_reason'] = "SIGNAL EXPIRED / MOMENTUM LOST"
+                # Symbol dropped out of signals - might have hit SL/TP, BB cross, or lost momentum
+                exit_price = all_prices.get(symbol, last_sig.get('price')) 
+                
+                # Check if Portfolio Monitor found a specific reason (e.g. BB Middle Cross)
+                specific_reason = portfolio_exit_map.get(symbol)
+                if specific_reason:
+                    last_sig['exit_reason'] = specific_reason
+                else:
+                    last_sig['exit_reason'] = "SIGNAL EXPIRED / MOMENTUM LOST"
+                
                 cls._enrich_exit_data(last_sig, exit_price)
                 exits.append(last_sig)
 
