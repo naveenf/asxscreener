@@ -16,7 +16,7 @@ DATA_DIR = PROJECT_ROOT / 'data' / 'forex_raw'
 # Assets to test (Excluding Sniper assets XAG, BCO, WHEAT)
 TEST_ASSETS = [
     "XAU_USD", "NAS100_USD", "JP225_USD", "UK100_GBP",
-    "CORN_USD", "SOYBN_USD", "USD_JPY", "AUD_USD", "USD_CHF", "XCU_USD"
+    "USD_JPY", "AUD_USD", "USD_CHF", "XCU_USD"
 ]
 
 def load_data_and_prep(symbol: str) -> Dict[str, pd.DataFrame]:

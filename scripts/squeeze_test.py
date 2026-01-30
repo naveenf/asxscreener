@@ -20,23 +20,21 @@ from backend.app.services.squeeze_detector import SqueezeDetector
 DATA_DIR = PROJECT_ROOT / 'data' / 'forex_raw'
 SPREAD_COST = 0.00015
 
-# Asset Configuration: (YFinance_Key, Target_RR)
+# Asset Configuration: (Oanda_Key, Target_RR)
 ASSET_CONFIG = {
-    "XAG_USD":    ("SI=F", 3.0),
-    "NAS100_USD": ("NQ=F", 3.0),
-    "BCO_USD":    ("BZ=F", 3.0),
-    "XCU_USD":    ("HG=F", 3.0),
-    "USD_JPY":    ("USDJPY=X", 1.5),  # Forex -> 1.5
-    "XAU_USD":    ("GC=F", 3.0),
-    "LTC_USD":    ("LTC-USD", 3.0),
-    "UK100_GBP":  ("^FTSE", 3.0),
-    "JP225_USD":  ("^N225", 3.0),
-    "WHEAT_USD":  ("ZW=F", 3.0),
-    "SUGAR_USD":  ("SB=F", 3.0),
-    "CORN_USD":   ("ZC=F", 3.0),
-    "SOYBN_USD":  ("ZS=F", 3.0),
-    "AUD_USD":    ("AUDUSD=X", 1.5),  # Forex -> 1.5
-    "USD_CHF":    ("USDCHF=X", 1.5)   # Forex -> 1.5
+    "XAG_USD":    ("XAG_USD", 3.0),
+    "NAS100_USD": ("NAS100_USD", 3.0),
+    "BCO_USD":    ("BCO_USD", 3.0),
+    "XCU_USD":    ("XCU_USD", 3.0),
+    "USD_JPY":    ("USD_JPY", 1.5),
+    "XAU_USD":    ("XAU_USD", 3.0),
+    "LTC_USD":    ("LTC_USD", 3.0),
+    "UK100_GBP":  ("UK100_GBP", 3.0),
+    "JP225_USD":  ("JP225_USD", 3.0),
+    "WHEAT_USD":  ("WHEAT_USD", 3.0),
+    "SUGAR_USD":  ("SUGAR_USD", 3.0),
+    "AUD_USD":    ("AUD_USD", 1.5),
+    "USD_CHF":    ("USD_CHF", 1.5)
 }
 
 def load_data(yf_symbol: str) -> Dict[str, pd.DataFrame]:

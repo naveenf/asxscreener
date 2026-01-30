@@ -37,7 +37,7 @@ class TripleTrendDetector(ForexStrategy):
     def get_name(self) -> str:
         return "TripleTrend"
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0) -> Optional[Dict]:
         """
         Analyze using MTF data.
         Primary analysis on 'base' timeframe.

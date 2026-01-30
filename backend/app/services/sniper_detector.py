@@ -36,7 +36,7 @@ class SniperDetector(ForexStrategy):
         if symbol in self.caskets.get('steady', []): return 'Steady'
         return 'Cyclical'
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0) -> Optional[Dict]:
         df_15m = data.get('base')
         df_1h = data.get('htf')
         
@@ -105,16 +105,28 @@ class SniperDetector(ForexStrategy):
         price = float(latest_15['Close'])
         ema13 = float(latest_15['EMA13'])
         
-        # Calculate initial SL based on EMA13
+        # Calculate initial SL based on EMA13 (Standard for Sniper Strategy)
         stop_loss = ema13
         signal_type = "BUY" if is_buy else "SELL"
         
+        # SPREAD / PADDING CONFIGURATION
+        # User requirement: "SL should be EMA13/Middle BB + spread"
+        # Use provided spread or default to 0.05% of price if missing/zero
+        padding = spread if spread > 0 else (price * 0.0005)
+
         # HARDENING: Ensure minimum distance for SL (0.5% for commodities/forex)
         min_dist = price * 0.005
+        
         if signal_type == "BUY":
+            # SL below price
             stop_loss = min(stop_loss, price - min_dist)
+            # Apply Spread padding (Lower the SL by the spread amount)
+            stop_loss -= padding
         else: # SELL
+            # SL above price
             stop_loss = max(stop_loss, price + min_dist)
+            # Apply Spread padding (Raise the SL by the spread amount)
+            stop_loss += padding
 
         # Calculate TP
         risk = abs(price - stop_loss)

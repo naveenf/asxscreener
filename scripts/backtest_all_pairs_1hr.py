@@ -41,11 +41,8 @@ ASSET_CONFIGS = {
 SYMBOL_SPREADS = {
     "XAU_USD": 0.40,   # Gold
     "XAG_USD": 0.02,   # Silver
-    "XCU_USD": 0.002,  # Copper
-    "CORN_USD": 0.01,  # Corn
     "WHEAT_USD": 0.01, # Wheat
-    "SOYBN_USD": 0.01, # Soybeans
-    "BCO_USD": 0.03,   # Brent Crude
+    "XCU_USD": 0.0030, # Copper
 }
 
 def get_asset_config(symbol, symbol_type):

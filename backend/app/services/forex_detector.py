@@ -19,7 +19,7 @@ class ForexDetector(ForexStrategy):
     def get_name(self) -> str:
         return "TrendFollowing"
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0) -> Optional[Dict]:
         df = data.get('base')
         df_htf = data.get('htf')
 

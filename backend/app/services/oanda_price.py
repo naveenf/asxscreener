@@ -88,6 +88,36 @@ class OandaPriceService:
 
     @classmethod
     @retry_oanda(retries=3, delay=1)
+    def get_current_spread(cls, symbol: str) -> Optional[float]:
+        """
+        Get the current spread (Ask - Bid) for a symbol.
+        """
+        api = cls.get_api()
+        if not api:
+            return None
+
+        params = {
+            "count": 1,
+            "granularity": "S5",
+            "price": "BA" # Bid/Ask
+        }
+        
+        try:
+            r = instruments.InstrumentsCandles(instrument=symbol, params=params)
+            api.request(r)
+            candles = r.response.get('candles', [])
+            
+            if candles:
+                bid = float(candles[0]['bid']['c'])
+                ask = float(candles[0]['ask']['c'])
+                return ask - bid
+        except Exception as e:
+            logger.error(f"Error fetching spread for {symbol}: {e}")
+        
+        return None
+
+    @classmethod
+    @retry_oanda(retries=3, delay=1)
     def get_account_summary(cls) -> Optional[Dict[str, Any]]:
         """Fetch account balance, NAV, and margin info."""
         api = cls.get_api()

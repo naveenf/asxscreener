@@ -99,7 +99,6 @@ asx-screener/
 | **XAU_USD (Gold)** | 3.0 | **+7.9** | **Top Performer** |
 | **XCU_USD (Copper)** | 2.0 | **+6.1** | **Strong Profit** |
 | **UK100_GBP** | 2.0 | **+2.1** | Profitable |
-| **SOYBN_USD** | 1.5 | **+1.2** | Profitable |
 | **NAS100_USD** | 2.0 | -0.6 | Near Break-even |
 | **USD_JPY** | 2.0 | -5.0 | Needs Tuning |
 

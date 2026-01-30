@@ -1,5 +1,5 @@
 """
-Silver (SI=F) Max Potential Analysis
+Silver (XAG_USD) Max Potential Analysis
 
 Simulates a "Let it Run" strategy:
 1. Enter on Squeeze Breakout.
@@ -21,7 +21,7 @@ from backend.app.services.squeeze_detector import SqueezeDetector
 from backend.app.services.indicators import TechnicalIndicators
 
 # Configuration
-FILE_PATH = PROJECT_ROOT / 'data' / 'forex_raw' / 'SI=F_15_Min.csv'
+FILE_PATH = PROJECT_ROOT / 'data' / 'forex_raw' / 'XAG_USD_15_Min.csv'
 SPREAD_COST = 0.00015
 
 def run_deep_dive():
@@ -118,12 +118,26 @@ def run_deep_dive():
             data = {'15m': slice_df} 
             
             try:
-                signal = detector.analyze(data, "SI=F")
-                if signal:
-                    position = signal['signal']
-                    entry_price = signal['price']
+                # signal = detector.analyze(data, "XAG_USD") # Updated
+                pass # Using inline logic below for "Let It Run" simulation
+                
+                # Re-implementing simplified Squeeze logic inline for simulation speed/control
+                # Squeeze + Breakout
+                current = df.iloc[i]
+                prev = df.iloc[i-1]
+                
+                is_squeeze = (current['BB_Upper'] < current['KC_Upper']) & (current['BB_Lower'] > current['KC_Lower'])
+                had_squeeze = df['is_sqz'].iloc[i-5:i].any() if 'is_sqz' in df.columns else is_squeeze
+                
+                breakout_up = (current['Close'] > current['BB_Upper']) and (prev['Close'] <= prev['BB_Upper'])
+                breakout_down = (current['Close'] < current['BB_Lower']) and (prev['Close'] >= prev['BB_Lower'])
+                
+                if (breakout_up or breakout_down) and had_squeeze:
+                    position = 'BUY' if breakout_up else 'SELL'
+                    entry_price = current['Close']
+                    
                     # Initial Stop is Middle Band (SMA20)
-                    initial_stop = df['BB_Middle'].iloc[i]
+                    initial_stop = current['BB_Middle']
                     initial_risk = abs(entry_price - initial_stop)
                     
                     # Safety: Min risk to avoid div/0

@@ -101,7 +101,7 @@ def parse_candles(candles):
 def update_dataset(api, symbol, oanda_symbol, granularity, label):
     """
     Update the CSV dataset for a specific timeframe.
-    file_name: e.g. "EURUSD=X_15_Min.csv"
+    file_name: e.g. "EUR_USD_15_Min.csv"
     """
     # Map granularity to file suffix
     if granularity == "M15":

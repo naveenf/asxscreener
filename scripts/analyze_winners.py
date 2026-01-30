@@ -14,14 +14,24 @@ from backend.app.services.indicators import TechnicalIndicators
 
 def analyze_win(symbol, timestamp, label):
     data_dir = PROJECT_ROOT / 'data' / 'forex_raw'
-    csv_path = data_dir / f"{symbol}.csv"
+    csv_path = data_dir / f"{symbol}_15_Min.csv"
     
-    df = pd.read_csv(csv_path, header=[0, 1, 2], index_col=0)
-    df.columns = df.columns.get_level_values(0)
-    df.index = pd.to_datetime(df.index)
-    df.sort_index(inplace=True)
-    
-    df = TechnicalIndicators.add_all_indicators(df)
+    if not csv_path.exists():
+        print(f"File not found: {csv_path}")
+        return
+
+    try:
+        df = pd.read_csv(csv_path)
+        col = 'Date' if 'Date' in df.columns else 'Datetime'
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], utc=True)
+            df.set_index(col, inplace=True)
+        df.sort_index(inplace=True)
+        
+        df = TechnicalIndicators.add_all_indicators(df)
+    except Exception as e:
+        print(f"Error analyzing {symbol}: {e}")
+        return
     
     # Target timestamp
     ts = pd.to_datetime(timestamp)
@@ -42,9 +52,9 @@ def analyze_win(symbol, timestamp, label):
 
 def main():
     # NAS100 Winners
-    analyze_win('NQ=F', '2025-11-06 14:00:00+00:00', "8.7 RR SELL")
-    analyze_win('NQ=F', '2026-01-06 01:15:00+00:00', "3.2 RR BUY")
-    analyze_win('NQ=F', '2025-11-03 08:45:00+00:00', "2.2 RR BUY")
+    analyze_win('NAS100_USD', '2025-11-06 14:00:00+00:00', "8.7 RR SELL")
+    analyze_win('NAS100_USD', '2026-01-06 01:15:00+00:00', "3.2 RR BUY")
+    analyze_win('NAS100_USD', '2025-11-03 08:45:00+00:00', "2.2 RR BUY")
 
 if __name__ == "__main__":
     main()

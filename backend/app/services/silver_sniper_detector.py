@@ -20,9 +20,9 @@ class SilverSniperDetector(ForexStrategy):
     def get_name(self) -> str:
         return "SilverSniper"
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 3.0) -> Optional[Dict]:
-        df_5m = data.get('5m')
-        df_15m = data.get('15m')
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 3.0, spread: float = 0.0) -> Optional[Dict]:
+        df_5m = data.get('base')
+        df_15m = data.get('htf')
 
         if df_5m is None or len(df_5m) < 100:
             return None
@@ -84,12 +84,19 @@ class SilverSniperDetector(ForexStrategy):
         # Calculate initial SL
         stop_loss = bb_middle
         
-        # HARDENING: Ensure minimum distance for SL (0.5%)
+        # HARDENING: Ensure minimum distance for SL (0.5%) + SPREAD PROTECTION
+        # Use provided spread or default to 0.05% of price if missing
+        padding = spread if spread > 0 else (price * 0.0005)
+        
         min_dist = price * 0.005
+        
         if signal == "BUY":
             stop_loss = min(stop_loss, price - min_dist)
+            # Apply Spread Padding to prevent immediate wick-out
+            stop_loss -= padding
         else: # SELL
             stop_loss = max(stop_loss, price + min_dist)
+            stop_loss += padding
         
         risk = abs(price - stop_loss)
         if risk == 0: return None
@@ -117,7 +124,7 @@ class SilverSniperDetector(ForexStrategy):
         """
         Standard exit: Price crosses back over the Middle Bollinger Band.
         """
-        df = data.get('5m')
+        df = data.get('base')
         if df is None or len(df) < 20:
             return None
         

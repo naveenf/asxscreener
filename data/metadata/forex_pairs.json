@@ -5,91 +5,77 @@
       "name": "Silver",
       "type": "Commodity",
       "oanda_symbol": "XAG_USD",
-      "yf_symbol_legacy": "SI=F"
+      "yf_symbol_legacy": "XAG_USD"
     },
     {
       "symbol": "XAU_USD",
       "name": "Gold",
       "type": "Commodity",
       "oanda_symbol": "XAU_USD",
-      "yf_symbol_legacy": "GC=F"
+      "yf_symbol_legacy": "XAU_USD"
     },
     {
       "symbol": "BCO_USD",
       "name": "Brent Crude Oil",
       "type": "Commodity",
       "oanda_symbol": "BCO_USD",
-      "yf_symbol_legacy": "BZ=F"
+      "yf_symbol_legacy": "BCO_USD"
     },
     {
       "symbol": "XCU_USD",
       "name": "Copper",
       "type": "Commodity",
       "oanda_symbol": "XCU_USD",
-      "yf_symbol_legacy": "HG=F"
+      "yf_symbol_legacy": "XCU_USD"
     },
     {
       "symbol": "NAS100_USD",
       "name": "Nasdaq 100",
       "type": "Index",
       "oanda_symbol": "NAS100_USD",
-      "yf_symbol_legacy": "NQ=F"
+      "yf_symbol_legacy": "NAS100_USD"
     },
     {
       "symbol": "JP225_USD",
       "name": "Japan 225",
       "type": "Index",
       "oanda_symbol": "JP225_USD",
-      "yf_symbol_legacy": "^N225"
+      "yf_symbol_legacy": "JP225_USD"
     },
     {
       "symbol": "UK100_GBP",
       "name": "UK 100",
       "type": "Index",
       "oanda_symbol": "UK100_GBP",
-      "yf_symbol_legacy": "^FTSE"
-    },
-    {
-      "symbol": "CORN_USD",
-      "name": "Corn",
-      "type": "Commodity",
-      "oanda_symbol": "CORN_USD",
-      "yf_symbol_legacy": "ZC=F"
-    },
-    {
-      "symbol": "SOYBN_USD",
-      "name": "Soybeans",
-      "type": "Commodity",
-      "oanda_symbol": "SOYBN_USD",
-      "yf_symbol_legacy": "ZS=F"
+      "yf_symbol_legacy": "UK100_GBP"
     },
     {
       "symbol": "WHEAT_USD",
       "name": "Wheat",
       "type": "Commodity",
       "oanda_symbol": "WHEAT_USD",
-      "yf_symbol_legacy": "ZW=F"
+      "yf_symbol_legacy": "WHEAT_USD"
     },
     {
       "symbol": "USD_JPY",
       "name": "USD/JPY",
       "type": "Forex",
       "oanda_symbol": "USD_JPY",
-      "yf_symbol_legacy": "USDJPY=X"
+      "yf_symbol_legacy": "USD_JPY"
     },
     {
       "symbol": "AUD_USD",
       "name": "AUD/USD",
       "type": "Forex",
       "oanda_symbol": "AUD_USD",
-      "yf_symbol_legacy": "AUDUSD=X"
+      "yf_symbol_legacy": "AUD_USD"
     },
     {
       "symbol": "USD_CHF",
       "name": "USD/CHF",
       "type": "Forex",
       "oanda_symbol": "USD_CHF",
-      "yf_symbol_legacy": "USDCHF=X"
+      "yf_symbol_legacy": "USD_CHF"
     }
   ]
 }

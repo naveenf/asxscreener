@@ -189,8 +189,16 @@ class ForexScreener:
             strategy = self.strategies.get(strategy_name, self.strategies["TrendFollowing"])
             
             try:
+                # Fetch Spread if in Sniper mode (Critical for Wheat/Commodities SL)
+                spread = 0.0
+                if mode == 'sniper':
+                    from .oanda_price import OandaPriceService
+                    spread = OandaPriceService.get_current_spread(symbol) or 0.0
+                    if spread > 0:
+                        print(f"   Debug: {symbol} Spread = {spread:.5f}")
+
                 # Analyze
-                result = strategy.analyze(data, symbol, target_rr=target_rr)
+                result = strategy.analyze(data, symbol, target_rr=target_rr, spread=spread)
                 total_analyzed += 1
 
                 # Update existing signal or add new one

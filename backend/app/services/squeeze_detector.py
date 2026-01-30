@@ -21,7 +21,7 @@ class SqueezeDetector(ForexStrategy):
     def get_name(self) -> str:
         return "Squeeze"
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0) -> Optional[Dict]:
         df = data.get('base')
         df_htf = data.get('htf')
         
@@ -81,7 +81,7 @@ class SqueezeDetector(ForexStrategy):
         # - Commodities (Oil, Copper, Ag): Volume filter hurts performance. Disabled.
         
         indices = ['NAS100_USD', 'JP225_USD', 'UK100_GBP']
-        commodities_no_vol = ['BCO_USD', 'XCU_USD', 'CORN_USD', 'SOYBN_USD', 'WHEAT_USD']
+        commodities_no_vol = ['BCO_USD', 'XCU_USD', 'WHEAT_USD']
         
         vol_confirmed = True
         

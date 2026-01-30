@@ -28,7 +28,7 @@ from backend.app.services.squeeze_detector import SqueezeDetector
 DATA_DIR = PROJECT_ROOT / 'data' / 'forex_raw'
 SPREAD_COST = 0.00015
 TARGET_RR = 3.0  # Testing the user's requested 1:3 ratio
-SELECTED_PAIRS = ['EURUSD=X', 'GBPUSD=X', 'USDJPY=X', 'GC=F', 'BTC-USD']
+SELECTED_PAIRS = ['EUR_USD', 'GBP_USD', 'USD_JPY', 'XAU_USD', 'BTC_USD']
 
 def load_mtf_data(symbol: str) -> Dict[str, pd.DataFrame]:
     data = {}

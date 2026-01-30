@@ -18,7 +18,7 @@ from backend.app.services.indicators import TechnicalIndicators
 from backend.app.services.forex_detector import ForexDetector
 
 # Configuration
-TEST_SYMBOLS = ['NQ=F', 'GC=F']
+TEST_SYMBOLS = ['NAS100_USD', 'XAU_USD']
 POSITION_SIZE = 1000.0
 SPREAD_COST = 0.00015
 

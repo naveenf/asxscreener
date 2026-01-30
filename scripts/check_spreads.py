@@ -23,7 +23,7 @@ def check_spreads():
 
     # Assets to check (from your strategy map)
     assets = [
-        "WHEAT_USD", "CORN_USD", "SOYBN_USD", "BCO_USD", 
+        "WHEAT_USD", "BCO_USD", 
         "XAG_USD", "XAU_USD", "NAS100_USD", "AUD_USD", "USD_JPY", "GBP_USD"
     ]
 
