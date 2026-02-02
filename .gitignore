@@ -87,3 +87,4 @@ test_bap.py
 !supertrend.txt
 !Instant_trend.txt
 !plan.txt
+\n# Backtest and optimization results\ndata/backtest_results_*.csv\ndata/optimization_results_*.csv\nscripts/rr_analysis.py
