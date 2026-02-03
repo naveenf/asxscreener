@@ -20,6 +20,8 @@ from .sniper_detector import SniperDetector
 from .triple_trend_detector import TripleTrendDetector
 from .squeeze_detector import SqueezeDetector
 from .silver_sniper_detector import SilverSniperDetector
+from .commodity_sniper_detector import CommoditySniperDetector
+from .heiken_ashi_detector import HeikenAshiDetector
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -40,7 +42,9 @@ class ForexScreener:
             "TripleTrend": TripleTrendDetector(),
             "TrendFollowing": ForexDetector(),
             "Squeeze": SqueezeDetector(),
-            "SilverSniper": SilverSniperDetector()
+            "SilverSniper": SilverSniperDetector(),
+            "CommoditySniper": CommoditySniperDetector(),
+            "HeikenAshi": HeikenAshiDetector()
         }
         
         # Load Strategy Map

@@ -105,7 +105,7 @@ asx-screener/
     *   **Mitigation:** Entry must occur within a recent 5m FVG (Order Block confirmation).
     *   **Exit:** 3.0x Risk (Fixed) or BB Middle cross.
 *   **Best For:** Silver (XAG_USD).
-*   **Performance:** 55.6% win rate, +19.02% return, Sharpe 1.53.
+*   **Performance (2026-02-03):** 55.6% win rate, +19.02% return, Sharpe 1.53.
 
 ### 5. Commodity Sniper (Time-Filtered Precision)
 *   **Logic:** Adapted from Silver Sniper with commodity-specific optimizations including time filters to avoid high-volatility news hours.
@@ -118,11 +118,29 @@ asx-screener/
     *   **FVG:** Configurable - WHEAT requires it, BCO doesn't.
     *   **Exit:** 3.0x Risk or BB Middle cross.
 *   **Best For:** WHEAT_USD, BCO_USD (Oil).
-*   **Performance:**
+*   **Performance (2026-02-03):**
     *   WHEAT: 42.9% win rate, +8.09% return, Sharpe 0.73
     *   BCO: 44.4% win rate, +11.70% return, Sharpe 0.96
 
-### 6. Triple Trend (Structural Alignment)
+### 6. Heiken Ashi Gold (Hardened)
+*   **Logic:** Noise-filtered trend following using Heiken Ashi candles and Bollinger Bands.
+*   **Indicators:** HA Candles, HA BB (20, 2.0), SMA 200, 4H SMA 200, ADX (>22).
+*   **Rules:**
+    *   **Trend:** Price and HA Close must be above SMA 200 (for BUY) or below (for SELL).
+    *   **HTF:** 4H Trend must align with entry direction.
+    *   **Momentum:** ADX must be > 22.0.
+    *   **Trigger:** HA Close crosses BB Middle + HA Candle color matches direction.
+    *   **Freshness:** Trigger must have occurred within last 4 bars.
+    *   **Exit:** HA Close crosses back over HA BB Middle (Trend-trailing).
+*   **Best For:** XAU_USD (Gold).
+*   **Performance (2026-02-03 V2 Realistic):**
+    *   Win Rate: 40.6%
+    *   Average R: **0.629R**
+    *   Expectancy: **$73.05 per trade** (at $10k balance, 1% risk)
+    *   Net Profit: +46.75% (10-month backtest)
+    *   Max Drawdown: 6%
+
+### 7. Triple Trend (Structural Alignment)
 *   **Logic:** A robust trend-following system using three layers of confirmation.
 *   **Indicators:** Fibonacci Structure (50-bar), Pivot Point Supertrend (Factor 3.0), Ehlers Instantaneous Trend.
 *   **Rules:**
@@ -131,25 +149,16 @@ asx-screener/
     *   **Trigger:** Instant Trend Trigger must cross the Instant Trend line.
 *   **Best For:** Steady trending stocks and FX pairs.
 
-## Latest Test Results (2026-02-02)
+## Latest Test Results (2026-02-03)
 
-### Sniper Strategy Performance (5m Base, 15m HTF, 3.0 R:R)
-| Symbol | Strategy | Win Rate | Trades | Net P&L | Return | Max Streak | Sharpe |
+### Multi-Strategy Performance Summary
+| Symbol | Strategy | Timeframe | Win Rate | Trades | Net P&L | Return | Avg R |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **XAG_USD (Silver)** | SilverSniper | **55.6%** | 9 | **+$68.48** | **+19.02%** | 3 losses | **1.53** |
-| **WHEAT_USD** | CommoditySniper | **42.9%** | 7 | **+$29.12** | **+8.09%** | 2 losses | **0.73** |
-| **BCO_USD (Oil)** | CommoditySniper | **44.4%** | 9 | **+$42.13** | **+11.70%** | 3 losses | **0.96** |
-
-*Note: All tested with $360 starting balance, 2% risk per trade, 10x leverage, 0.06% spread cost.*
-
-### 1H Squeeze Strategy Performance (Multiplier 1.2)
-| Symbol | Best RR | Profit (Units) | Status |
-| :--- | :--- | :--- | :--- |
-| **XAU_USD (Gold)** | 3.0 | **+7.9** | **Top Performer** |
-| **XCU_USD (Copper)** | 2.0 | **+6.1** | **Strong Profit** |
-| **AUD_USD** | 1.5 | +2.2 | Consistent |
-| **USD_JPY** | 1.5 | -1.2 | Defensive |
-| **UK100_GBP** | 2.0 | **+2.1** | Profitable |
+| **XAU_USD** | HeikenAshi (V2) | 1H | **40.6%** | 64 | **+$4,675** | **+46.75%** | **0.629R** |
+| **XAG_USD** | SilverSniper | 5m | **55.6%** | 9 | **+$68.48** | **+19.02%** | **1.53R** |
+| **BCO_USD** | CommoditySniper | 5m | **44.4%** | 9 | **+$42.13** | **+11.70%** | **0.96R** |
+| **WHEAT_USD**| CommoditySniper | 5m | **42.9%** | 7 | **+$29.12** | **+8.09%** | **0.73R** |
+| **XCU_USD** | Squeeze | 1H | **35.0%** | 12 | **+$6.1 (units)**| - | **-** |
 
 
 ## CommoditySniper Optimization Case Study (2026-02-02)

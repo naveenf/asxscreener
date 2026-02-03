@@ -10,6 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import logging
 import time
+import pandas as pd
+
+# Global Pandas Configuration to silence FutureWarnings
+pd.set_option('future.no_silent_downcasting', True)
 
 from .api.routes import router
 from .config import settings

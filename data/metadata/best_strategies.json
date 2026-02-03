@@ -1,8 +1,14 @@
 {
   "WHEAT_USD": {
-    "strategy": "Sniper",
+    "strategy": "CommoditySniper",
     "timeframe": "5m",
-    "target_rr": 3.0
+    "target_rr": 3.0,
+    "params": {
+      "squeeze_threshold": 1.3,
+      "adx_min": 25,
+      "require_fvg": true,
+      "cooldown_hours": 0
+    }
   },
   "XAG_USD": {
     "strategy": "SilverSniper",
@@ -10,14 +16,20 @@
     "target_rr": 3.0
   },
   "XAU_USD": {
-    "strategy": "Squeeze",
+    "strategy": "HeikenAshi",
     "timeframe": "1h",
     "target_rr": 3.0
   },
   "BCO_USD": {
-    "strategy": "Sniper",
+    "strategy": "CommoditySniper",
     "timeframe": "5m",
-    "target_rr": 3.0
+    "target_rr": 3.0,
+    "params": {
+      "squeeze_threshold": 1.3,
+      "adx_min": 20,
+      "require_fvg": false,
+      "cooldown_hours": 4
+    }
   },
   "XCU_USD": {
     "strategy": "Squeeze",

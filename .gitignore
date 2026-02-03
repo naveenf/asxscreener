@@ -89,6 +89,6 @@ test_bap.py
 !plan.txt
 
 # Backtest and optimization results
-data/backtest_results_*.csv
-data/optimization_results_*.csv
-scripts/rr_analysis.py
+!data/backtest_results_*.csv
+!data/optimization_results_*.csv
+# scripts/rr_analysis.py  # Removed from ignore to keep analysis logic

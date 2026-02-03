@@ -489,6 +489,60 @@ class TechnicalIndicators:
         return momentum
 
     @staticmethod
+    def calculate_heiken_ashi(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate Heiken Ashi candles.
+        
+        HA_Close = (Open + High + Low + Close) / 4
+        HA_Open = (Prev_HA_Open + Prev_HA_Close) / 2
+        HA_High = max(High, HA_Open, HA_Close)
+        HA_Low = min(Low, HA_Open, HA_Close)
+        """
+        ha_df = df.copy()
+        
+        # HA Close
+        ha_df['HA_Close'] = (df['Open'] + df['High'] + df['Low'] + df['Close']) / 4
+        
+        # HA Open (requires iteration due to recursive nature)
+        ha_open = np.zeros(len(df))
+        ha_open[0] = (df['Open'].iloc[0] + df['Close'].iloc[0]) / 2
+        
+        for i in range(1, len(df)):
+            ha_open[i] = (ha_open[i-1] + ha_df['HA_Close'].iloc[i-1]) / 2
+            
+        ha_df['HA_Open'] = ha_open
+        
+        # HA High and HA Low
+        ha_df['HA_High'] = ha_df[['High', 'HA_Open', 'HA_Close']].max(axis=1)
+        ha_df['HA_Low'] = ha_df[['Low', 'HA_Open', 'HA_Close']].min(axis=1)
+        
+        return ha_df
+
+    @staticmethod
+    def calculate_ha_bollinger_bands(
+        ha_df: pd.DataFrame,
+        period: int = 20,
+        std_dev: float = 2.0
+    ) -> tuple[pd.Series, pd.Series, pd.Series]:
+        """
+        Calculate Bollinger Bands specifically using Heiken Ashi Close prices.
+        """
+        if 'HA_Close' not in ha_df.columns:
+            raise ValueError("DataFrame must contain 'HA_Close' column. Run calculate_heiken_ashi first.")
+
+        # Middle band is SMA of HA_Close
+        middle_band = ha_df['HA_Close'].rolling(window=period).mean()
+
+        # Standard deviation of HA_Close
+        rolling_std = ha_df['HA_Close'].rolling(window=period).std()
+
+        # Upper and lower bands
+        upper_band = middle_band + (rolling_std * std_dev)
+        lower_band = middle_band - (rolling_std * std_dev)
+
+        return middle_band, upper_band, lower_band
+
+    @staticmethod
     def resample_to_1h(df: pd.DataFrame) -> pd.DataFrame:
         """Resample 15m data to 1h for HTF filtering."""
         df_1h = df.resample('1h').agg({
