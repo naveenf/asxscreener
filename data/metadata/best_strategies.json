@@ -42,7 +42,7 @@
     "target_rr": 3.0
   },
   "JP225_USD": {
-    "strategy": "Squeeze",
+    "strategy": "HeikenAshi",
     "timeframe": "1h",
     "target_rr": 3.0
   },

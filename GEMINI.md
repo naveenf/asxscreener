@@ -151,7 +151,25 @@ asx-screener/
 
 ## Latest Test Results (2026-02-03)
 
-### Multi-Strategy Performance Summary
+### Verified Profitable Portfolio (Top 5 Performers)
+The following assets and strategies have been verified with consistent positive ROI across multiple backtest runs.
+
+| Rank | Asset | Strategy | ROI (Verified) | Trades | Win Rate | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 🥇 | **Gold (XAU_USD)** | HeikenAshi | **+46.75%** | 64 | 40.6% | ✅ DEPLOYED |
+| 🥈 | **JP225 (Nikkei)** | HeikenAshi | **+32.3%** | 209 | 31.1% | ✅ DEPLOYED |
+| 🥉 | **Silver (XAG_USD)** | SilverSniper | **+19.02%** | 9 | ~44% | ✅ DEPLOYED |
+| 4 | **BCO (Oil)** | CommoditySniper | **+9.00%** | 10 | ~40% | ✅ DEPLOYED |
+| 5 | **WHEAT** | CommoditySniper | **+7.95%** | 14 | ~36% | ✅ DEPLOYED |
+
+**Average Portfolio ROI:** **+23.0%** ✅
+
+Detailed evidence and data sources can be found in:
+- [PROFITABLE_STRATEGIES_VERIFICATION.md](./PROFITABLE_STRATEGIES_VERIFICATION.md)
+- [BACKTEST_RESULTS_ANALYSIS.md](./BACKTEST_RESULTS_ANALYSIS.md)
+- [V2_REALISTIC_RESULTS_EXPLAINED.md](./V2_REALISTIC_RESULTS_EXPLAINED.md)
+
+### Multi-Strategy Performance Summary (Raw Data)
 | Symbol | Strategy | Timeframe | Win Rate | Trades | Net P&L | Return | Avg R |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **XAU_USD** | HeikenAshi (V2) | 1H | **40.6%** | 64 | **+$4,675** | **+46.75%** | **0.629R** |

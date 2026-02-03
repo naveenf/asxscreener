@@ -14,12 +14,116 @@ from .indicators import TechnicalIndicators
 from .strategy_interface import ForexStrategy
 
 class SqueezeDetector(ForexStrategy):
+    # Asset-specific time filters (hours to avoid trading in UTC)
+    ASSET_TIME_FILTERS = {
+        'USD_JPY': [8, 20],      # Forex: Avoid major news hours
+        'AUD_USD': [0, 8, 20],   # Add Sydney open (00:00 UTC)
+        'USD_CHF': [8, 20],      # Most whipsaw-prone
+        'NAS100_USD': [8, 13, 14, 20],   # Indices: Market open volatility
+        'UK100_GBP': [8, 13, 14, 20],
+        'XCU_USD': [8, 13, 14, 20]
+    }
+
+    # Cooldown period in hours to prevent overtrading
+    COOLDOWN_HOURS = 2
+
+    # Asset-specific FVG requirements (Phase 2 Enhancement)
+    FVG_REQUIRED = {
+        'WHEAT_USD': True,    # Proven effective
+        'NAS100_USD': False,   # Indices benefit from FVG - Disabled to increase frequency
+        'UK100_GBP': False,
+        'BCO_USD': False,     # Optional
+        'XCU_USD': False,     # Test both
+        'USD_JPY': False,     # Forex - optional
+        'AUD_USD': False,
+        'USD_CHF': False
+    }
+
     def __init__(self, squeeze_threshold: float = 0.0020, adx_max: float = 25.0):
         self.squeeze_threshold = squeeze_threshold
         self.adx_max = adx_max
+        self.last_signal_time = {}  # Track last signal time per symbol
 
     def get_name(self) -> str:
         return "Squeeze"
+
+    def _is_valid_trade_time(self, timestamp, symbol: str) -> bool:
+        """
+        Filter out high-volatility news hours to prevent whipsaws.
+        Returns False if current hour should be avoided for this symbol.
+        """
+        excluded_hours = self.ASSET_TIME_FILTERS.get(symbol, [])
+        if not excluded_hours:
+            return True  # No time filter for this symbol
+
+        hour = timestamp.hour
+        return hour not in excluded_hours
+
+    def _check_cooldown(self, symbol: str, current_time) -> bool:
+        """
+        Prevent trades within cooldown period to reduce overtrading.
+        Returns False if we're still in cooldown period.
+        """
+        if symbol not in self.last_signal_time:
+            return True  # No previous signal, cooldown doesn't apply
+
+        time_diff = current_time - self.last_signal_time[symbol]
+        hours_since = time_diff.total_seconds() / 3600
+
+        return hours_since >= self.COOLDOWN_HOURS
+
+    def _calculate_dynamic_rr(self, df: pd.DataFrame, symbol: str, default_rr: float) -> float:
+        """
+        Calculate dynamic Risk:Reward ratio based on volatility (Phase 2 Enhancement).
+
+        Higher volatility assets can achieve bigger moves, so we use higher R:R.
+        Lower volatility assets need more conservative targets.
+
+        Returns:
+            float: Adjusted R:R ratio (1.5 to 2.5)
+        """
+        latest = df.iloc[-1]
+
+        # Use ATR if available, otherwise use default
+        if 'ATR' not in df.columns or pd.isna(latest['ATR']):
+            return default_rr
+
+        atr = float(latest['ATR'])
+        price = float(latest['Close'])
+
+        if price == 0:
+            return default_rr
+
+        # Calculate volatility ratio (ATR as percentage of price)
+        volatility_ratio = atr / price
+
+        # Asset-specific baseline adjustments
+        # Forex: Lower baseline (1.5-2.0)
+        # Indices: Medium baseline (2.0-2.5)
+        # Commodities: Higher baseline (2.5-3.0)
+        forex_pairs = ['USD_JPY', 'AUD_USD', 'USD_CHF', 'EUR_USD', 'GBP_USD']
+        indices = ['NAS100_USD', 'JP225_USD', 'UK100_GBP', 'XCU_USD']
+
+        if symbol in forex_pairs:
+            # Forex: 1.5-2.0 R:R
+            if volatility_ratio > 0.015:  # 1.5%+ daily range
+                return 2.0
+            else:
+                return 1.5
+        elif symbol in indices:
+            # Indices: 2.0-2.5 R:R
+            if volatility_ratio > 0.02:  # 2%+ daily range
+                return 2.5
+            else:
+                return 2.0
+        else:
+            # Commodities and others: 2.5-3.0 R:R
+            if volatility_ratio > 0.02:  # 2%+ daily range
+                return 3.0
+            elif volatility_ratio > 0.01:  # 1-2% daily range
+                return 2.5
+            else:
+                return 2.0
 
     def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0) -> Optional[Dict]:
         df = data.get('base')
@@ -33,7 +137,15 @@ class SqueezeDetector(ForexStrategy):
         
         latest = df.iloc[-1]
         prev = df.iloc[-2]
-        
+
+        # Time filter check (Phase 1 Optimization)
+        if not self._is_valid_trade_time(latest.name, symbol):
+            return None
+
+        # Cooldown check (Phase 1 Optimization)
+        if not self._check_cooldown(symbol, latest.name):
+            return None
+
         # 1. Detect Squeeze Condition (TTM Squeeze Style)
         # Squeeze = BB inside Keltner Channel
         df['is_sqz'] = (df['BB_Upper'] < df['KC_Upper']) & (df['BB_Lower'] > df['KC_Lower'])
@@ -64,8 +176,8 @@ class SqueezeDetector(ForexStrategy):
         if df_htf is not None and len(df_htf) > 20:
             df_htf = TechnicalIndicators.add_all_indicators(df_htf)
             latest_htf = df_htf.iloc[-1]
-            # HTF Trend alignment: ADX > 20 and DI alignment
-            if latest_htf['ADX'] < 20:
+            # HTF Trend alignment: ADX > 23 (relaxed from 25)
+            if latest_htf['ADX'] < 23:
                 htf_confirmed = False
             elif breakout_up and latest_htf['DIPlus'] < latest_htf['DIMinus']:
                 htf_confirmed = False
@@ -104,14 +216,40 @@ class SqueezeDetector(ForexStrategy):
         
         if not vol_confirmed: return None
 
+        # 6. Fair Value Gap (FVG) Confirmation (Phase 2 Enhancement)
+        # Only required for specific assets (indices, some commodities)
+        if self.FVG_REQUIRED.get(symbol, False):
+            # Check if current candle has or is near an FVG
+            if 'Bull_FVG' not in df.columns or 'Bear_FVG' not in df.columns:
+                # FVG columns should exist from add_all_indicators, but safeguard
+                pass
+            else:
+                fvg_confirmed = False
+                if breakout_up:
+                    # For bullish breakout, check for bullish FVG
+                    # Check current candle or previous 2 candles
+                    fvg_confirmed = df['Bull_FVG'].iloc[-3:].any()
+                elif breakout_down:
+                    # For bearish breakout, check for bearish FVG
+                    fvg_confirmed = df['Bear_FVG'].iloc[-3:].any()
+
+                if not fvg_confirmed:
+                    return None
+
         signal = "BUY" if breakout_up else "SELL"
         price = float(latest['Close'])
         stop_loss = float(latest['BB_Middle'])
-        
-        # Calculate Take Profit based on R/R
+
+        # Calculate dynamic R:R based on volatility (Phase 2 Enhancement)
+        dynamic_rr = self._calculate_dynamic_rr(df, symbol, target_rr)
+
+        # Calculate Take Profit based on dynamic R/R
         risk = abs(price - stop_loss)
-        take_profit = price + (risk * target_rr if signal == "BUY" else -risk * target_rr)
-        
+        take_profit = price + (risk * dynamic_rr if signal == "BUY" else -risk * dynamic_rr)
+
+        # Update last signal time for cooldown tracking
+        self.last_signal_time[symbol] = latest.name
+
         return {
             "signal": signal,
             "score": 80.0,
