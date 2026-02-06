@@ -13,7 +13,7 @@ class ForexStrategy(ABC):
         pass
 
     @abstractmethod
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0, params: Optional[Dict] = None) -> Optional[Dict]:
         """
         Analyze the given symbol using multi-timeframe data.
 
@@ -24,6 +24,7 @@ class ForexStrategy(ABC):
             symbol: The symbol being analyzed (e.g., 'EUR_USD').
             target_rr: Target Reward-to-Risk ratio.
             spread: Current market spread (Ask - Bid) to account for in SL/TP.
+            params: Optional dictionary of strategy-specific parameters.
 
         Returns:
             Dictionary with signal details if a signal is found, else None.

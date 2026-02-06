@@ -36,7 +36,7 @@ class SniperDetector(ForexStrategy):
         if symbol in self.caskets.get('steady', []): return 'Steady'
         return 'Cyclical'
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 2.0, spread: float = 0.0, params: Optional[Dict] = None) -> Optional[Dict]:
         df_15m = data.get('base')
         df_1h = data.get('htf')
         

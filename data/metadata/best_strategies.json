@@ -1,4 +1,20 @@
 {
+  "XAU_USD": {
+    "strategy": "HeikenAshi",
+    "timeframe": "1h",
+    "target_rr": 5.0
+  },
+  "BCO_USD": {
+    "strategy": "CommoditySniper",
+    "timeframe": "5m",
+    "target_rr": 3.0,
+    "params": {
+      "squeeze_threshold": 1.3,
+      "adx_min": 20,
+      "require_fvg": false,
+      "cooldown_hours": 4
+    }
+  },
   "WHEAT_USD": {
     "strategy": "CommoditySniper",
     "timeframe": "5m",
@@ -15,55 +31,30 @@
     "timeframe": "5m",
     "target_rr": 3.0
   },
-  "XAU_USD": {
-    "strategy": "HeikenAshi",
-    "timeframe": "1h",
-    "target_rr": 3.0
-  },
-  "BCO_USD": {
-    "strategy": "CommoditySniper",
-    "timeframe": "5m",
-    "target_rr": 3.0,
-    "params": {
-      "squeeze_threshold": 1.3,
-      "adx_min": 20,
-      "require_fvg": false,
-      "cooldown_hours": 4
-    }
-  },
-  "XCU_USD": {
-    "strategy": "Squeeze",
-    "timeframe": "1h",
-    "target_rr": 3.0
-  },
-  "NAS100_USD": {
-    "strategy": "Squeeze",
-    "timeframe": "1h",
-    "target_rr": 3.0
-  },
   "JP225_USD": {
     "strategy": "HeikenAshi",
     "timeframe": "1h",
-    "target_rr": 3.0
+    "target_rr": 5.0
   },
   "UK100_GBP": {
     "strategy": "Squeeze",
     "timeframe": "1h",
-    "target_rr": 3.0
+    "target_rr": 2.0
   },
-  "USD_JPY": {
+  "XCU_USD": {
     "strategy": "Squeeze",
     "timeframe": "1h",
     "target_rr": 1.5
   },
   "AUD_USD": {
-    "strategy": "Squeeze",
-    "timeframe": "1h",
-    "target_rr": 1.5
-  },
-  "USD_CHF": {
-    "strategy": "Squeeze",
-    "timeframe": "1h",
-    "target_rr": 1.5
+    "strategy": "EnhancedSniper",
+    "timeframe": "15m",
+    "target_rr": 2.5,
+    "params": {
+      "squeeze_threshold": 1.3,
+      "use_squeeze": false,
+      "cooldown_hours": 0,
+      "time_blocks": [0, 9, 14, 15]
+    }
   }
 }

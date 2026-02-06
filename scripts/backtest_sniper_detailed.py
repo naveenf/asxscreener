@@ -460,7 +460,8 @@ def main():
     test_cases = [
         ('XAG_USD', 'SilverSniper', 3.0),
         ('WHEAT_USD', 'CommoditySniper', 3.0),  # Using optimized CommoditySniper
-        ('BCO_USD', 'CommoditySniper', 3.0)     # Using optimized CommoditySniper
+        ('BCO_USD', 'CommoditySniper', 3.0),    # Using optimized CommoditySniper
+        ('AUD_USD', 'Sniper', 1.5)              # Forex major using Sniper strategy
     ]
 
     results = []

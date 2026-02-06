@@ -22,6 +22,7 @@ from .squeeze_detector import SqueezeDetector
 from .silver_sniper_detector import SilverSniperDetector
 from .commodity_sniper_detector import CommoditySniperDetector
 from .heiken_ashi_detector import HeikenAshiDetector
+from .enhanced_sniper_detector import EnhancedSniperDetector
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -39,6 +40,7 @@ class ForexScreener:
         # Initialize Strategies
         self.strategies: Dict[str, ForexStrategy] = {
             "Sniper": SniperDetector(),
+            "EnhancedSniper": EnhancedSniperDetector(),
             "TripleTrend": TripleTrendDetector(),
             "TrendFollowing": ForexDetector(),
             "Squeeze": SqueezeDetector(),
@@ -147,18 +149,36 @@ class ForexScreener:
 
         total_analyzed = 0
 
-        print(f"\n🚀 Starting Dynamic Forex Screener ({len(pairs)} pairs, mode={mode})")
+        # ACTIVE DEPLOYMENT FILTER
+        # Only these assets are approved for live trading.
+        # Others are commented out/skipped until further optimization.
+        DEPLOYED_PAIRS = [
+            "XAU_USD",   # Gold
+            "XAG_USD",   # Silver
+            "BCO_USD",   # Brent Crude Oil
+            "WHEAT_USD", # Wheat
+            "JP225_USD", # Nikkei 225
+            "AUD_USD"    # Aussie Dollar
+        ]
+
+        print(f"\n🚀 Starting Dynamic Forex Screener ({len(pairs)} pairs loaded, Active: {len(DEPLOYED_PAIRS)}, mode={mode})")
         print(f"Strategy Map Loaded: {len(self.strategy_map)} entries")
 
         for pair in pairs:
             symbol = pair['symbol']
+
+            # DEPLOYMENT CHECK: Skip if not in approved list
+            if symbol not in DEPLOYED_PAIRS:
+                # print(f"Skipping {symbol} - Not in active deployment list.")
+                continue
             
             # Determine Strategy and Timeframe from Config
             config = self.strategy_map.get(symbol, {"strategy": "TrendFollowing", "timeframe": "15m", "target_rr": 2.0})
             strategy_name = config.get("strategy", "TrendFollowing")
             
             # FILTER: If sniper mode, skip non-sniper assets
-            if mode == 'sniper' and strategy_name not in ['Sniper', 'SilverSniper']:
+            # Include SilverSniper and CommoditySniper (used by BCO/WHEAT)
+            if mode == 'sniper' and strategy_name not in ['Sniper', 'SilverSniper', 'CommoditySniper', 'EnhancedSniper']:
                 continue
 
             # Load Data
@@ -168,6 +188,7 @@ class ForexScreener:
 
             base_tf = config.get("timeframe", "15m")
             target_rr = config.get("target_rr", 2.0)
+            params_dict = config.get("params", {})
             
             # Map timeframes for the detector
             # 5m  -> base=5m,  htf=15m
@@ -180,9 +201,11 @@ class ForexScreener:
             elif base_tf == "5m":
                 data['base'] = raw_data.get('5m')
                 data['htf'] = raw_data.get('15m')
-            else:
+                data['htf2'] = raw_data.get('1h') # Added for 3-TF sniper
+            else: # 15m
                 data['base'] = raw_data.get('15m')
                 data['htf'] = raw_data.get('1h')
+                data['htf2'] = raw_data.get('4h') # Added for 3-TF sniper
 
             if data['base'] is None:
                 continue
@@ -202,7 +225,7 @@ class ForexScreener:
                         print(f"   Debug: {symbol} Spread = {spread:.5f}")
 
                 # Analyze
-                result = strategy.analyze(data, symbol, target_rr=target_rr, spread=spread)
+                result = strategy.analyze(data, symbol, target_rr=target_rr, spread=spread, params=params_dict)
                 total_analyzed += 1
 
                 # Update existing signal or add new one

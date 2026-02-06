@@ -20,7 +20,7 @@ class SilverSniperDetector(ForexStrategy):
     def get_name(self) -> str:
         return "SilverSniper"
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 3.0, spread: float = 0.0) -> Optional[Dict]:
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 3.0, spread: float = 0.0, params: Optional[Dict] = None) -> Optional[Dict]:
         df_5m = data.get('base')
         df_15m = data.get('htf')
 
