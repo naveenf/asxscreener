@@ -75,6 +75,12 @@ class EnhancedSniperDetector(ForexStrategy):
         if df_1h is None or len(df_1h) < 60:
             return None
             
+        # Ensure indicators are added
+        if 'ADX' not in df_15m.columns:
+            df_15m = TechnicalIndicators.add_all_indicators(df_15m)
+        if 'ADX' not in df_1h.columns:
+            df_1h = TechnicalIndicators.add_all_indicators(df_1h)
+
         latest = df_15m.iloc[-1]
         prev = df_15m.iloc[-2]
         latest_1h = df_1h.iloc[-1]
