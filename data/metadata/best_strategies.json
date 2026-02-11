@@ -27,9 +27,24 @@
     }
   },
   "XAG_USD": {
-    "strategy": "SilverSniper",
-    "timeframe": "5m",
-    "target_rr": 3.0
+    "strategies": [
+      {
+        "strategy": "DailyORB",
+        "timeframe": "15m",
+        "target_rr": 2.5,
+        "params": {
+          "orb_hours": 1.5,
+          "htf": "4h",
+          "adx_min_15m": 18,
+          "adx_min_htf": 20
+        }
+      },
+      {
+        "strategy": "SilverSniper",
+        "timeframe": "5m",
+        "target_rr": 3.0
+      }
+    ]
   },
   "JP225_USD": {
     "strategy": "HeikenAshi",

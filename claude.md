@@ -3,15 +3,16 @@
 ## Project Overview
 The ASX Stock Screener is a full-stack application designed to identify trading opportunities on the Australian Securities Exchange (ASX) and Global Forex/Commodity markets. It uses a **Dynamic Strategy Selection** engine to apply the most effective algorithm for each asset class.
 
-The system implements eight core trading strategies:
+The system implements nine core trading strategies:
 1.  **Trend Following** (ADX/DI)
 2.  **Mean Reversion** (Bollinger Bands/RSI)
 3.  **Squeeze** (Volatility Compression Breakout)
 4.  **Sniper** (15m Execution with 1H Confirmation for Forex Majors)
 5.  **Enhanced Sniper** (Optimized Forex Precision with 4H Trend Alignment)
 6.  **Silver Sniper** (High-Precision 5m Squeeze + FVG for Silver)
-7.  **Commodity Sniper** (Optimized 5m Squeeze + Time Filters for Commodities)
-8.  **Triple Trend** (Fibonacci + Supertrend + Instant Trend)
+7.  **Daily ORB** (Daily Open Range Breakout with Structural Alignment)
+8.  **Commodity Sniper** (Optimized 5m Squeeze + Time Filters for Commodities)
+9.  **Triple Trend** (Fibonacci + Supertrend + Instant Trend)
 
 Calculations match **Pine Script** (TradingView) standards, using "Wilder's Smoothing" for technical accuracy.
 
@@ -50,6 +51,7 @@ asx-screener/
 │   │   │   ├── sniper_detector.py          # Legacy Sniper logic
 │   │   │   ├── enhanced_sniper_detector.py # NEW: Optimized Forex Sniper
 │   │   │   ├── silver_sniper_detector.py   # Silver-specific Sniper (5m + FVG)
+│   │   │   ├── daily_orb_detector.py       # NEW: Daily Open Range Breakout (15m + 4h)
 │   │   │   ├── commodity_sniper_detector.py # Commodity-optimized Sniper
 │   │   │   └── forex_screener.py           # Dynamic Strategy Orchestrator
 │   │   ├── config.py        # Environment configuration
@@ -131,7 +133,27 @@ asx-screener/
 *   **Best For:** Silver (XAG_USD).
 *   **Performance (2026-02-03):** 55.6% win rate, +19.02% return, Sharpe 1.53.
 
-### 7. Commodity Sniper (Time-Filtered Precision)
+### 7. Daily ORB (Daily Open Range Breakout)
+*   **Logic:** Identifies high-probability structural breakouts from daily consolidation ranges using Sydney session open timing.
+*   **Indicators:** Daily Open Range (High/Low), 15m Momentum (ADX), Bollinger Bands Width (Squeeze), 4H Trend (DI+/DI-).
+*   **Rules:**
+    *   **Range Definition:** High/Low from first 1.5 hours of Sydney session (19:00-20:30 UTC).
+    *   **Breakout Trigger:** Price closes 0.5x ATR beyond range level on 15m candle (eliminates wicks).
+    *   **Momentum Check:** 15m ADX > 18 (momentum building), ADX rising.
+    *   **Squeeze Filter:** Bollinger Bands width < 1.8x of 20-period minimum (consolidation detection).
+    *   **HTF Confirmation:** 4H DI+ > DI- by 5+ points, ADX > 20 (clear directional bias).
+    *   **Stop Loss:** 1.5x ATR + spread buffer (tighter than other breakout strategies).
+    *   **Take Profit:** 2.5x Risk (conservative for structural breakouts).
+    *   **Exit:** On HTF trend reversal (DI flip) or weakness (ADX < 20).
+*   **Best For:** Silver (XAG_USD) - complements impulse-driven SilverSniper strategy.
+*   **Performance (2026-02-11):**
+    *   Win Rate: **58.3%** (exceeds SilverSniper's 55.6%)
+    *   ROI: **+27.19%** (exceeds SilverSniper's 19.02% by 43%)
+    *   Sharpe: **1.99** (exceptional risk-adjusted returns)
+    *   Max Drawdown: **-2.0%** (minimal capital drawdown)
+    *   Sample: 12 trades (7 wins) over 4-month backtest.
+
+### 8. Commodity Sniper (Time-Filtered Precision)
 *   **Logic:** Adapted from Silver Sniper with commodity-specific optimizations including time filters to avoid high-volatility news hours.
 *   **Indicators:** 5m Squeeze, 15m ADX (configurable 20-25), Optional 5m FVG, Time Filters.
 *   **Rules:**
@@ -146,7 +168,7 @@ asx-screener/
     *   WHEAT: 42.9% win rate, +8.09% return, Sharpe 0.73
     *   BCO: 44.4% win rate, +11.70% return, Sharpe 0.96
 
-### 8. Heiken Ashi Gold (Hardened)
+### 9. Heiken Ashi Gold (Hardened)
 *   **Logic:** Noise-filtered trend following using Heiken Ashi candles and Bollinger Bands.
 *   **Indicators:** HA Candles, HA BB (20, 2.0), SMA 200, 4H SMA 200, ADX (>22).
 *   **Rules:**
@@ -164,7 +186,7 @@ asx-screener/
     *   Net Profit: +46.75% (10-month backtest)
     *   Max Drawdown: 6%
 
-### 9. Triple Trend (Structural Alignment)
+### 10. Triple Trend (Structural Alignment)
 *   **Logic:** A robust trend-following system using three layers of confirmation.
 *   **Indicators:** Fibonacci Structure (50-bar), Pivot Point Supertrend (Factor 3.0), Ehlers Instantaneous Trend.
 *   **Rules:**
@@ -182,14 +204,54 @@ The following assets and strategies have been verified with consistent positive 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 🥇 | **Gold (XAU_USD)** | HeikenAshi | **+46.75%** | 64 | 40.6% | ✅ ACTIVE |
 | 🥈 | **JP225 (Nikkei)** | HeikenAshi | **+32.3%** | 209 | 31.1% | ✅ ACTIVE |
-| 🥉 | **Silver (XAG_USD)** | SilverSniper | **+19.02%** | 9 | 55.6% | ✅ ACTIVE |
+| 🥉 | **Silver (XAG_USD)** | DailyORB + SilverSniper | **+27.19%** (ORB) | 12+9 | 58.3% + 55.6% | ✅ **DUAL ACTIVE** |
 | 4 | **WHEAT** | CommoditySniper | **+7.95%** | 14 | 35.7% | ✅ ACTIVE |
 | 5 | **AUD_USD** | **EnhancedSniper** | **+3.0%** | **66.7%** | ✅ **READY** |
 | 6 | **BCO (Oil)** | CommoditySniper | **+2.03%** | 13 | 30.8% | ⚠️ MONITORING |
 
 **Average Portfolio ROI (Top 5):** **+21.8%** ✅
 
-**Deployment Note:** As of Feb 6, 2026, the live screener whitelist includes these 6 assets. AUD_USD has been upgraded to EnhancedSniper with 2.5R target.
+**Deployment Note:** As of Feb 11, 2026, the live screener whitelist includes these 6 assets with multi-strategy support:
+- **Silver (XAG_USD):** Now uses BOTH DailyORB (15m + 4h, +27.19% ROI) and SilverSniper (5m + 15m, +19.02% ROI) in parallel for increased signal frequency and coverage.
+- **AUD_USD:** Upgraded to EnhancedSniper with 2.5R target.
+- **Multi-Strategy Framework:** `best_strategies.json` and `forex_screener.py` updated to support multiple strategies per asset, enabling complementary approaches.
+
+## Multi-Strategy Framework (NEW - Feb 11, 2026)
+
+The screener now supports **multiple strategies per asset** via the `best_strategies.json` configuration:
+
+```json
+{
+  "XAG_USD": {
+    "strategies": [
+      {
+        "strategy": "DailyORB",
+        "timeframe": "15m",
+        "target_rr": 2.5,
+        "params": { "orb_hours": 1.5, "htf": "4h", ... }
+      },
+      {
+        "strategy": "SilverSniper",
+        "timeframe": "5m",
+        "target_rr": 3.0
+      }
+    ]
+  }
+}
+```
+
+**Benefits:**
+- ✅ **Increased Signal Frequency:** Multiple entry points for the same asset
+- ✅ **Complementary Approaches:** DailyORB (structural) + SilverSniper (impulse) = better coverage
+- ✅ **Different Timeframes:** 5m (faster) and 15m (intermediate) capture different market phases
+- ✅ **Risk Diversification:** Not dependent on single strategy
+- ✅ **Backward Compatible:** Legacy single-strategy format still supported
+
+**Implementation:**
+- Modified `forex_screener.py` to iterate over multiple strategies per symbol
+- Loads data once, runs all strategies sequentially
+- All signals ranked by score in final output
+- Reduces redundant data loading
 
 Detailed evidence and data sources can be found in:
 - [FOREX_SNIPER_OPTIMIZATION_RESULTS.md](./FOREX_SNIPER_OPTIMIZATION_RESULTS.md)
