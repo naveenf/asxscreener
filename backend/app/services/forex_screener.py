@@ -24,6 +24,7 @@ from .commodity_sniper_detector import CommoditySniperDetector
 from .heiken_ashi_detector import HeikenAshiDetector
 from .enhanced_sniper_detector import EnhancedSniperDetector
 from .daily_orb_detector import DailyORBDetector
+from .new_breakout_detector import NewBreakoutDetector
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -48,7 +49,8 @@ class ForexScreener:
             "SilverSniper": SilverSniperDetector(),
             "DailyORB": DailyORBDetector(),
             "CommoditySniper": CommoditySniperDetector(),
-            "HeikenAshi": HeikenAshiDetector()
+            "HeikenAshi": HeikenAshiDetector(),
+            "NewBreakout": NewBreakoutDetector()
         }
         
         # Load Strategy Map
