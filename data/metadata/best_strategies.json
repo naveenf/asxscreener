@@ -31,7 +31,7 @@
       {
         "strategy": "DailyORB",
         "timeframe": "15m",
-        "target_rr": 2.5,
+        "target_rr": 2.0,
         "params": {
           "orb_hours": 1.5,
           "htf": "4h",
@@ -70,6 +70,28 @@
       "use_squeeze": false,
       "cooldown_hours": 0,
       "time_blocks": [0, 9, 14, 15]
+    }
+  },
+  "USD_CHF": {
+    "strategy": "NewBreakout",
+    "timeframe": "15m",
+    "target_rr": 1.5,
+    "params": {
+      "adx_threshold": 25.0,
+      "ema_period": 34,
+      "sr_lookback_candles": 40,
+      "atr_multiplier": 2.0
+    }
+  },
+  "NAS100_USD": {
+    "strategy": "NewBreakout",
+    "timeframe": "15m",
+    "target_rr": 1.5,
+    "params": {
+      "adx_threshold": 25.0,
+      "ema_period": 34,
+      "sr_lookback_candles": 40,
+      "atr_multiplier": 2.0
     }
   }
 }

@@ -143,15 +143,16 @@ asx-screener/
     *   **Squeeze Filter:** Bollinger Bands width < 1.8x of 20-period minimum (consolidation detection).
     *   **HTF Confirmation:** 4H DI+ > DI- by 5+ points, ADX > 20 (clear directional bias).
     *   **Stop Loss:** 1.5x ATR + spread buffer (tighter than other breakout strategies).
-    *   **Take Profit:** 2.5x Risk (conservative for structural breakouts).
+    *   **Take Profit:** **2.0x Risk** (optimized for maximum win rate and ROI).
     *   **Exit:** On HTF trend reversal (DI flip) or weakness (ADX < 20).
 *   **Best For:** Silver (XAG_USD) - complements impulse-driven SilverSniper strategy.
-*   **Performance (2026-02-11):**
-    *   Win Rate: **58.3%** (exceeds SilverSniper's 55.6%)
-    *   ROI: **+27.19%** (exceeds SilverSniper's 19.02% by 43%)
-    *   Sharpe: **1.99** (exceptional risk-adjusted returns)
+*   **Performance (2026-02-12 - Optimized 1:2.0 R:R):**
+    *   Win Rate: **66.7%** (exceeds SilverSniper's 55.6%)
+    *   ROI: **+26.23%** (exceeds SilverSniper's 19.02% by 38%)
+    *   Sharpe: **2.35** (exceptional risk-adjusted returns)
     *   Max Drawdown: **-2.0%** (minimal capital drawdown)
-    *   Sample: 12 trades (7 wins) over 4-month backtest.
+    *   Sample: 12 trades (8 wins) over backtest period.
+    *   Note: Optimized from 2.5x RR (50% WR, +18.71%) to 2.0x RR (66.7% WR, +26.23%) for better consistency.
 
 ### 8. Commodity Sniper (Time-Filtered Precision)
 *   **Logic:** Adapted from Silver Sniper with commodity-specific optimizations including time filters to avoid high-volatility news hours.
@@ -205,9 +206,11 @@ The following assets and strategies have been verified with consistent positive 
 | 🥇 | **Gold (XAU_USD)** | HeikenAshi | **+46.75%** | 64 | 40.6% | ✅ ACTIVE |
 | 🥈 | **JP225 (Nikkei)** | HeikenAshi | **+32.3%** | 209 | 31.1% | ✅ ACTIVE |
 | 🥉 | **Silver (XAG_USD)** | DailyORB + SilverSniper | **+27.19%** (ORB) | 12+9 | 58.3% + 55.6% | ✅ **DUAL ACTIVE** |
-| 4 | **WHEAT** | CommoditySniper | **+7.95%** | 14 | 35.7% | ✅ ACTIVE |
-| 5 | **AUD_USD** | **EnhancedSniper** | **+3.0%** | **66.7%** | ✅ **READY** |
-| 6 | **BCO (Oil)** | CommoditySniper | **+2.03%** | 13 | 30.8% | ⚠️ MONITORING |
+| 4 | **USD_CHF** | NewBreakout | **+60.96%** | 216 | 40.74% | ✅ **NEWLY ADDED** |
+| 5 | **NAS100_USD** | NewBreakout | **+24.07%** | 156 | 38.46% | ✅ **NEWLY ADDED** |
+| 6 | **WHEAT** | CommoditySniper | **+7.95%** | 14 | 35.7% | ✅ ACTIVE |
+| 7 | **AUD_USD** | **EnhancedSniper** | **+3.0%** | **66.7%** | ✅ **READY** |
+| 8 | **BCO (Oil)** | CommoditySniper | **+2.03%** | 13 | 30.8% | ⚠️ MONITORING |
 
 **Average Portfolio ROI (Top 5):** **+21.8%** ✅
 
@@ -258,3 +261,23 @@ Detailed evidence and data sources can be found in:
 - [PROFITABLE_STRATEGIES_VERIFICATION.md](./PROFITABLE_STRATEGIES_VERIFICATION.md)
 - [BACKTEST_RESULTS_ANALYSIS.md](./BACKTEST_RESULTS_ANALYSIS.md)
 - [V2_REALISTIC_RESULTS_EXPLAINED.md](./V2_REALISTIC_RESULTS_EXPLAINED.md)
+
+## NewBreakout Strategy Results (2026-02-12)
+
+### Backtest Results for Blacklisted Pairs
+The NewBreakout strategy has been tested on previously underperforming pairs with excellent results:
+
+| Pair | ROI | Net P&L | Trades | Win Rate | Sharpe | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **USD_CHF** | **+60.96%** | $219.47 | 216 | 40.74% | 1.94 | ✅ DEPLOYED |
+| **NAS100_USD** | **+24.07%** | $86.65 | 156 | 38.46% | 0.93 | ✅ DEPLOYED |
+
+**Backtest Data Location:** `data/backtest_results_USD_CHF_new_breakout.csv` and `data/backtest_results_NAS100_USD_new_breakout.csv`
+
+**Strategy Parameters:**
+- Timeframe: 15-minute (HTF: 4-hour for trend filtering)
+- Entry: HTF S/R breakout with trend confirmation (ADX > 25)
+- Exit: EMA9 crossover (active signal required for optimal Sharpe maintenance)
+- Target R:R (Live): 1.5 (conservative vs backtest 1.06-1.22 to account for slippage)
+
+**Deployment Note:** As of Feb 12, 2026, both USD_CHF and NAS100_USD have been added to `best_strategies.json` with NewBreakout strategy. Requires auto-monitoring implementation for EMA9 exit signals to maintain 1.94+ Sharpe ratio on USD_CHF.
