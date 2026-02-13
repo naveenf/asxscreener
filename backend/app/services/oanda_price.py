@@ -214,3 +214,70 @@ class OandaPriceService:
             
         return r.response
 
+    @classmethod
+    @retry_oanda(retries=2, delay=1)  # Lower retry count for closures
+    def close_trade(cls, trade_id: str, units: str = "ALL") -> Optional[Dict[str, Any]]:
+        """
+        Close an open trade by trade ID.
+
+        Args:
+            trade_id: Oanda trade ID from orderFillTransaction
+            units: "ALL" to close fully, or specific unit count for partial
+
+        Returns:
+            Response dict with orderFillTransaction or orderRejectTransaction
+            None if API unavailable or network error
+        """
+        api = cls.get_api()
+        account_id = settings.OANDA_ACCOUNT_ID
+        if not api or not account_id:
+            logger.error("OANDA API or Account ID not available for trade close")
+            return None
+
+        data = {"units": units}
+
+        logger.info(f"OANDA: Closing trade {trade_id} ({units} units)")
+        r = trades.TradeClose(accountID=account_id, tradeID=trade_id, data=data)
+
+        try:
+            api.request(r)
+
+            # Check for rejection
+            if 'orderRejectTransaction' in r.response:
+                reason = r.response['orderRejectTransaction'].get('rejectReason', 'Unknown')
+                logger.error(f"OANDA Trade Close REJECTED for {trade_id}: {reason}")
+                return r.response
+
+            logger.info(f"OANDA: Trade {trade_id} closed successfully")
+            return r.response
+
+        except Exception as e:
+            # Handle specific HTTP errors
+            if "404" in str(e):
+                logger.warning(f"Trade {trade_id} not found (already closed or invalid ID)")
+            elif "401" in str(e):
+                logger.error("OANDA authentication failed during trade close")
+            else:
+                logger.error(f"Unexpected error closing trade {trade_id}: {e}")
+            return None
+
+    @classmethod
+    @retry_oanda(retries=2, delay=1)
+    def get_trade_details(cls, trade_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch details of a specific trade by ID.
+        Used to verify closure and get actual close price.
+        """
+        api = cls.get_api()
+        account_id = settings.OANDA_ACCOUNT_ID
+        if not api or not account_id:
+            return None
+
+        try:
+            r = trades.TradeDetails(accountID=account_id, tradeID=trade_id)
+            api.request(r)
+            return r.response.get('trade')
+        except Exception as e:
+            logger.error(f"Error fetching trade details for {trade_id}: {e}")
+            return None
+

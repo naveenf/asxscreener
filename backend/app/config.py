@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     OANDA_ACCOUNT_ID: str = ""
     OANDA_ENV: str = "live"
 
+    # Trade Exit Management
+    AUTO_CLOSE_ENABLED: bool = True      # Master switch for auto-closing
+    AUTO_CLOSE_DRY_RUN: bool = False     # Log only, don't execute (for testing)
+    CLOSE_VERIFICATION_DELAY_SECONDS: int = 3  # Wait before verifying closure
+    MAX_CLOSE_RETRIES: int = 2           # Retry attempts for API failures
+
     # Auto-trading settings
     AUTHORIZED_AUTO_TRADER_EMAIL: str = "naveenf.opt@gmail.com"
     MAX_CONCURRENT_TRADES: int = 3
