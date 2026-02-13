@@ -298,26 +298,19 @@ def run_screener():
         print_error(f"Stock screener failed: {e}")
 
     # --- FOREX SCREENER ---
-    print_info("Running forex/commodity screener...")
+    print_info("Running forex/commodity screener (with auto-trade check)...")
     try:
-        # Run the forex screener manually using a one-liner that calls the orchestrator
-        config_path = PROJECT_ROOT / 'data' / 'metadata' / 'forex_pairs.json'
-        data_dir = PROJECT_ROOT / 'data' / 'forex_raw'
-        output_path = PROJECT_ROOT / 'data' / 'processed' / 'forex_signals.json'
+        trigger_script = PROJECT_ROOT / 'scripts' / 'trigger_forex_refresh.py'
         
-        if config_path.exists():
-            cmd = [
-                str(venv_python), 
-                "-c", 
-                f"from app.services.forex_screener import ForexScreener; from pathlib import Path; s = ForexScreener(data_dir=Path(r'{data_dir}'), config_path=Path(r'{config_path}'), output_path=Path(r'{output_path}')); res = s.screen_all(); print(f'Forex analyzed: {{res[\"analyzed_count\"]}} symbols, {{res[\"signals_count\"]}} signals found.')"
-            ]
+        if trigger_script.exists():
+            cmd = [str(venv_python), str(trigger_script), "dynamic"]
             env = os.environ.copy()
             env['PYTHONPATH'] = str(PROJECT_ROOT / 'backend')
             
             subprocess.run(cmd, cwd=str(PROJECT_ROOT / 'backend'), env=env, check=True)
-            print_success("Forex screener completed successfully")
+            print_success("Forex refresh and auto-trade check completed")
     except Exception as e:
-        print_error(f"Forex screener failed: {e}")
+        print_error(f"Forex refresh task failed: {e}")
 
 def start_backend():
     """

@@ -9,6 +9,7 @@ from typing import List, Dict, Optional, Any
 from .oanda_price import OandaPriceService
 from ..config import settings
 from ..firebase_setup import db
+from google.cloud import firestore
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -56,10 +57,32 @@ class OandaTradeService:
 
             risk_per_unit_aud = risk_per_unit_quote * quote_to_aud
             
-            units = int(risk_amount_aud / risk_per_unit_aud)
-            
-            # --- Margin Requirement Check ---
+            # Fetch precision for units (some accounts allow fractional units for indices/commodities)
             inst_info = OandaPriceService.get_instrument_details(symbol)
+            unit_precision = 0
+            if inst_info:
+                unit_precision = int(inst_info.get('tradeUnitsPrecision', 0))
+
+            units = round(risk_amount_aud / risk_per_unit_aud, unit_precision)
+            
+            # --- MINIMUM UNIT INJECTION (For Small Accounts) ---
+            if units == 0:
+                # Calculate the smallest possible unit (e.g., 1 or 0.01)
+                min_unit = round(10**(-unit_precision), unit_precision) if unit_precision > 0 else 1
+                
+                # Check if 1 min_unit is at least within "Extreme Risk" (e.g. 10% of balance)
+                # and verify we have the margin for it.
+                min_unit_risk_pct = (min_unit * risk_per_unit_aud) / balance_aud
+                if min_unit_risk_pct <= 0.10: # Max 10% risk for smallest unit
+                    units = min_unit
+                    logger.info(f"RISK OVERRIDE [{symbol}]: Risk-based units were 0, allowing minimum unit {units} (Risk: {min_unit_risk_pct*100:.1f}%)")
+                else:
+                    logger.warning(f"RISK BLOCK [{symbol}]: Min unit {min_unit} risk ({min_unit_risk_pct*100:.1f}%) exceeds absolute safety limit (10%)")
+                    return 0
+
+            logger.info(f"RISK CALC [{symbol}]: Risk Amount: {risk_amount_aud:.2f} AUD | Risk/Unit: {risk_per_unit_aud:.4f} AUD | Units: {units} (Precision: {unit_precision})")
+
+            # --- Margin Requirement Check ---
             if inst_info:
                 margin_rate = float(inst_info.get('marginRate', 0.1))
                 # Required margin in AUD = Units * EntryPrice * QuoteToAUD * MarginRate
@@ -68,9 +91,14 @@ class OandaTradeService:
                 # Safety: Don't use more than 50% of REMAINING available margin for a single trade
                 margin_limit = margin_avail_aud * 0.5
                 
-                if required_margin > margin_limit:
-                    units = int(margin_limit / (entry_price * quote_to_aud * margin_rate))
+                if units > 0 and required_margin > margin_limit:
+                    units = round(margin_limit / (entry_price * quote_to_aud * margin_rate), unit_precision)
                     logger.info(f"Units capped by available margin for {symbol}: {units} (Required: {required_margin:.2f} > Limit: {margin_limit:.2f})")
+                
+                # FINAL VALIDATION: If we are taking high risk (>5%), log a warning
+                actual_risk_pct = (units * risk_per_unit_aud) / balance_aud
+                if actual_risk_pct > 0.05:
+                    logger.warning(f"⚠️ HIGH RISK TRADE [{symbol}]: This trade risks {actual_risk_pct*100:.1f}% of your account.")
 
             return units
 
@@ -118,7 +146,7 @@ class OandaTradeService:
         # Also check Firestore for local tracking and sync if needed
         try:
             portfolio_ref = db.collection('users').document(auth_email).collection('forex_portfolio')
-            open_docs = list(portfolio_ref.where('status', '==', 'OPEN').stream())
+            open_docs = list(portfolio_ref.where(filter=firestore.FieldFilter('status', '==', 'OPEN')).stream())
             
             for doc in open_docs:
                 data = doc.to_dict()

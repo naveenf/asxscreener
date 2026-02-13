@@ -158,10 +158,10 @@ class OandaPriceService:
         return [t.get('instrument') for t in open_trades]
 
     @classmethod
-    def place_market_order(cls, symbol: str, units: int, stop_loss: float, take_profit: float) -> Optional[Dict[str, Any]]:
+    def place_market_order(cls, symbol: str, units: float, stop_loss: float, take_profit: float) -> Optional[Dict[str, Any]]:
         """
         Place a Market Order with Stop Loss and Take Profit attached.
-        Units: Positive for Buy, Negative for Sell.
+        Units: Positive for Buy, Negative for Sell (Can be fractional).
         NOTE: Retries are disabled for this method to prevent double-execution on timeouts.
         """
         api = cls.get_api()
@@ -169,24 +169,27 @@ class OandaPriceService:
         if not api or not account_id:
             return None
 
-        # Format SL/TP based on instrument precision
+        # Format SL/TP and Units based on instrument precision
         try:
             inst_info = cls.get_instrument_details(symbol)
         except Exception:
             inst_info = None
         
-        # Fallback precision logic for safety
+        # Fallback precision logic
         if inst_info:
             precision = int(inst_info.get('displayPrecision', 5))
+            unit_precision = int(inst_info.get('tradeUnitsPrecision', 0))
         else:
             precision = 3 if "JPY" in symbol else 5
+            unit_precision = 0
         
         sl_str = f"{stop_loss:.{precision}f}"
         tp_str = f"{take_profit:.{precision}f}"
+        units_str = f"{units:.{unit_precision}f}"
 
         order_data = {
             "order": {
-                "units": str(units),
+                "units": units_str,
                 "instrument": symbol,
                 "timeInForce": "FOK", # Fill or Kill
                 "type": "MARKET",
@@ -202,7 +205,7 @@ class OandaPriceService:
             }
         }
         
-        logger.info(f"OANDA: Placing order for {symbol} ({units} units, SL: {sl_str}, TP: {tp_str})")
+        logger.info(f"OANDA: Placing order for {symbol} ({units_str} units, SL: {sl_str}, TP: {tp_str})")
         r = orders.OrderCreate(accountID=account_id, data=order_data)
         api.request(r)
         
