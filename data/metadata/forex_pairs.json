@@ -22,13 +22,6 @@
       "yf_symbol_legacy": "BCO_USD"
     },
     {
-      "symbol": "XCU_USD",
-      "name": "Copper",
-      "type": "Commodity",
-      "oanda_symbol": "XCU_USD",
-      "yf_symbol_legacy": "XCU_USD"
-    },
-    {
       "symbol": "NAS100_USD",
       "name": "Nasdaq 100",
       "type": "Index",
@@ -43,25 +36,11 @@
       "yf_symbol_legacy": "JP225_USD"
     },
     {
-      "symbol": "UK100_GBP",
-      "name": "UK 100",
-      "type": "Index",
-      "oanda_symbol": "UK100_GBP",
-      "yf_symbol_legacy": "UK100_GBP"
-    },
-    {
       "symbol": "WHEAT_USD",
       "name": "Wheat",
       "type": "Commodity",
       "oanda_symbol": "WHEAT_USD",
       "yf_symbol_legacy": "WHEAT_USD"
-    },
-    {
-      "symbol": "USD_JPY",
-      "name": "USD/JPY",
-      "type": "Forex",
-      "oanda_symbol": "USD_JPY",
-      "yf_symbol_legacy": "USD_JPY"
     },
     {
       "symbol": "AUD_USD",

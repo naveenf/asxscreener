@@ -153,28 +153,11 @@ class ForexScreener:
 
         total_analyzed = 0
 
-        # ACTIVE DEPLOYMENT FILTER
-        # Only these assets are approved for live trading.
-        # Others are commented out/skipped until further optimization.
-        DEPLOYED_PAIRS = [
-            "XAU_USD",   # Gold
-            "XAG_USD",   # Silver
-            "BCO_USD",   # Brent Crude Oil
-            "WHEAT_USD", # Wheat
-            "JP225_USD", # Nikkei 225
-            "AUD_USD"    # Aussie Dollar
-        ]
-
-        print(f"\n🚀 Starting Dynamic Forex Screener ({len(pairs)} pairs loaded, Active: {len(DEPLOYED_PAIRS)}, mode={mode})")
+        print(f"\n🚀 Starting Dynamic Forex Screener ({len(pairs)} pairs loaded, mode={mode})")
         print(f"Strategy Map Loaded: {len(self.strategy_map)} entries")
 
         for pair in pairs:
             symbol = pair['symbol']
-
-            # DEPLOYMENT CHECK: Skip if not in approved list
-            if symbol not in DEPLOYED_PAIRS:
-                # print(f"Skipping {symbol} - Not in active deployment list.")
-                continue
             
             # Determine Strategy and Timeframe from Config
             # Support both single strategy (legacy) and multiple strategies (new)
@@ -208,25 +191,38 @@ class ForexScreener:
                 params_dict = strategy_config.get("params", {})
 
                 # FILTER: If sniper mode, skip non-sniper assets
-                if mode == 'sniper' and strategy_name not in ['Sniper', 'SilverSniper', 'CommoditySniper', 'EnhancedSniper', 'DailyORB']:
+                if mode == 'sniper' and strategy_name not in ['Sniper', 'SilverSniper', 'CommoditySniper', 'EnhancedSniper', 'DailyORB', 'HeikenAshi', 'NewBreakout']:
                     continue
 
                 # Map timeframes for the detector
-                # 5m  -> base=5m,  htf=15m
-                # 15m -> base=15m, htf=1h
-                # 1h  -> base=1h,  htf=4h
-                data = {}
+                # We provide both generic keys (base, htf, htf2) and explicit keys (5m, 15m, 1h, 4h)
+                data = {tf: df for tf, df in raw_data.items()}
+                
                 if base_tf == "1h":
                     data['base'] = raw_data.get('1h')
                     data['htf'] = raw_data.get('4h')
                 elif base_tf == "5m":
                     data['base'] = raw_data.get('5m')
                     data['htf'] = raw_data.get('15m')
-                    data['htf2'] = raw_data.get('1h') # Added for 3-TF sniper
+                    data['htf2'] = raw_data.get('1h')
                 else: # 15m
                     data['base'] = raw_data.get('15m')
-                    data['htf'] = raw_data.get('1h')
-                    data['htf2'] = raw_data.get('4h') # Added for 3-TF sniper
+                    # NewBreakout wants 4h as primary trend filter
+                    data['htf'] = raw_data.get('4h') 
+                    # EnhancedSniper wants 1h as htf and 4h as htf2
+                    # So we provide htf2 for its 4h check, but wait...
+                    # EnhancedSniper: df_1h = data.get('htf'), df_4h = data.get('htf2')
+                    # If we set htf=1h and htf2=4h, EnhancedSniper is happy.
+                    # But NewBreakout: df_4h = data.get('htf')
+                    # They conflict on the 'htf' key.
+                    
+                    # SOLUTION: Most strategies use 'htf'. Let's check what strategy we are running.
+                    if strategy_name == "EnhancedSniper":
+                        data['htf'] = raw_data.get('1h')
+                        data['htf2'] = raw_data.get('4h')
+                    else:
+                        data['htf'] = raw_data.get('4h')
+                        data['htf2'] = raw_data.get('1h')
 
                 if data['base'] is None:
                     continue

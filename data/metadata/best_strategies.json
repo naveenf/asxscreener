@@ -51,16 +51,6 @@
     "timeframe": "1h",
     "target_rr": 5.0
   },
-  "UK100_GBP": {
-    "strategy": "Squeeze",
-    "timeframe": "1h",
-    "target_rr": 2.0
-  },
-  "XCU_USD": {
-    "strategy": "Squeeze",
-    "timeframe": "1h",
-    "target_rr": 1.5
-  },
   "AUD_USD": {
     "strategy": "EnhancedSniper",
     "timeframe": "15m",
