@@ -134,6 +134,65 @@ Total: 67.63 ≈ 67.6
 The application now supports user portfolios synchronized across devices using Google Firebase.
 
 ### Features
+
 - **Persistent Portfolio**: Your stocks, buy dates, and transaction details are saved in the cloud.
+
 - **Cross-Device Sync**: Log in with the same Gmail on any computer to see your portfolio.
+
 - **Google Login**: Secure authentication without needing a new password.
+
+
+
+## Strategy Validation Standards (GT-Score)
+
+
+
+To reduce overfitting and ensure robust performance in live trading, we use the **GT-Score** composite objective function (published 2026) for strategy validation.
+
+
+
+### The Formula
+
+`GT-Score = (μ · ln(z) · r²) / σ_d`
+
+
+
+| Component | Description |
+
+|-----------|-------------|
+
+| **μ (Mean Return)** | Average return per trade. |
+
+| **ln(z)** | Statistical significance gate (outperformance vs noise). |
+
+| **r² (Consistency)** | Measures equity curve smoothness. |
+
+| **σ_d (Downside Risk)** | Penalizes only losing trades, not upside volatility. |
+
+
+
+### Interpretation
+
+- **> 0.10**: Excellent — strong, consistent, statistically significant edge.
+
+- **0.05 - 0.10**: Good — reliable strategy with room for optimization.
+
+- **0.01 - 0.05**: Viable — edge exists but may be fragile.
+
+- **< 0.00**: Poor — likely overfit or underperforming.
+
+
+
+**Validation Requirement:** A minimum of **50 trades** is required for a valid GT-Score. Strategies with fewer trades are marked as "INSUFFICIENT DATA".
+
+
+
+### Tools
+
+Use the provided CLI tool to analyze any backtest CSV:
+
+```bash
+
+python scripts/calculate_gt_score.py data/your_backtest_results.csv
+
+```

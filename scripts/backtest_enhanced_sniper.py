@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.app.services.indicators import TechnicalIndicators
 from backend.app.services.enhanced_sniper_detector import EnhancedSniperDetector
+from backend.app.services.backtest_metrics import calculate_gt_score, MIN_TRADES
 
 def backtest_enhanced_sniper(symbol: str, target_rr: float = 2.0):
     print(f"\n=== ENHANCED SNIPER BACKTEST: {symbol} ===")
@@ -43,7 +44,7 @@ def backtest_enhanced_sniper(symbol: str, target_rr: float = 2.0):
         df_4h['SMA200'] = df_4h['Close'].rolling(window=200).mean()
 
     # 3. Initialize Detector
-    detector = EnhancedSniperDetector(symbol=symbol)
+    detector = EnhancedSniperDetector()
     detector.target_rr = target_rr
     
     print(f"Strategy: {detector.name} (15m base, 1H + 4H HTF)")
@@ -188,6 +189,32 @@ def backtest_enhanced_sniper(symbol: str, target_rr: float = 2.0):
     print(f"\nNet P&L: ${net_profit:.2f}")
     print(f"Return: {return_pct:.2f}%")
     print(f"Sharpe Ratio: {sharpe:.2f}")
+
+    # GT-Score Analysis
+    # Convert Profit_Pct (ROI based on starting balance) to individual trade returns
+    # Profit_Pct in trades_df is (trade_profit / 360) * 100
+    # Formula wants decimal return per trade.
+    trade_returns = (trades_df['Profit'] / trades_df['Balance'].shift(1, fill_value=360.0)).values
+    equity_df = pd.DataFrame({'portfolio_value': trades_df['Balance']})
+    
+    gt = calculate_gt_score(trade_returns, equity_df)
+    
+    if gt['valid']:
+        status = "✅ VALID"
+        score = gt['gt_score']
+        if score > 0.10: interp = "Excellent"
+        elif score > 0.05: interp = "Good"
+        elif score > 0.01: interp = "Viable"
+        elif score > 0.00: interp = "Marginal"
+        else: interp = "Poor"
+        print(f"\nGT-Score: {gt['gt_score']:.6f} ({status})")
+        print(f"  Interpretation: {interp}")
+    else:
+        status = "❌ INSUFFICIENT DATA"
+        needed = MIN_TRADES - gt['trade_count']
+        print(f"\nGT-Score: {gt['gt_score']:.6f} ({status})")
+        print(f"  ⚠️  WARNING: Statistical significance is low. Need {needed} more trades.")
+        print(f"  Score is for reference only and likely overfit.")
     
     print(f"\nMax Drawdown: {max_dd:.1f}%")
     

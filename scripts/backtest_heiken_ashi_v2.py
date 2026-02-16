@@ -10,6 +10,7 @@ sys.path.append(str(PROJECT_ROOT))
 
 from backend.app.services.indicators import TechnicalIndicators
 from backend.app.services.heiken_ashi_detector import HeikenAshiDetector
+from backend.app.services.backtest_metrics import calculate_gt_score, MIN_TRADES
 
 # Configuration - Focus strictly on Gold as per Review requirements
 SYMBOL = "XAU_USD"
@@ -189,6 +190,79 @@ class GoldStabilityTester:
         print(f"Overall Recommendation:  {'✅ ROBUST' if avg_stability > 0.7 else '❌ OVERFIT/UNSTABLE'}")
         print("="*50)
 
+    def full_backtest_report(self):
+        base_path = PROJECT_ROOT / "data" / "forex_raw" / f"{SYMBOL}_{TIMEFRAME}.csv"
+        htf_path = PROJECT_ROOT / "data" / "forex_raw" / f"{SYMBOL}_{HTF_TIMEFRAME}.csv"
+        
+        df_base = pd.read_csv(base_path)
+        df_base['Date'] = pd.to_datetime(df_base['Date'], utc=True)
+        df_base.set_index('Date', inplace=True)
+        
+        df_htf = pd.read_csv(htf_path)
+        df_htf['Date'] = pd.to_datetime(df_htf['Date'], utc=True)
+        df_htf.set_index('Date', inplace=True)
+
+        print(f"\nRUNNING FULL BACKTEST FOR {SYMBOL}...")
+        trades = self.run_simulation(df_base, df_htf)
+        
+        if not trades:
+            print("❌ No trades generated.")
+            return
+
+        # Calculate Returns for GT-Score
+        # In run_simulation, trades is a list of {"pnl": pnl, "r": pnl / position['dollar_risk']}
+        # We need trade returns.
+        # Initial balance is STARTING_BALANCE. 
+        # Each trade risks RISK_PER_TRADE (1%).
+        # So pnl / STARTING_BALANCE is NOT correct as balance changes.
+        # But we can approximate returns since RISK_PER_TRADE is constant 1% of CURRENT balance.
+        # pnl / (dollar_risk / RISK_PER_TRADE) = pnl / current_balance
+        # This is exactly the trade return!
+        
+        trade_returns = [t['pnl'] / (t['pnl'] / t['r'] / RISK_PER_TRADE) for t in trades]
+        
+        # Build equity curve for r2
+        equity = [STARTING_BALANCE]
+        for t in trades:
+            equity.append(equity[-1] + t['pnl'])
+        
+        equity_df = pd.DataFrame({'portfolio_value': equity})
+        
+        gt = calculate_gt_score(trade_returns, equity_df)
+        
+        print("\n" + "="*50)
+        print(f"FULL PERFORMANCE REPORT: {SYMBOL}")
+        print("="*50)
+        total_pnl = sum(t['pnl'] for t in trades)
+        roi = (total_pnl / STARTING_BALANCE) * 100
+        win_rate = (len([t for t in trades if t['pnl'] > 0]) / len(trades)) * 100
+        
+        print(f"Total Trades:           {len(trades)}")
+        print(f"Win Rate:               {win_rate:.1f}%")
+        print(f"Net Profit:             ${total_pnl:.2f} ({roi:.2f}%)")
+        
+        if gt['valid']:
+            status = "✅ VALID"
+            print(f"\nGT-Score:               {gt['gt_score']:.6f} ({status})")
+            score = gt['gt_score']
+            if score > 0.10: interp = "Excellent"
+            elif score > 0.05: interp = "Good"
+            elif score > 0.01: interp = "Viable"
+            elif score > 0.00: interp = "Marginal"
+            else: interp = "Poor"
+            print(f"Interpretation:         {interp}")
+        else:
+            status = "❌ INSUFFICIENT DATA"
+            needed = MIN_TRADES - gt['trade_count']
+            print(f"\nGT-Score:               {gt['gt_score']:.6f} ({status})")
+            print(f"⚠️  WARNING: Statistical significance is low. Need {needed} more trades.")
+            print(f"Score is for reference only and likely overfit.")
+            
+        print("\nComponents:")
+        c = gt['components']
+        print(f"  mu: {c['mu']:.6f}, z: {c['z_score']:.4f}, r2: {c['r_squared']:.4f}, sd: {c['sigma_d']:.6f}")
+        print("="*50)
+
 if __name__ == "__main__":
     detector = HeikenAshiDetector(
         adx_min=22.0,        # Slightly relaxed to increase frequency
@@ -198,3 +272,5 @@ if __name__ == "__main__":
     )
     tester = GoldStabilityTester(detector)
     tester.walk_forward_analysis(windows=6)
+    tester.full_backtest_report()
+    

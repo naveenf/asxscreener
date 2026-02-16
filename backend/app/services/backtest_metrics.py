@@ -7,11 +7,90 @@ This module provides comprehensive performance analysis including:
 - Trade statistics and distributions
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 import pandas as pd
 import numpy as np
 
 from .backtester import ClosedTrade
+
+MIN_TRADES = 50
+
+def calculate_gt_score(
+    trade_returns: List[float],
+    equity_curve: Optional[pd.DataFrame] = None,
+    benchmark_return: float = 0.0,
+    epsilon: float = 1e-6
+) -> Dict:
+    """
+    Calculate GT-Score from per-trade returns.
+    
+    GT-Score = (μ · ln(z) · r²) / σ_d
+    
+    Args:
+        trade_returns: List of returns as decimals (e.g. 0.01 for 1%)
+        equity_curve: DataFrame with 'portfolio_value'
+        benchmark_return: Benchmark return (default 0.0)
+        epsilon: Small value to prevent division by zero
+    """
+    returns = np.array(trade_returns)
+    n = len(returns)
+    valid = n >= MIN_TRADES
+
+    # 1. Mean Return (μ)
+    mu = np.mean(returns) if n > 0 else 0.0
+
+    # 2. Z-Score (Significance Gate)
+    sigma = np.std(returns, ddof=1) if n > 1 else epsilon
+    # Use standard error: sigma / sqrt(n). Safeguard sigma to avoid epsilon dominance
+    se = max(sigma, 1e-9) / np.sqrt(n)
+    z = (mu - benchmark_return) / (se + epsilon)
+    
+    # Correct Significance Gate logic from research paper
+    if z <= 0:
+        ln_z_term = z  # Negative penalty
+    elif z <= 1:
+        ln_z_term = np.log(1 + z)  # Smooth transition for low significance
+    else:
+        ln_z_term = np.log(z)  # Standard log for z > 1
+
+    # 3. R-Squared (Consistency)
+    if equity_curve is not None and len(equity_curve) > 1:
+        cum = equity_curve['portfolio_value'].values
+        x = np.arange(len(cum))
+        correlation = np.corrcoef(x, cum)[0, 1]
+        r_squared = correlation ** 2 if not np.isnan(correlation) else 0.0
+    else:
+        # Fallback to cumulative sum of returns if equity curve not provided
+        cum = np.cumsum(returns)
+        if len(cum) > 1:
+            x = np.arange(len(cum))
+            correlation = np.corrcoef(x, cum)[0, 1]
+            r_squared = correlation ** 2 if not np.isnan(correlation) else 0.0
+        else:
+            r_squared = 0.0
+
+    # 4. Downside Deviation (σ_d)
+    negative_returns = returns[returns < 0]
+    if len(negative_returns) > 0:
+        sigma_d = np.sqrt(np.mean(negative_returns ** 2))
+    else:
+        sigma_d = epsilon
+
+    # GT-Score Calculation
+    gt_score = (mu * ln_z_term * r_squared) / (sigma_d + epsilon)
+
+    return {
+        "gt_score": round(gt_score, 6),
+        "valid": valid,
+        "trade_count": n,
+        "components": {
+            "mu": round(mu, 6),
+            "z_score": round(z, 4),
+            "ln_z_term": round(ln_z_term, 4),
+            "r_squared": round(r_squared, 4),
+            "sigma_d": round(sigma_d, 6),
+        }
+    }
 
 
 class PerformanceMetrics:
@@ -272,8 +351,32 @@ class PerformanceMetrics:
             'percentile_75': np.percentile(pnl_pcts, 75)
         }
 
+    def gt_score(self) -> Dict:
+        """
+        Calculate GT-Score for the backtest.
+        """
+        if not self.trades:
+            return {
+                "gt_score": 0.0,
+                "valid": False,
+                "trade_count": 0,
+                "components": {
+                    "mu": 0, "z_score": 0, "ln_z_term": 0, "r_squared": 0, "sigma_d": 0
+                }
+            }
+        
+        # Convert pnl_pct (e.g. 1.0) to returns (e.g. 0.01)
+        returns = [t.pnl_pct / 100.0 for t in self.trades]
+        
+        return calculate_gt_score(
+            trade_returns=returns,
+            equity_curve=self.equity_curve,
+            benchmark_return=0.0
+        )
+
     def to_dict(self) -> Dict:
         """Export all metrics as dictionary for JSON serialization."""
+        gt = self.gt_score()
         return {
             # Core metrics
             'total_trades': self.total_trades(),
@@ -296,6 +399,11 @@ class PerformanceMetrics:
             # Risk metrics
             'sharpe_ratio': round(self.sharpe_ratio(), 2),
             'max_drawdown_pct': round(self.max_drawdown(), 2),
+
+            # GT-Score
+            'gt_score': gt['gt_score'],
+            'gt_valid': gt['valid'],
+            'gt_components': gt['components'],
 
             # Best/worst trades
             'best_trade': self.best_trade(),
@@ -335,6 +443,30 @@ class PerformanceMetrics:
         print(f"\nRISK METRICS:")
         print(f"  Sharpe Ratio:           {self.sharpe_ratio():.2f}")
         print(f"  Max Drawdown:           {self.max_drawdown():.2f}%")
+
+        print(f"\nGT-SCORE VALIDATION:")
+        gt = self.gt_score()
+        status = "VALID" if gt['valid'] else "INSUFFICIENT DATA"
+        print(f"  GT-Score:               {gt['gt_score']:.6f} ({status})")
+        
+        # Interpretation
+        if gt['valid']:
+            score = gt['gt_score']
+            if score > 0.10: interp = "Excellent"
+            elif score > 0.05: interp = "Good"
+            elif score > 0.01: interp = "Viable"
+            elif score > 0.00: interp = "Marginal"
+            else: interp = "Poor"
+            print(f"  Interpretation:         {interp}")
+        else:
+            print(f"  Need {MIN_TRADES - gt['trade_count']} more trades for validation")
+        
+        print(f"  Components:")
+        c = gt['components']
+        print(f"    μ (Mean Return):      {c['mu']:.6f}")
+        print(f"    z (Significance):     {c['z_score']:.4f} (ln_z: {c['ln_z_term']:.4f})")
+        print(f"    r² (Consistency):     {c['r_squared']:.4f}")
+        print(f"    σ_d (Downside Risk):  {c['sigma_d']:.6f}")
 
         print(f"\nTRADE DURATION:")
         print(f"  Avg Holding Period:     {self.avg_holding_period():.1f} days")
