@@ -25,6 +25,7 @@ from .heiken_ashi_detector import HeikenAshiDetector
 from .enhanced_sniper_detector import EnhancedSniperDetector
 from .daily_orb_detector import DailyORBDetector
 from .new_breakout_detector import NewBreakoutDetector
+from .silver_momentum_detector import SilverMomentumDetector
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -48,6 +49,7 @@ class ForexScreener:
             "Squeeze": SqueezeDetector(),
             "SilverSniper": SilverSniperDetector(),
             "DailyORB": DailyORBDetector(),
+            "SilverMomentum": SilverMomentumDetector(),
             "CommoditySniper": CommoditySniperDetector(),
             "HeikenAshi": HeikenAshiDetector(),
             "NewBreakout": NewBreakoutDetector()
