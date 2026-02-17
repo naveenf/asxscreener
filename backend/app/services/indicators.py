@@ -253,6 +253,24 @@ class TechnicalIndicators:
         return rsi
 
     @staticmethod
+    def calculate_macd(df: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.DataFrame:
+        """
+        Calculate MACD (Moving Average Convergence Divergence).
+        
+        Returns:
+            DataFrame with MACD, MACD_Signal, and MACD_Hist columns.
+        """
+        df = df.copy()
+        ema_fast = df['Close'].ewm(span=fast, adjust=False).mean()
+        ema_slow = df['Close'].ewm(span=slow, adjust=False).mean()
+        
+        df['MACD'] = ema_fast - ema_slow
+        df['MACD_Signal'] = df['MACD'].ewm(span=signal, adjust=False).mean()
+        df['MACD_Hist'] = df['MACD'] - df['MACD_Signal']
+        
+        return df
+
+    @staticmethod
     def calculate_ehlers_instant_trend(df: pd.DataFrame, alpha: float = 0.07) -> pd.DataFrame:
         """
         Calculate Ehler's Instantaneous Trend.
@@ -598,6 +616,9 @@ class TechnicalIndicators:
 
         # Add RSI
         df['RSI'] = TechnicalIndicators.calculate_rsi(df, period=rsi_period)
+
+        # Add MACD
+        df = TechnicalIndicators.calculate_macd(df)
 
         # Add Bollinger Bands
         bb_middle, bb_upper, bb_lower = TechnicalIndicators.calculate_bollinger_bands(
