@@ -41,6 +41,20 @@ def run_smart_backtest(symbol: str = "XAG_USD"):
 
     all_results = []
 
+    from backend.app.services.indicators import TechnicalIndicators
+    print("Pre-calculating indicators...", flush=True)
+    df_15m = TechnicalIndicators.add_all_indicators(df_15m)
+    df_1h = TechnicalIndicators.calculate_adx(df_1h)
+    df_4h = TechnicalIndicators.calculate_adx(df_4h)
+    
+    # Load best strategies to get params
+    import json
+    with open('data/metadata/best_strategies.json', 'r') as f:
+        best_strategies = json.load(f)
+    
+    silver_orb_config = next((s for s in best_strategies.get('XAG_USD', {}).get('strategies', []) if s['strategy'] == 'DailyORB'), {})
+    strat_params = silver_orb_config.get('params', {})
+
     for orb_h, htf_name, target_rr in configs:
         print(f"Testing: ORB {orb_h}h | HTF {htf_name} | RR {target_rr}", end=" | ", flush=True)
 
@@ -51,16 +65,15 @@ def run_smart_backtest(symbol: str = "XAG_USD"):
         balance = 360.0
         wins = 0
 
-        # Smart iteration: only check 15m candles that might have Sydney session signals
-        # Sydney session: 19:00-23:00 UTC (and next day start)
-        sydney_hours = set([19, 20, 21, 22, 23, 0, 1, 2, 3])
+        # Expanded hours for Sydney (19-3), London (7-11), NY (13-17)
+        active_hours = set([19, 20, 21, 22, 23, 0, 1, 2, 3, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17])
 
         start_idx = 200
         for i in range(start_idx, len(df_15m)):
             current_hour = df_15m.index[i].hour
 
-            # Skip candles outside Sydney session window (+ some buffer)
-            if current_hour not in sydney_hours:
+            # Skip candles outside session windows
+            if current_hour not in active_hours:
                 continue
 
             current_time = df_15m.index[i]
@@ -72,7 +85,7 @@ def run_smart_backtest(symbol: str = "XAG_USD"):
             base_slice = df_15m.iloc[:i+1]
             data = {'15m': base_slice, htf_name: htf_slice}
 
-            result = detector.analyze(data, symbol, target_rr=target_rr, spread=0.0006)
+            result = detector.analyze(data, symbol, target_rr=target_rr, spread=0.0006, params=strat_params)
 
             if result:
                 entry_price = result['price']

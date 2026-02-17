@@ -36,13 +36,24 @@
           "orb_hours": 1.5,
           "htf": "4h",
           "adx_min_15m": 18,
-          "adx_min_htf": 20
+          "adx_min_htf": 20,
+          "sessions": ["sydney", "london", "new_york"],
+          "di_diff_min": 6.0,
+          "squeeze_threshold": 1.9,
+          "strength_threshold": 0.5
         }
       },
       {
         "strategy": "SilverSniper",
         "timeframe": "5m",
-        "target_rr": 3.0
+        "target_rr": 3.0,
+        "params": {
+          "squeeze_threshold": 1.4,
+          "adx_min": 20.0,
+          "require_fvg": true,
+          "fvg_score_boost": 0.0,
+          "lookback_hours": 24
+        }
       }
     ]
   },

@@ -13,7 +13,7 @@ class SilverSniperDetector(ForexStrategy):
     - Confirmation 2: Entry within a recent 5m FVG (Fair Value Gap)
     """
 
-    def __init__(self, squeeze_threshold: float = 1.3, adx_min: float = 20.0):
+    def __init__(self, squeeze_threshold: float = 1.6, adx_min: float = 18.0):
         self.squeeze_threshold = squeeze_threshold
         self.adx_min = adx_min
 
@@ -26,6 +26,21 @@ class SilverSniperDetector(ForexStrategy):
 
         if df_5m is None or len(df_5m) < 100:
             return None
+
+        # Extract params
+        st_threshold = self.squeeze_threshold
+        adx_limit = self.adx_min
+        require_fvg = True
+        fvg_boost = 0.0
+        lookback = 48  # default 4 hours in 5m candles (was 96)
+
+        if params:
+            st_threshold = params.get('squeeze_threshold', st_threshold)
+            adx_limit = params.get('adx_min', adx_limit)
+            require_fvg = params.get('require_fvg', True)
+            fvg_boost = params.get('fvg_score_boost', 0.0)
+            if 'lookback_hours' in params:
+                lookback = params.get('lookback_hours') * 12
         
         # Ensure indicators are added (especially FVG)
         if 'Bull_FVG' not in df_5m.columns:
@@ -36,8 +51,8 @@ class SilverSniperDetector(ForexStrategy):
 
         # 1. 5m Squeeze Detection
         # Calculate recent min width (excluding current candle)
-        min_width_96 = df_5m['BB_Width'].iloc[-97:-1].min()
-        is_squeeze = latest_5m['BB_Width'] <= min_width_96 * self.squeeze_threshold
+        min_width = df_5m['BB_Width'].iloc[-(lookback+1):-1].min()
+        is_squeeze = latest_5m['BB_Width'] <= min_width * st_threshold
         
         if not is_squeeze:
             return None
@@ -57,10 +72,10 @@ class SilverSniperDetector(ForexStrategy):
             latest_15m = df_15m.iloc[-1]
             
             if breakout_up:
-                if latest_15m['DIPlus'] < latest_15m['DIMinus'] or latest_15m['ADX'] < self.adx_min:
+                if latest_15m['DIPlus'] < latest_15m['DIMinus'] or latest_15m['ADX'] < adx_limit:
                     return None
             elif breakout_down:
-                if latest_15m['DIMinus'] < latest_15m['DIPlus'] or latest_15m['ADX'] < self.adx_min:
+                if latest_15m['DIMinus'] < latest_15m['DIPlus'] or latest_15m['ADX'] < adx_limit:
                     return None
         else:
             # If no 15m data, we can't confirm trend. Skip.
@@ -74,8 +89,13 @@ class SilverSniperDetector(ForexStrategy):
         else:
             has_recent_fvg = recent_5m['Bear_FVG'].any()
             
-        if not has_recent_fvg:
+        if require_fvg and not has_recent_fvg:
             return None
+
+        # 5. Scoring
+        # If fvg_boost is 0, default to 10.0 if FVG is present
+        effective_fvg_boost = fvg_boost if fvg_boost > 0 else 10.0
+        score = 75.0 + (effective_fvg_boost if has_recent_fvg else 0.0)
 
         signal = "BUY" if breakout_up else "SELL"
         price = float(latest_5m['Close'])
@@ -105,7 +125,7 @@ class SilverSniperDetector(ForexStrategy):
 
         return {
             "signal": signal,
-            "score": 85.0,
+            "score": score,
             "strategy": self.get_name(),
             "symbol": symbol,
             "price": price,
@@ -116,7 +136,7 @@ class SilverSniperDetector(ForexStrategy):
                 "ADX_15m": round(float(latest_15m['ADX']), 1),
                 "BB_Width": round(float(latest_5m['BB_Width']), 4),
                 "is_squeeze": True,
-                "has_fvg": True
+                "has_fvg": bool(has_recent_fvg)
             }
         }
 

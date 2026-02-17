@@ -36,6 +36,30 @@ class DailyORBDetector(ForexStrategy):
             session_start -= timedelta(days=1)
         return session_start
 
+    def _get_active_sessions(self, dt: datetime, sessions_list: list) -> list:
+        """
+        Get active session starts for given sessions.
+        """
+        SESSIONS_UTC = {
+            'sydney': 19,
+            'london': 7,
+            'new_york': 13
+        }
+        
+        active_starts = []
+        for s_name in sessions_list:
+            if s_name not in SESSIONS_UTC: continue
+            hour = SESSIONS_UTC[s_name]
+            
+            s_start = dt.replace(hour=hour, minute=0, second=0, microsecond=0)
+            if dt < s_start:
+                s_start -= timedelta(days=1)
+            active_starts.append((s_name, s_start))
+        
+        # Sort by latest start first
+        active_starts.sort(key=lambda x: x[1], reverse=True)
+        return active_starts
+
     def calculate_dor(self, df_15m: pd.DataFrame, session_start: datetime) -> Optional[Tuple[float, float]]:
         """
         Calculate Daily Open Range high/low for the session starting at session_start.
@@ -67,21 +91,42 @@ class DailyORBDetector(ForexStrategy):
             return None
 
         # Strategy specific params override
+        di_diff_min = 5.0
+        st_threshold = 1.8
+        str_threshold_mult = 0.5
+        sessions_to_check = ['sydney']
+        adx_min_15m = self.adx_min_15m
+
         if params:
             self.orb_hours = params.get('orb_hours', self.orb_hours)
             self.htf_key = params.get('htf', self.htf_key)
+            di_diff_min = params.get('di_diff_min', di_diff_min)
+            st_threshold = params.get('squeeze_threshold', st_threshold)
+            str_threshold_mult = params.get('strength_threshold', str_threshold_mult)
+            sessions_to_check = params.get('sessions', sessions_to_check)
+            adx_min_15m = params.get('adx_min_15m', adx_min_15m)
 
         latest_15m = df_15m.iloc[-1]
         prev_15m = df_15m.iloc[-2]
-        prev2_15m = df_15m.iloc[-3] if len(df_15m) >= 3 else None
         current_time = latest_15m.name
 
-        # 1. Sydney Session Detection
-        session_start = self._get_session_start(current_time)
-        orb_end = session_start + timedelta(hours=self.orb_hours)
-
-        # If we are still within the ORB window, no signals
-        if current_time <= orb_end:
+        # 1. Session Detection (Multi-session support)
+        active_sessions = self._get_active_sessions(current_time, sessions_to_check)
+        
+        session_found = False
+        session_start = None
+        session_name = ""
+        
+        for s_name, s_start in active_sessions:
+            orb_end = s_start + timedelta(hours=self.orb_hours)
+            if current_time > orb_end:
+                # We are past the ORB window for this session
+                session_start = s_start
+                session_name = s_name
+                session_found = True
+                break
+        
+        if not session_found:
             return None
 
         # 2. Daily Open Range Calculation
@@ -105,20 +150,16 @@ class DailyORBDetector(ForexStrategy):
         # 4. Squeeze Filter - Bollinger Bands width must be low (consolidation)
         # This reduces false breakouts by requiring prior consolidation
         bb_width = float(latest_15m_ind['BB_Width'])
-        bb_high = float(latest_15m_ind.get('BB_Upper', orb_high))
-        bb_low = float(latest_15m_ind.get('BB_Lower', orb_low))
-
+        
         # Allow breakout only if BB is not too wide (squeeze condition) OR price just entering expansion
-        # Using 1.5x the minimum BB width from recent 20 periods
         recent_bb_widths = df_15m['BB_Width'].iloc[-20:-1]
         min_bb_width = recent_bb_widths.min() if len(recent_bb_widths) > 0 else bb_width
-        squeeze_threshold = 1.8  # was 1.3, increased to allow more entries
 
-        is_squeeze = bb_width <= (min_bb_width * squeeze_threshold)
+        is_squeeze = bb_width <= (min_bb_width * st_threshold)
 
         # 5. Breakout Detection with Strength Requirement
-        # Price must close beyond level by at least 0.5 ATR to confirm strength
-        strength_threshold = 0.5 * atr
+        # Price must close beyond level by at least strength_threshold to confirm strength
+        strength_threshold = str_threshold_mult * atr
 
         breakout_up = (latest_15m['Close'] > orb_high + strength_threshold) and (prev_15m['Close'] <= orb_high)
         breakout_down = (latest_15m['Close'] < orb_low - strength_threshold) and (prev_15m['Close'] >= orb_low)
@@ -126,14 +167,14 @@ class DailyORBDetector(ForexStrategy):
         if not (breakout_up or breakout_down):
             return None
 
-        # 6. Momentum Confirmation on 15m (ADX > 18, increasing trend)
-        if latest_15m_ind['ADX'] < 18:  # Lowered from 20 to catch more setups
+        # 6. Momentum Confirmation on 15m (ADX > adx_min_15m)
+        if latest_15m_ind['ADX'] < adx_min_15m:
             return None
 
         # Check if ADX is rising (momentum building)
         adx_rising = latest_15m_ind['ADX'] > prev_15m['ADX'] if 'ADX' in prev_15m and not pd.isna(prev_15m['ADX']) else True
 
-        # 7. HTF Trend Confirmation (STRICT)
+        # 7. HTF Trend Confirmation
         if df_htf is None or len(df_htf) < 20:
             return None
 
@@ -142,16 +183,16 @@ class DailyORBDetector(ForexStrategy):
 
         latest_htf = df_htf.iloc[-1]
 
-        # Require clear directional alignment on HTF
+        # Require directional alignment on HTF
         if breakout_up:
-            # For BUY: DI+ significantly above DI-, ADX > 20
+            # For BUY: DI+ above DI-, ADX > 20
             di_diff = float(latest_htf['DIPlus']) - float(latest_htf['DIMinus'])
-            if di_diff < 5.0 or latest_htf['ADX'] < 20.0:  # Require at least 5 point DI difference
+            if di_diff < di_diff_min or latest_htf['ADX'] < 20.0:
                 return None
         elif breakout_down:
-            # For SELL: DI- significantly above DI+, ADX > 20
+            # For SELL: DI- above DI+, ADX > 20
             di_diff = float(latest_htf['DIMinus']) - float(latest_htf['DIPlus'])
-            if di_diff < 5.0 or latest_htf['ADX'] < 20.0:
+            if di_diff < di_diff_min or latest_htf['ADX'] < 20.0:
                 return None
 
         # 8. Risk Management - IMPROVED SL
@@ -186,6 +227,7 @@ class DailyORBDetector(ForexStrategy):
                 "orb_high": round(orb_high, 2),
                 "orb_low": round(orb_low, 2),
                 "squeeze_status": is_squeeze,
+                "session": session_name,
                 "htf_used": self.htf_key
             }
         }

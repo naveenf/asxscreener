@@ -264,18 +264,22 @@ def calculate_comprehensive_metrics(trades_df: pd.DataFrame, starting_balance: f
 def run_backtest(symbol: str, strategy_type: str, target_rr: float) -> Optional[Dict]:
     """
     Run backtest for a specific symbol and strategy.
-
-    Args:
-        symbol: Asset symbol
-        strategy_type: 'SilverSniper' or 'Sniper'
-        target_rr: Target risk:reward ratio
-
-    Returns:
-        Dictionary with metrics and trades dataframe
     """
     print(f"\n{'='*60}")
     print(f"Running {strategy_type} backtest on {symbol}...")
     print(f"{'='*60}")
+
+    # Load best strategies to get params
+    import json
+    with open('data/metadata/best_strategies.json', 'r') as f:
+        best_strategies = json.load(f)
+    
+    asset_config = best_strategies.get(symbol, {})
+    strat_params = {}
+    if 'strategies' in asset_config:
+        strat_params = next((s for s in asset_config['strategies'] if s['strategy'] == strategy_type), {}).get('params', {})
+    elif asset_config.get('strategy') == strategy_type:
+        strat_params = asset_config.get('params', {})
 
     # Load data
     data = load_asset_data(symbol, strategy_type)
@@ -325,7 +329,7 @@ def run_backtest(symbol: str, strategy_type: str, target_rr: float) -> Optional[
 
         # Check for signal
         data_slices = {'base': slice_base, 'htf': slice_htf}
-        signal = detector.analyze(data_slices, symbol, target_rr=target_rr, spread=SPREAD_COST)
+        signal = detector.analyze(data_slices, symbol, target_rr=target_rr, spread=SPREAD_COST, params=strat_params)
 
         if signal:
             entry_price = signal['price']
