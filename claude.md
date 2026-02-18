@@ -16,6 +16,70 @@ The system implements nine core trading strategies:
 
 Calculations match **Pine Script** (TradingView) standards, using "Wilder's Smoothing" for technical accuracy.
 
+## Git Workflow & Commit Guidelines
+
+### ⚠️ IMPORTANT: Commit Confirmation Required
+**Do NOT commit changes without explicit user confirmation.** All commits must be:
+1. Reviewed by user before committing
+2. Approved with explicit "commit" or "push" request
+3. Never auto-committed as part of task completion
+
+### Commit Message Format
+Follow **Conventional Commits** format strictly:
+
+```
+Type: Brief description (1 line, max 72 characters)
+
+Optional detailed explanation (1-2 lines max if needed)
+```
+
+**Allowed Types:**
+- `feat:` - New feature or strategy
+- `fix:` - Bug fix
+- `refactor:` - Code refactoring without feature/fix
+- `docs:` - Documentation updates
+- `chore:` - Maintenance (cleanup, dependencies)
+- `test:` - Test additions/modifications
+- `perf:` - Performance improvements
+
+**Examples (CORRECT):**
+```
+feat: Add time-based volatility filters for Silver strategies
+fix: Correct DailyORB session_start parameter
+refactor: Simplify forex_screener.py strategy selection logic
+docs: Update CLAUDE.md with Silver optimization results
+chore: Remove deprecated backtest analysis files
+```
+
+**Examples (INCORRECT - DO NOT USE):**
+```
+docs: Add comprehensive index trading strategy research
+
+Research package for improving GT-Score (0.008 → 0.015+)...
+[Multiple paragraph descriptions - too verbose]
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+```
+
+### Commit Message Rules
+- ✅ **1-2 lines maximum** (title + optional brief detail)
+- ✅ **Meaningful action verbs**: Add, Fix, Update, Refactor, Remove, Implement
+- ✅ **Specific scope**: Mention what was changed (e.g., "Silver strategies", "JP225 detector")
+- ❌ **NO** verbose paragraphs or extended descriptions
+- ❌ **NO** co-author lines or trailers
+- ❌ **NO** implementation details or technical explanations
+- ❌ **NO** multi-paragraph justifications
+
+### Workflow
+1. User requests changes/features
+2. Claude Code implements and tests
+3. Claude Code asks user for confirmation: "Ready to commit with message: `<type>: <description>`?"
+4. User approves (e.g., "yes, commit it" or "commit")
+5. Claude Code creates commit and optionally pushes
+6. Always wait for user approval before pushing to origin
+
+---
+
 ## Tech Stack
 
 ### Backend
