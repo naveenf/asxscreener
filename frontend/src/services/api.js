@@ -148,3 +148,60 @@ export async function checkPortfolioExits() {
   return response.json();
 }
 
+/**
+ * Fetch trade history with filters
+ */
+export async function fetchTradeHistory(params = {}) {
+  const token = localStorage.getItem('google_token');
+  const query = new URLSearchParams(params).toString();
+  const response = await fetch(`${API_BASE}/forex-portfolio/history?${query}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch trade history: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch trade analytics
+ */
+export async function fetchTradeAnalytics(params = {}) {
+  const token = localStorage.getItem('google_token');
+  const query = new URLSearchParams(params).toString();
+  const response = await fetch(`${API_BASE}/forex-portfolio/analytics?${query}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch trade analytics: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch closed trades directly from Oanda (source of truth)
+ */
+export async function fetchOandaClosedTrades(params = {}) {
+  const token = localStorage.getItem('google_token');
+  const query = new URLSearchParams(params).toString();
+  const response = await fetch(`${API_BASE}/forex-portfolio/oanda-trades?${query}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Oanda trades: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+

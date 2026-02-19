@@ -7,6 +7,8 @@ import InsiderTrades from './InsiderTrades';
 import ConfirmModal from './ConfirmModal';
 import SellStockModal from './SellStockModal';
 import SellForexModal from './SellForexModal';
+import TradeHistory from './TradeHistory';
+import AnalyticsDashboard from './AnalyticsDashboard';
 import './Portfolio.css';
 
 const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
@@ -175,6 +177,10 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
         }).catch(err => console.error("Exit check failed", err));
     }
   }, [assetClass, activeView]);
+
+  useEffect(() => {
+    setActiveView('portfolio');
+  }, [assetClass]);
 
   useEffect(() => {
     setLoading(true);
@@ -382,12 +388,29 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
               >
                   Holdings
               </button>
-              <button 
-                className={`view-btn ${activeView === 'tax' ? 'active' : ''}`}
-                onClick={() => setActiveView('tax')}
-              >
-                  {assetClass === 'asx' ? 'Tax Reports' : 'History'}
-              </button>
+              {assetClass === 'asx' ? (
+                  <button 
+                    className={`view-btn ${activeView === 'tax' ? 'active' : ''}`}
+                    onClick={() => setActiveView('tax')}
+                  >
+                      Tax Reports
+                  </button>
+              ) : (
+                  <>
+                    <button 
+                      className={`view-btn ${activeView === 'history' ? 'active' : ''}`}
+                      onClick={() => setActiveView('history')}
+                    >
+                        Trade History
+                    </button>
+                    <button 
+                      className={`view-btn ${activeView === 'analytics' ? 'active' : ''}`}
+                      onClick={() => setActiveView('analytics')}
+                    >
+                        Analytics
+                    </button>
+                  </>
+              )}
           </div>
           {lastUpdated && (
               <div className="last-updated-portfolio">
@@ -692,6 +715,14 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
           )
       )}
       
+      {activeView === 'history' && assetClass === 'forex' && (
+          <TradeHistory />
+      )}
+
+      {activeView === 'analytics' && assetClass === 'forex' && (
+          <AnalyticsDashboard />
+      )}
+      
       {activeView === 'tax' && (
           assetClass === 'asx' ? (
             loadingTax ? (
@@ -803,69 +834,7 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
                     </div>
                 </div>
             )
-          ) : (
-            /* Forex History View */
-            <div className="tax-report-container">
-                <div className="summary-cards-container">
-                    <div className="summary-card">
-                        <h3>Lifetime Realized Profit (AUD)</h3>
-                        <div className={`card-value ${forexPortfolio.filter(i => i.status === 'CLOSED').reduce((acc, i) => acc + (i.realized_gain_aud || 0), 0) >= 0 ? 'positive' : 'negative'}`}>
-                            {formatCurrency(forexPortfolio.filter(i => i.status === 'CLOSED').reduce((acc, i) => acc + (i.realized_gain_aud || 0), 0))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="portfolio-table-container">
-                    <table className="portfolio-table">
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Dir</th>
-                                <th>Entry Date</th>
-                                <th>Exit Date</th>
-                                <th>Units</th>
-                                <th>Entry Price</th>
-                                <th>Exit Price</th>
-                                <th>Realized Gain (AUD)</th>
-                                <th>% Profit</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {forexPortfolio.filter(i => i.status === 'CLOSED').sort((a,b) => new Date(b.sell_date) - new Date(a.sell_date)).map(item => (
-                                <tr key={item.id}>
-                                    <td style={{color: 'var(--color-primary)', fontWeight:'bold'}}>{item.symbol}</td>
-                                    <td>
-                                        <span className={item.direction === 'BUY' ? 'positive' : 'negative'} style={{fontWeight:'bold'}}>
-                                            {item.direction}
-                                        </span>
-                                    </td>
-                                    <td>{new Date(item.buy_date).toLocaleDateString()}</td>
-                                    <td>{new Date(item.sell_date).toLocaleDateString()}</td>
-                                    <td>{item.quantity}</td>
-                                    <td>{item.buy_price.toFixed(5)}</td>
-                                    <td>{item.sell_price.toFixed(5)}</td>
-                                    <td className={item.realized_gain_aud >= 0 ? 'positive' : 'negative'}>
-                                        {formatCurrency(item.realized_gain_aud)}
-                                    </td>
-                                    <td className={item.gain_loss_percent >= 0 ? 'positive' : 'negative'} style={{fontWeight:'bold'}}>
-                                        {item.gain_loss_percent >= 0 ? '+' : ''}{item.gain_loss_percent.toFixed(2)}%
-                                    </td>
-                                    <td>
-                                        <button className="bin-btn" onClick={() => handleDelete(item)}>🗑</button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {forexPortfolio.filter(i => i.status === 'CLOSED').length === 0 && (
-                                <tr>
-                                    <td colSpan="8" style={{textAlign:'center', padding:'20px'}}>No closed forex positions found.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-          )
+          ) : null
       )}
 
       {assetClass === 'asx' && <Watchlist onShowToast={onShowToast} />}

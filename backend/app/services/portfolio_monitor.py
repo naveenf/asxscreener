@@ -24,6 +24,7 @@ from .triple_trend_detector import TripleTrendDetector
 from .sniper_detector import SniperDetector
 from .notification import EmailService
 from .trade_closer import TradeCloserService
+from .oanda_price import OandaPriceService
 
 class PortfolioMonitor:
     def __init__(self):
@@ -72,10 +73,14 @@ class PortfolioMonitor:
     def check_portfolio_exits(self, user_email: str) -> List[Dict]:
         """
         Check all open positions for a user and detect exit signals.
+        Also syncs closed trades from Oanda back to Firestore.
         Updates Firestore and sends email if new signal detected.
         """
         if not user_email:
             return []
+
+        # FIRST: Sync any closed trades from Oanda to Firestore
+        self._sync_oanda_closed_trades(user_email)
 
         portfolio_ref = db.collection('users').document(user_email).collection('forex_portfolio')
         docs = portfolio_ref.where('status', '==', 'OPEN').stream()
@@ -220,3 +225,51 @@ class PortfolioMonitor:
             EmailService.send_exit_alert([user_email], exits_found)
             
         return exits_found
+
+    def _sync_oanda_closed_trades(self, user_email: str):
+        """
+        Sync closed trades from Oanda API back to Firestore.
+        This keeps Firestore in sync with actual Oanda account.
+        """
+        try:
+            portfolio_ref = db.collection('users').document(user_email).collection('forex_portfolio')
+
+            # Get all OPEN trades from Firestore
+            open_docs = list(portfolio_ref.where('status', '==', 'OPEN').stream())
+
+            if not open_docs:
+                return
+
+            synced_count = 0
+
+            for doc in open_docs:
+                data = doc.to_dict()
+                trade_id = data.get('oanda_trade_id')
+
+                if not trade_id:
+                    continue
+
+                # Check if trade is closed in Oanda
+                closed_trades = OandaPriceService.get_closed_trades_by_id([trade_id])
+
+                if closed_trades:
+                    closed_trade = closed_trades[0]
+
+                    # Update Firestore with exit data
+                    doc.reference.update({
+                        'status': 'CLOSED',
+                        'sell_price': closed_trade.get('exit_price'),
+                        'sell_date': closed_trade.get('closed_at'),
+                        'pnl': closed_trade.get('pnl'),
+                        'closed_by': 'OandaSync',
+                        'updated_at': datetime.utcnow()
+                    })
+
+                    synced_count += 1
+                    print(f"✅ Synced trade {trade_id}: Exit={closed_trade.get('exit_price')}, P&L={closed_trade.get('pnl')}")
+
+            if synced_count > 0:
+                print(f"📊 Synced {synced_count} closed trades from Oanda to Firestore")
+
+        except Exception as e:
+            print(f"⚠️ Error syncing Oanda trades: {e}")

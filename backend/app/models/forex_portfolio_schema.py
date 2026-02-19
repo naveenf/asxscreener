@@ -49,6 +49,7 @@ class ForexPortfolioItemResponse(BaseModel):
     gain_loss_aud: Optional[float] = None
     gain_loss_percent: Optional[float] = None
     realized_gain_aud: Optional[float] = None
+    actual_rr: Optional[float] = None
 
     class Config:
         from_attributes = True

@@ -97,6 +97,22 @@ Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
 *   **Build Tool:** Vite
 *   **Styling:** CSS Modules
 *   **Auth:** `@react-oauth/google`
+*   **Charts:** Recharts (analytics visualizations)
+
+---
+
+## Trade History & Analytics (February 2026)
+
+**Status:** ✅ Production Ready | **Details:** See [docs/features/TRADE_HISTORY.md](./docs/features/TRADE_HISTORY.md)
+
+**Quick Summary:**
+- Trade history view with filtering, sorting, CSV export
+- Analytics dashboard with charts (equity curve, monthly returns, strategy comparison)
+- Automatic sync with Oanda every 5 minutes
+- Data source: Firestore (synced from Oanda broker account)
+- Default date range: Feb 19, 2026 onwards (when sync was implemented)
+
+---
 
 ## Directory Structure
 

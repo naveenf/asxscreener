@@ -1,0 +1,209 @@
+.trade-history {
+  padding: 20px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  color: var(--text-primary);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.history-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.sync-btn {
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.sync-btn:hover {
+  background: #1976D2;
+}
+
+.sync-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.export-btn {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.export-btn:hover {
+  background: #45a049;
+}
+
+.export-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.filter-group label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.filter-group input, 
+.filter-group select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 8px;
+  border-radius: 4px;
+  outline: none;
+}
+
+.load-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 9px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.trades-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.trades-table th {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trades-table th:hover {
+  color: var(--text-primary);
+}
+
+.trades-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.symbol-cell {
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+.strategy-tag {
+  background: rgba(0, 123, 255, 0.15);
+  color: #007bff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.positive {
+  color: #4caf50;
+}
+
+.negative {
+  color: #f44336;
+}
+
+.empty-state, .loading-state, .error-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.error-state {
+  color: #f44336;
+}
+
+/* Status Toggle Buttons */
+.status-toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.status-toggle label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 5px;
+}
+
+.status-btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.status-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--primary-color);
+}
+
+.status-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+  .filters-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
