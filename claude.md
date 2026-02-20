@@ -437,17 +437,19 @@ The NewBreakout strategy has been tested on previously underperforming pairs wit
 | Pair | ROI | Net P&L | Trades | Win Rate | Sharpe | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **USD_CHF** | **+60.96%** | $219.47 | 216 | 40.74% | 1.94 | ✅ DEPLOYED |
-| **NAS100_USD** | **+24.07%** | $86.65 | 156 | 38.46% | 0.93 | ✅ DEPLOYED |
+| **NAS100_USD** | **+11.60%** (1:2.0 R:R) | $1,160.16 | 156 | 38.50% | N/A | ✅ **OPTIMIZED** |
 
-**Backtest Data Location:** `data/backtest_results_USD_CHF_new_breakout.csv` and `data/backtest_results_NAS100_USD_new_breakout.csv`
+**Backtest Data Location:** `data/backtest_results_USD_CHF_new_breakout.csv`
 
 **Strategy Parameters:**
 - Timeframe: 15-minute (HTF: 4-hour for trend filtering)
 - Entry: HTF S/R breakout with trend confirmation (ADX > 25)
 - Exit: EMA9 crossover (active signal required for optimal Sharpe maintenance)
-- Target R:R (Live): 1.5 (conservative vs backtest 1.06-1.22 to account for slippage)
+- Target R:R (Live): USD_CHF 1.5, **NAS100_USD 2.0** (optimized from 1.5 on Feb 20, 2026)
 
-**Deployment Note:** As of Feb 12, 2026, both USD_CHF and NAS100_USD have been added to `best_strategies.json` with NewBreakout strategy. Requires auto-monitoring implementation for EMA9 exit signals to maintain 1.94+ Sharpe ratio on USD_CHF.
+**Deployment Note:**
+- As of Feb 12, 2026, both USD_CHF and NAS100_USD were added to `best_strategies.json` with NewBreakout strategy.
+- **UPDATED Feb 20, 2026:** NAS100_USD R:R increased from 1:1.5 to 1:2.0. Backtest analysis showed 1:1.5 was unprofitable (-3.6% ROI) while 1:2.0 yields +11.6% ROI (+15.2pp improvement). This fix converts a losing strategy into a profitable one without changing exit signals (EMA9 crossover remains constant).
 
 ---
 

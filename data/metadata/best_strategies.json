@@ -111,7 +111,7 @@
   "NAS100_USD": {
     "strategy": "NewBreakout",
     "timeframe": "15m",
-    "target_rr": 1.5,
+    "target_rr": 2.0,
     "params": {
       "adx_threshold": 25.0,
       "ema_period": 34,
