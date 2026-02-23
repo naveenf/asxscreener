@@ -561,6 +561,56 @@ class TechnicalIndicators:
         return middle_band, upper_band, lower_band
 
     @staticmethod
+    def calculate_pvt(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate Price Volume Trend (PVT) Indicator.
+
+        PVT combines price momentum with volume to identify institutional money flows.
+
+        Steps:
+        1. Calculate volume-weighted price change: VT = cumsum(volume * (close - close[1]) / close[1])
+        2. Apply EMA smoothing: EMA50 and EMA150
+        3. Calculate raw PVT: PVT_Raw = EMA50 - EMA150
+        4. Normalize to [-1, 1] range using rolling 50-period maxAbs
+        5. Calculate PVT MA (SMA50 of normalized PVT)
+
+        Args:
+            df: DataFrame with OHLC and Volume data
+
+        Returns:
+            DataFrame with added columns: PVT_Raw, PVT, PVT_MA
+        """
+        df = df.copy()
+
+        if 'Volume' not in df.columns or 'Close' not in df.columns:
+            raise ValueError("DataFrame must contain 'Close' and 'Volume' columns")
+
+        # Step 1: Calculate volume-weighted price change
+        price_change = df['Close'].pct_change().fillna(0)
+        vt_raw = (price_change * df['Volume']).fillna(0).cumsum()
+
+        # Step 2: Apply EMA smoothing (EMA50 and EMA150)
+        vt_ema50 = vt_raw.ewm(span=50, adjust=False).mean()
+        vt_ema150 = vt_raw.ewm(span=150, adjust=False).mean()
+
+        # Step 3: Calculate raw PVT (difference between short and long EMA)
+        pvt_raw = vt_ema50 - vt_ema150
+        df['PVT_Raw'] = pvt_raw
+
+        # Step 4: Normalize to [-1, 1] range using rolling maxAbs
+        max_abs_pvt = pvt_raw.abs().rolling(window=50).max()
+        # Avoid division by zero
+        pvt_normalized = pvt_raw / max_abs_pvt.replace(0, 1)
+        pvt_normalized = pvt_normalized.clip(-1, 1)  # Ensure [-1, 1] range
+        df['PVT'] = pvt_normalized
+
+        # Step 5: Calculate PVT MA (SMA50 of normalized PVT)
+        pvt_ma = pvt_normalized.rolling(window=50).mean()
+        df['PVT_MA'] = pvt_ma
+
+        return df
+
+    @staticmethod
     def resample_to_1h(df: pd.DataFrame) -> pd.DataFrame:
         """Resample 15m data to 1h for HTF filtering."""
         df_1h = df.resample('1h').agg({
@@ -644,6 +694,9 @@ class TechnicalIndicators:
 
         # Add FVG Indicators
         df = TechnicalIndicators.calculate_fvg(df)
+
+        # Add PVT Indicators
+        df = TechnicalIndicators.calculate_pvt(df)
 
         return df
 

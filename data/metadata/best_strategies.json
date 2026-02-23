@@ -78,6 +78,19 @@
           "session_start": 16,
           "session_end": 22
         }
+      },
+      {
+        "strategy": "PVTScalping",
+        "timeframe": "1h",
+        "target_rr": 2.5,
+        "params": {
+          "pvt_threshold": 0.05,
+          "consecutive_pvt_candles": 1,
+          "rsi_entry_long": 20,
+          "rsi_entry_short": 30,
+          "rsi_exit_long": 33,
+          "rsi_exit_short": 67
+        }
       }
     ]
   },
@@ -109,14 +122,44 @@
     }
   },
   "NAS100_USD": {
-    "strategy": "NewBreakout",
-    "timeframe": "15m",
-    "target_rr": 2.0,
+    "strategies": [
+      {
+        "strategy": "NewBreakout",
+        "timeframe": "15m",
+        "target_rr": 2.0,
+        "params": {
+          "adx_threshold": 25.0,
+          "ema_period": 34,
+          "sr_lookback_candles": 40,
+          "atr_multiplier": 2.0
+        }
+      },
+      {
+        "strategy": "PVTScalping",
+        "timeframe": "1h",
+        "target_rr": 2.5,
+        "params": {
+          "pvt_threshold": 0.05,
+          "consecutive_pvt_candles": 1,
+          "rsi_entry_long": 20,
+          "rsi_entry_short": 30,
+          "rsi_exit_long": 33,
+          "rsi_exit_short": 67
+        }
+      }
+    ]
+  },
+  "UK100_GBP": {
+    "strategy": "PVTScalping",
+    "timeframe": "1h",
+    "target_rr": 2.5,
     "params": {
-      "adx_threshold": 25.0,
-      "ema_period": 34,
-      "sr_lookback_candles": 40,
-      "atr_multiplier": 2.0
+      "pvt_threshold": 0.05,
+      "consecutive_pvt_candles": 1,
+      "rsi_entry_long": 20,
+      "rsi_entry_short": 30,
+      "rsi_exit_long": 33,
+      "rsi_exit_short": 67
     }
   }
 }

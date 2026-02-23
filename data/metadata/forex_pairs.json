@@ -55,6 +55,13 @@
       "type": "Forex",
       "oanda_symbol": "USD_CHF",
       "yf_symbol_legacy": "USD_CHF"
+    },
+    {
+      "symbol": "UK100_GBP",
+      "name": "FTSE 100",
+      "type": "Index",
+      "oanda_symbol": "UK100_GBP",
+      "yf_symbol_legacy": "UK100_GBP"
     }
   ]
 }

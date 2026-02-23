@@ -26,6 +26,7 @@ from .enhanced_sniper_detector import EnhancedSniperDetector
 from .daily_orb_detector import DailyORBDetector
 from .new_breakout_detector import NewBreakoutDetector
 from .silver_momentum_detector import SilverMomentumDetector
+from .pvt_scalping_detector import PVTScalpingDetector
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -52,7 +53,8 @@ class ForexScreener:
             "SilverMomentum": SilverMomentumDetector(),
             "CommoditySniper": CommoditySniperDetector(),
             "HeikenAshi": HeikenAshiDetector(),
-            "NewBreakout": NewBreakoutDetector()
+            "NewBreakout": NewBreakoutDetector(),
+            "PVTScalping": PVTScalpingDetector()
         }
         
         # Load Strategy Map
@@ -193,7 +195,7 @@ class ForexScreener:
                 params_dict = strategy_config.get("params", {})
 
                 # FILTER: If sniper mode, skip non-sniper assets
-                if mode == 'sniper' and strategy_name not in ['Sniper', 'SilverSniper', 'CommoditySniper', 'EnhancedSniper', 'DailyORB', 'HeikenAshi', 'NewBreakout']:
+                if mode == 'sniper' and strategy_name not in ['Sniper', 'SilverSniper', 'CommoditySniper', 'EnhancedSniper', 'DailyORB', 'HeikenAshi', 'NewBreakout', 'PVTScalping']:
                     continue
 
                 # Map timeframes for the detector
