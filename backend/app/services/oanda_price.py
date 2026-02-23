@@ -105,6 +105,7 @@ class OandaPriceService:
         """
         Get the latest Close price for a symbol (e.g. 'XAG_USD').
         Uses 5-second candles to get the most recent completed snapshot.
+        Returns None if the instrument doesn't exist or request fails.
         """
         api = cls.get_api()
         if not api:
@@ -115,14 +116,19 @@ class OandaPriceService:
             "granularity": "S5", # 5 second candles
             "price": "M" # Midpoint
         }
-        
-        r = instruments.InstrumentsCandles(instrument=symbol, params=params)
-        api.request(r)
-        candles = r.response.get('candles', [])
-        
-        if candles:
-            return float(candles[0]['mid']['c'])
-        return None
+
+        try:
+            r = instruments.InstrumentsCandles(instrument=symbol, params=params)
+            api.request(r)
+            candles = r.response.get('candles', [])
+
+            if candles:
+                return float(candles[0]['mid']['c'])
+            return None
+        except Exception as e:
+            # Silently return None if instrument doesn't exist or request fails
+            # This allows fallback logic in calling code to try alternative pairs
+            return None
 
     @classmethod
     @retry_oanda(retries=3, delay=1)

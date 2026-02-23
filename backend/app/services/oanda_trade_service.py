@@ -38,7 +38,7 @@ class OandaTradeService:
             else:
                 # Try AUD_<Quote> or <Quote>_AUD
                 quote_to_aud = None
-                
+
                 # Check AUD_<Quote>
                 pair_name = f"AUD_{quote_currency}"
                 rate = OandaPriceService.get_current_price(pair_name)
@@ -50,6 +50,25 @@ class OandaTradeService:
                     rate = OandaPriceService.get_current_price(pair_name)
                     if rate:
                         quote_to_aud = rate
+
+                # Fallback: Cross-conversion via USD (e.g., GBP -> USD -> AUD)
+                if quote_to_aud is None:
+                    logger.info(f"Direct {quote_currency}/AUD pair not found. Attempting USD cross-conversion...")
+
+                    # Get Quote_USD rate (e.g., GBP_USD)
+                    quote_usd_pair = f"{quote_currency}_USD"
+                    quote_usd_rate = OandaPriceService.get_current_price(quote_usd_pair)
+
+                    # Get AUD_USD rate
+                    aud_usd_rate = OandaPriceService.get_current_price("AUD_USD")
+
+                    if quote_usd_rate and aud_usd_rate:
+                        # Quote to AUD = (Quote to USD) / (AUD to USD)
+                        quote_to_aud = quote_usd_rate / aud_usd_rate
+                        logger.info(f"USD cross-conversion successful: {quote_currency}/AUD = {quote_to_aud:.5f}")
+                    else:
+                        logger.error(f"FAIL-SAFE: Could not fetch USD cross-conversion rates for {quote_currency}. Aborting trade for {symbol}.")
+                        return 0
 
                 if quote_to_aud is None:
                     logger.error(f"FAIL-SAFE: Could not fetch conversion rate for {quote_currency} to AUD. Aborting trade for {symbol}.")
@@ -178,6 +197,86 @@ class OandaTradeService:
             if symbol in existing_symbols:
                 logger.info(f"Skipping {symbol}: Trade already open in Oanda.")
                 continue
+
+            # === CRITICAL FIX #1: Signal Freshness Check ===
+            # Don't trade signals older than 5 minutes (prevents stale signal execution on restart)
+            from datetime import datetime, timedelta
+            signal_timestamp = signal.get('timestamp')
+            if signal_timestamp:
+                try:
+                    if isinstance(signal_timestamp, str):
+                        signal_time = datetime.fromisoformat(signal_timestamp.replace('Z', '+00:00'))
+                    else:
+                        signal_time = signal_timestamp
+
+                    signal_age = datetime.now(signal_time.tzinfo) - signal_time
+                    max_age = timedelta(minutes=5)
+
+                    if signal_age > max_age:
+                        logger.warning(f"Skipping {symbol}: Signal is {signal_age.total_seconds()/60:.1f} minutes old (max: 5 min)")
+                        continue
+                except Exception as e:
+                    logger.warning(f"Could not parse signal timestamp for {symbol}: {e}")
+
+            # === CRITICAL FIX #2: Exit Condition Check Before Entry ===
+            # Verify the signal is still valid by checking if exit criteria are already met
+            strategy_name = signal.get('strategy')
+            if strategy_name:
+                # Import all strategy classes
+                from .pvt_scalping_detector import PVTScalpingDetector
+                from .forex_detector import ForexDetector
+                from .sniper_detector import SniperDetector
+                from .enhanced_sniper_detector import EnhancedSniperDetector
+                from .daily_orb_detector import DailyORBDetector
+                from .new_breakout_detector import NewBreakoutDetector
+                from .triple_trend_detector import TripleTrendDetector
+                from .squeeze_detector import SqueezeDetector
+                from .silver_sniper_detector import SilverSniperDetector
+                from .commodity_sniper_detector import CommoditySniperDetector
+                from .heiken_ashi_detector import HeikenAshiDetector
+                from .silver_momentum_detector import SilverMomentumDetector
+
+                strategy_map = {
+                    'PVTScalping': PVTScalpingDetector(),
+                    'TrendFollowing': ForexDetector(),
+                    'Sniper': SniperDetector(),
+                    'EnhancedSniper': EnhancedSniperDetector(),
+                    'DailyORB': DailyORBDetector(),
+                    'NewBreakout': NewBreakoutDetector(),
+                    'TripleTrend': TripleTrendDetector(),
+                    'Squeeze': SqueezeDetector(),
+                    'SilverSniper': SilverSniperDetector(),
+                    'CommoditySniper': CommoditySniperDetector(),
+                    'HeikenAshi': HeikenAshiDetector(),
+                    'SilverMomentum': SilverMomentumDetector(),
+                }
+
+                strategy_obj = strategy_map.get(strategy_name)
+                if strategy_obj and hasattr(strategy_obj, 'check_exit'):
+                    # Load current market data to check exit conditions
+                    try:
+                        from .forex_screener import ForexScreener
+                        from pathlib import Path
+                        screener = ForexScreener(
+                            data_dir=Path('data/forex_raw'),
+                            config_path=Path('data/metadata/forex_pairs.json'),
+                            output_path=Path('data/forex_signals.json')
+                        )
+                        current_data = screener._load_data_mtf(symbol)
+
+                        if current_data:
+                            # Get the direction and entry price
+                            direction = signal['signal']
+                            entry_price = signal['price']
+
+                            # Check if exit condition is already met
+                            exit_result = strategy_obj.check_exit(current_data, direction, entry_price)
+                            if exit_result and exit_result.get('exit_signal'):
+                                reason = exit_result.get('reason', 'Unknown')
+                                logger.warning(f"Skipping {symbol}: Exit condition already met - {reason}")
+                                continue
+                    except Exception as e:
+                        logger.warning(f"Could not verify exit conditions for {symbol}: {e}")
 
             # Calculate Units with margin awareness
             entry_price = signal['price']
