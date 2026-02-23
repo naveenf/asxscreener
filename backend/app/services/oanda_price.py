@@ -131,6 +131,56 @@ class OandaPriceService:
             return None
 
     @classmethod
+    @retry_oanda(retries=3, delay=2)
+    def get_candles(cls, symbol: str, granularity: str = 'H1', count: int = 250) -> Optional[list]:
+        """
+        Fetch live candles from Oanda for a given symbol and timeframe.
+
+        Args:
+            symbol: Instrument symbol (e.g., 'UK100_GBP', 'XAG_USD')
+            granularity: Candle timeframe ('M5', 'M15', 'H1', 'H4', etc.)
+            count: Number of candles to fetch (max 5000)
+
+        Returns:
+            List of candle dicts with keys: time, o, h, l, c, volume
+            Returns None if request fails
+        """
+        api = cls.get_api()
+        if not api:
+            return None
+
+        params = {
+            "count": min(count, 5000),  # Oanda max is 5000
+            "granularity": granularity,
+            "price": "M"  # Midpoint prices
+        }
+
+        try:
+            r = instruments.InstrumentsCandles(instrument=symbol, params=params)
+            api.request(r)
+            candles_raw = r.response.get('candles', [])
+
+            # Convert to simplified format
+            candles = []
+            for candle in candles_raw:
+                if candle.get('complete'):  # Only use completed candles
+                    mid = candle.get('mid', {})
+                    candles.append({
+                        'time': candle['time'],
+                        'o': float(mid.get('o', 0)),
+                        'h': float(mid.get('h', 0)),
+                        'l': float(mid.get('l', 0)),
+                        'c': float(mid.get('c', 0)),
+                        'volume': int(candle.get('volume', 0))
+                    })
+
+            return candles if candles else None
+
+        except Exception as e:
+            # Return None if request fails (instrument doesn't exist, network error, etc.)
+            return None
+
+    @classmethod
     @retry_oanda(retries=3, delay=1)
     def get_current_spread(cls, symbol: str) -> Optional[float]:
         """

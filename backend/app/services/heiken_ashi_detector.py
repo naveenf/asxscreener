@@ -80,7 +80,28 @@ class HeikenAshiDetector(ForexStrategy):
 
         latest = ha_df.iloc[-1]
         sma_col = f'SMA{self.sma_period}'
-        
+
+        # === CRITICAL: Candle Freshness Check ===
+        # Don't generate signals from stale candles (prevents trading on old data)
+        # For 1H strategy, candle must be very fresh (just closed)
+        from datetime import datetime, timedelta
+        try:
+            current_time = latest.name
+            if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
+                now = datetime.now(current_time.tzinfo)
+            else:
+                now = datetime.now()
+
+            candle_age = now - current_time
+            max_candle_age = timedelta(minutes=15)  # Tight limit: 15 minutes for 1H timeframe
+
+            if candle_age > max_candle_age:
+                # Candle is too old - signal would be stale by execution time
+                return None
+        except Exception:
+            # If timestamp parsing fails, continue (don't block on this check)
+            pass
+
         # BUY Rules
         is_green = latest['HA_Close'] > latest['HA_Open']
         above_bb_mid = latest['HA_Close'] > latest['HA_BB_Middle']

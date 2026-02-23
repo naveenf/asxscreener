@@ -91,7 +91,27 @@ class EnhancedSniperDetector(ForexStrategy):
         current_time = latest['time'] if 'time' in latest else latest.name
         if not hasattr(current_time, 'hour'):
              current_time = pd.to_datetime(current_time)
-             
+
+        # === CRITICAL: Candle Freshness Check ===
+        # Don't generate signals from stale candles (prevents trading on old data)
+        # For 15m strategy, candle must be very fresh (just closed)
+        from datetime import datetime, timedelta
+        try:
+            if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
+                now = datetime.now(current_time.tzinfo)
+            else:
+                now = datetime.now()
+
+            candle_age = now - current_time
+            max_candle_age = timedelta(minutes=10)  # Tight limit: 10 minutes for 15m timeframe
+
+            if candle_age > max_candle_age:
+                # Candle is too old - signal would be stale by execution time
+                return None
+        except Exception:
+            # If timestamp parsing fails, continue (don't block on this check)
+            pass
+
         if current_time.hour in high_loss_hours:
             return None
 

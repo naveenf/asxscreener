@@ -110,6 +110,26 @@ class DailyORBDetector(ForexStrategy):
         prev_15m = df_15m.iloc[-2]
         current_time = latest_15m.name
 
+        # === CRITICAL: Candle Freshness Check ===
+        # Don't generate signals from stale candles (prevents trading on old data)
+        # For 15m strategy, candle must be very fresh (just closed)
+        from datetime import datetime
+        try:
+            if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
+                now = datetime.now(current_time.tzinfo)
+            else:
+                now = datetime.now()
+
+            candle_age = now - current_time
+            max_candle_age = timedelta(minutes=10)  # Tight limit: 10 minutes for 15m timeframe
+
+            if candle_age > max_candle_age:
+                # Candle is too old - signal would be stale by execution time
+                return None
+        except Exception:
+            # If timestamp parsing fails, continue (don't block on this check)
+            pass
+
         # 1. Session Detection (Multi-session support)
         active_sessions = self._get_active_sessions(current_time, sessions_to_check)
         

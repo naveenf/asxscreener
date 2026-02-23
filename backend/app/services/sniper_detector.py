@@ -57,7 +57,28 @@ class SniperDetector(ForexStrategy):
         latest_15 = df_15m.iloc[-1]
         prev_15 = df_15m.iloc[-2]
         casket = self.get_casket(symbol)
-        
+
+        # === CRITICAL: Candle Freshness Check ===
+        # Don't generate signals from stale candles (prevents trading on old data)
+        # For 15m strategy, candle must be very fresh (just closed)
+        from datetime import datetime, timedelta
+        try:
+            current_time = latest_15.name
+            if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
+                now = datetime.now(current_time.tzinfo)
+            else:
+                now = datetime.now()
+
+            candle_age = now - current_time
+            max_candle_age = timedelta(minutes=10)  # Tight limit: 10 minutes for 15m timeframe
+
+            if candle_age > max_candle_age:
+                # Candle is too old - signal would be stale by execution time
+                return None
+        except Exception:
+            # If timestamp parsing fails, continue (don't block on this check)
+            pass
+
         # Base Crossover Logic
         is_buy = htf_bull and latest_15['DIPlus'] > latest_15['DIMinus'] and prev_15['DIPlus'] <= prev_15['DIMinus']
         is_sell = htf_bear and latest_15['DIMinus'] > latest_15['DIPlus'] and prev_15['DIMinus'] <= prev_15['DIPlus']

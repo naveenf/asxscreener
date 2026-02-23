@@ -67,6 +67,26 @@ class SilverMomentumDetector(ForexStrategy):
         prev_1h = df_1h.iloc[-2]
         current_time = latest_1h.name
 
+        # === CRITICAL: Candle Freshness Check ===
+        # Don't generate signals from stale candles (prevents trading on old data)
+        # For 1H strategy, candle must be very fresh (just closed)
+        from datetime import datetime, timedelta
+        try:
+            if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
+                now = datetime.now(current_time.tzinfo)
+            else:
+                now = datetime.now()
+
+            candle_age = now - current_time
+            max_candle_age = timedelta(minutes=15)  # Tight limit: 15 minutes for 1H timeframe
+
+            if candle_age > max_candle_age:
+                # Candle is too old - signal would be stale by execution time
+                return None
+        except Exception:
+            # If timestamp parsing fails, continue (don't block on this check)
+            pass
+
         # Time Filter: 13:00-17:00 UTC (London-NY overlap)
         # Note: In backtesting, the index is datetime objects
         hour_utc = current_time.hour

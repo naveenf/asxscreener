@@ -253,28 +253,55 @@ class OandaTradeService:
 
                 strategy_obj = strategy_map.get(strategy_name)
                 if strategy_obj and hasattr(strategy_obj, 'check_exit'):
-                    # Load current market data to check exit conditions
+                    # Fetch LIVE market data from Oanda to check exit conditions
                     try:
-                        from .forex_screener import ForexScreener
-                        from pathlib import Path
-                        screener = ForexScreener(
-                            data_dir=Path('data/forex_raw'),
-                            config_path=Path('data/metadata/forex_pairs.json'),
-                            output_path=Path('data/forex_signals.json')
-                        )
-                        current_data = screener._load_data_mtf(symbol)
+                        import pandas as pd
 
-                        if current_data:
+                        # Determine timeframe from strategy
+                        timeframe_used = signal.get('timeframe_used', '1h')
+
+                        # Map timeframes to Oanda granularity
+                        granularity_map = {
+                            '5m': 'M5',
+                            '15m': 'M15',
+                            '1h': 'H1',
+                            '4h': 'H4'
+                        }
+                        granularity = granularity_map.get(timeframe_used, 'H1')
+
+                        # Fetch live candles from Oanda (last 250 candles for indicator calculation)
+                        logger.info(f"Fetching live {granularity} data from Oanda for exit check on {symbol}...")
+                        live_candles = OandaPriceService.get_candles(symbol, granularity=granularity, count=250)
+
+                        if live_candles and len(live_candles) > 0:
+                            # Convert to DataFrame
+                            df = pd.DataFrame(live_candles)
+                            df['time'] = pd.to_datetime(df['time'])
+                            df.set_index('time', inplace=True)
+                            df = df.rename(columns={'o': 'Open', 'h': 'High', 'l': 'Low', 'c': 'Close', 'volume': 'Volume'})
+                            df = df.astype(float)
+
+                            # Add indicators (required for exit check)
+                            from .indicators import TechnicalIndicators
+                            df = TechnicalIndicators.add_all_indicators(df)
+
+                            # Prepare data dict for strategy (use same timeframe key)
+                            current_data = {timeframe_used: df, 'base': df}
+
                             # Get the direction and entry price
                             direction = signal['signal']
                             entry_price = signal['price']
 
-                            # Check if exit condition is already met
+                            # Check if exit condition is already met in LIVE market
                             exit_result = strategy_obj.check_exit(current_data, direction, entry_price)
                             if exit_result and exit_result.get('exit_signal'):
                                 reason = exit_result.get('reason', 'Unknown')
-                                logger.warning(f"Skipping {symbol}: Exit condition already met - {reason}")
+                                logger.warning(f"Skipping {symbol}: Exit condition already met in LIVE market - {reason}")
                                 continue
+                            else:
+                                logger.info(f"✅ {symbol}: Exit check passed - signal still valid in live market")
+                        else:
+                            logger.warning(f"Could not fetch live candles for {symbol}, skipping exit check")
                     except Exception as e:
                         logger.warning(f"Could not verify exit conditions for {symbol}: {e}")
 

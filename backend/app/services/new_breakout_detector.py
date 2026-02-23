@@ -57,6 +57,27 @@ class NewBreakoutDetector(ForexStrategy):
         latest_4h = df_4h.iloc[-1]
         prev_4h = df_4h.iloc[-2]
 
+        # === CRITICAL: Candle Freshness Check ===
+        # Don't generate signals from stale candles (prevents trading on old data)
+        # For 15m strategy, candle must be very fresh (just closed)
+        from datetime import datetime, timedelta
+        try:
+            current_time = latest_15m.name
+            if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
+                now = datetime.now(current_time.tzinfo)
+            else:
+                now = datetime.now()
+
+            candle_age = now - current_time
+            max_candle_age = timedelta(minutes=10)  # Tight limit: 10 minutes for 15m timeframe
+
+            if candle_age > max_candle_age:
+                # Candle is too old - signal would be stale by execution time
+                return None
+        except Exception:
+            # If timestamp parsing fails, continue (don't block on this check)
+            pass
+
         # 1. Higher Timeframe (4H) Trend Filtering
         htf_trend = self._get_htf_trend(latest_4h)
         if htf_trend == "neutral":
