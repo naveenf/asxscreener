@@ -123,6 +123,10 @@ class PVTScalpingDetector(ForexStrategy):
         if 'ADX' not in df.columns:
             df = TechnicalIndicators.calculate_adx(df, period=14)
 
+        # Add ATR for stop loss calculation
+        if 'ATR' not in df.columns:
+            df['ATR'] = TechnicalIndicators.calculate_atr(df, period=14)
+
         return df
 
     def _is_trading_hours(self, current_time: datetime) -> bool:
@@ -353,12 +357,11 @@ class PVTScalpingDetector(ForexStrategy):
         # === RISK MANAGEMENT ===
         # Stop Loss: Use ATR-based stop instead of EMA50 for better risk management
         # EMA50 as stop was too tight, causing immediate SL hits
-        if 'ATR' not in latest.index:
-            # Fallback: Calculate ATR if not available
-            df_1h = TechnicalIndicators.calculate_atr(df_1h)
-            latest = df_1h.iloc[-1]
-
-        atr = float(latest.get('ATR', abs(current_price - float(latest['EMA50'])) / 2))
+        # Safely access ATR (avoid .get() which can fail on numpy types)
+        if 'ATR' in latest.index:
+            atr = float(latest['ATR'])
+        else:
+            atr = abs(current_price - float(latest['EMA50'])) / 2
         sl_distance = atr + spread
 
         # Minimum SL: 0.2% of price
@@ -389,7 +392,7 @@ class PVTScalpingDetector(ForexStrategy):
                 "PVT": round(float(latest['PVT']), 3),
                 "PVT_consecutive": pvt_high if signal == "BUY" else pvt_low,
                 "PVT_MA": round(float(latest['PVT_MA']), 3),
-                "ADX": round(float(latest.get('ADX', 0)), 1),
+                "ADX": round(float(latest['ADX']) if 'ADX' in latest.index else 0.0, 1),
                 "Daily_SMA200": round(daily_sma200, 2),
                 "Price_vs_Daily_SMA200": round(current_price - daily_sma200, 2),
                 "Quality_Filters": "✅ Trading Hours + Strong PVT + Momentum",
