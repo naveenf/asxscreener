@@ -145,6 +145,36 @@
   font-size: 0.8rem;
 }
 
+.open-badge {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  margin-left: 4px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.backfill-btn {
+  background: #ff9800 !important;
+}
+
+.backfill-btn:hover {
+  background: #f57c00 !important;
+}
+
+.live-indicator {
+  color: #4caf50;
+  font-size: 0.8rem;
+  margin-left: 3px;
+  opacity: 0.8;
+}
+
+.row-open td {
+  opacity: 0.92;
+}
+
 .positive {
   color: #4caf50;
 }

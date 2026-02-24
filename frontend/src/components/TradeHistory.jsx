@@ -7,11 +7,12 @@ const TradeHistory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Default to today (2026-02-19) to show only synced trades
+  // Feature was implemented on 2026-02-19; only show synced trades from that date onwards
+  const SYNC_START_DATE = '2026-02-19';
   const getTodayDate = () => new Date().toISOString().split('T')[0];
 
   // Filters
-  const [startDate, setStartDate] = useState(getTodayDate());
+  const [startDate, setStartDate] = useState(SYNC_START_DATE);
   const [endDate, setEndDate] = useState(getTodayDate());
   const [selectedSymbol, setSelectedSymbol] = useState('all');
   const [selectedStrategy, setSelectedStrategy] = useState('all');
@@ -44,6 +45,32 @@ const TradeHistory = () => {
   useEffect(() => {
     loadTrades();
   }, [statusFilter, sortBy]); // Reload when status or sort changes
+
+  const backfillSellPrices = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('google_token');
+      const response = await fetch('/api/forex-portfolio/backfill-sell-prices', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) throw new Error('Backfill failed');
+
+      const result = await response.json();
+      setError(null);
+      alert(`✅ Backfilled ${result.backfilled} trades (skipped ${result.skipped} already complete).`);
+      if (result.backfilled > 0) setTimeout(() => loadTrades(), 1000);
+    } catch (err) {
+      setError('Backfill failed');
+      alert('❌ Backfill failed: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const syncOandaTrades = async () => {
     setLoading(true);
@@ -117,6 +144,9 @@ const TradeHistory = () => {
         <div className="header-buttons">
           <button className="sync-btn" onClick={syncOandaTrades} title="Sync closed trades from Oanda">
             🔄 Sync from Oanda
+          </button>
+          <button className="sync-btn backfill-btn" onClick={backfillSellPrices} title="Backfill missing exit prices for historical closed trades">
+            🔧 Backfill Exit Prices
           </button>
           <button className="export-btn" onClick={handleExport} disabled={trades.length === 0}>
             Export CSV
@@ -197,22 +227,33 @@ const TradeHistory = () => {
               </tr>
             </thead>
             <tbody>
-              {trades.map(trade => (
-                <tr key={trade.id}>
-                  <td>{trade.sell_date || trade.buy_date}</td>
-                  <td className="symbol-cell">{trade.symbol.replace('_', '/')}</td>
-                  <td><span className="strategy-tag">{trade.strategy || 'Manual'}</span></td>
-                  <td>{trade.buy_price.toFixed(5)}</td>
-                  <td>{trade.sell_price?.toFixed(5)}</td>
-                  <td className={trade.realized_gain_aud >= 0 ? 'positive' : 'negative'}>
-                    ${trade.realized_gain_aud?.toFixed(2)}
-                  </td>
-                  <td className={trade.gain_loss_percent >= 0 ? 'positive' : 'negative'}>
-                    {trade.gain_loss_percent.toFixed(2)}%
-                  </td>
-                  <td>{trade.actual_rr?.toFixed(2) || 'N/A'}</td>
-                </tr>
-              ))}
+              {trades.map(trade => {
+                const isOpen = trade.status === 'OPEN';
+                const pnl = isOpen ? trade.gain_loss_aud : trade.realized_gain_aud;
+                const exitPrice = isOpen ? trade.current_price : trade.sell_price;
+                return (
+                  <tr key={trade.id} className={isOpen ? 'row-open' : ''}>
+                    <td>{trade.sell_date || trade.buy_date}</td>
+                    <td className="symbol-cell">{trade.symbol.replace('_', '/')}</td>
+                    <td>
+                      <span className="strategy-tag">{trade.strategy || 'Manual'}</span>
+                      {isOpen && <span className="open-badge">LIVE</span>}
+                    </td>
+                    <td>{trade.buy_price.toFixed(5)}</td>
+                    <td>
+                      {exitPrice != null ? exitPrice.toFixed(5) : '—'}
+                      {isOpen && exitPrice != null && <span className="live-indicator"> ↻</span>}
+                    </td>
+                    <td className={pnl == null ? '' : pnl >= 0 ? 'positive' : 'negative'}>
+                      {pnl != null ? `$${pnl.toFixed(2)}` : '—'}
+                    </td>
+                    <td className={trade.gain_loss_percent >= 0 ? 'positive' : 'negative'}>
+                      {trade.gain_loss_percent?.toFixed(2) ?? '0.00'}%
+                    </td>
+                    <td>{trade.actual_rr?.toFixed(2) || 'N/A'}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

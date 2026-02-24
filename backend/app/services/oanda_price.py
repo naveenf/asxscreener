@@ -252,6 +252,41 @@ class OandaPriceService:
         return [t.get('instrument') for t in open_trades]
 
     @classmethod
+    @retry_oanda(retries=2, delay=1)
+    def get_multiple_prices(cls, symbols: List[str]) -> Dict[str, float]:
+        """
+        Get current mid prices for multiple symbols in one API call.
+        Returns dict of {symbol: mid_price}.
+        """
+        api = cls.get_api()
+        account_id = settings.OANDA_ACCOUNT_ID
+        if not api or not account_id or not symbols:
+            return {}
+
+        try:
+            import oandapyV20.endpoints.pricing as pricing_ep
+            params = {"instruments": ",".join(symbols)}
+            r = pricing_ep.PricingInfo(accountID=account_id, params=params)
+            api.request(r)
+            prices_list = r.response.get('prices', [])
+
+            result = {}
+            for p in prices_list:
+                instrument = p.get('instrument')
+                bids = p.get('bids', [])
+                asks = p.get('asks', [])
+                if instrument and bids and asks:
+                    bid = float(bids[0].get('price', 0))
+                    ask = float(asks[0].get('price', 0))
+                    result[instrument] = (bid + ask) / 2.0
+
+            logger.info(f"Fetched live prices for {len(result)}/{len(symbols)} symbols from Oanda")
+            return result
+        except Exception as e:
+            logger.error(f"Error fetching multiple prices: {e}")
+            return {}
+
+    @classmethod
     def place_market_order(cls, symbol: str, units: float, stop_loss: float, take_profit: float) -> Optional[Dict[str, Any]]:
         """
         Place a Market Order with Stop Loss and Take Profit attached.
@@ -399,13 +434,16 @@ class OandaPriceService:
 
                 # Extract closed trade data if trade is closed
                 if state == 'CLOSED':
+                    # Oanda v20 API returns averageClosePrice and realizedPL for closed trades,
+                    # NOT a nested closingTransaction object.
+                    avg_close = trade_data.get('averageClosePrice')
                     closed_trade = {
                         'trade_id': trade_id,
                         'symbol': trade_data.get('instrument'),
-                        'entry_price': float(trade_data.get('initialPrice', 0)),
-                        'exit_price': float(trade_data.get('closingTransaction', {}).get('price', 0)) if trade_data.get('closingTransaction') else None,
-                        'pnl': float(trade_data.get('closingTransaction', {}).get('pl', 0)) if trade_data.get('closingTransaction') else 0,
-                        'closed_at': trade_data.get('closingTransaction', {}).get('time') if trade_data.get('closingTransaction') else None,
+                        'entry_price': float(trade_data.get('price', 0)),
+                        'exit_price': float(avg_close) if avg_close else None,
+                        'pnl': float(trade_data.get('realizedPL', 0)),
+                        'closed_at': trade_data.get('closeTime'),
                         'state': state
                     }
                     closed_trades.append(closed_trade)

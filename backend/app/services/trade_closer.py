@@ -106,11 +106,14 @@ class TradeCloserService:
 
             item = doc.to_dict()
             
+            close_price = close_result.get('close_price')
             update_data = {
                 'status': 'CLOSED',
                 'exit_signal': True,
                 'exit_reason': item.get('exit_reason', '') + " (Auto-Closed)",
-                'close_price': close_result.get('close_price'),
+                'close_price': close_price,
+                'sell_price': close_price,
+                'sell_date': datetime.utcnow().strftime("%Y-%m-%d"),
                 'pnl': close_result.get('pnl', 0.0),
                 'closed_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),

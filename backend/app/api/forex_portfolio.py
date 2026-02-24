@@ -64,23 +64,41 @@ def get_latest_price_from_csv(symbol: str) -> Optional[float]:
         print(f"Error reading CSV price for {symbol}: {e}")
     return None
 
-def calculate_forex_metrics(item_data: dict, signals: List[dict]) -> dict:
+def fetch_live_prices_for_open_trades(docs_data: List[dict]) -> dict:
+    """Batch-fetch live Oanda prices for all unique OPEN trade symbols plus AUD_USD for conversion."""
+    open_symbols = {d.get('symbol') for d in docs_data if d.get('status', 'OPEN') == 'OPEN' and d.get('symbol')}
+    if not open_symbols:
+        return {}
+    # Always include AUD_USD for P&L conversion
+    symbols_to_fetch = list(open_symbols | {'AUD_USD'})
+    try:
+        prices = OandaPriceService.get_multiple_prices(symbols_to_fetch)
+        return prices or {}
+    except Exception as e:
+        logger.warning(f"Could not fetch live Oanda prices: {e}")
+        return {}
+
+
+def calculate_forex_metrics(item_data: dict, signals: List[dict], live_prices: Optional[dict] = None) -> dict:
     """Calculate AUD metrics for a forex item."""
     symbol = item_data.get('symbol')
     direction = item_data.get('direction', 'BUY')
     buy_price = item_data.get('buy_price', 0)
     quantity = item_data.get('quantity', 0)
     status = item_data.get('status', 'OPEN')
-    
-    # Find current price
+
+    # Find current price: 1) screener signals cache, 2) CSV, 3) live Oanda prices
     current_price = None
     for s in signals:
         if s['symbol'] == symbol:
             current_price = s['price']
             break
-            
+
     if current_price is None and status == 'OPEN':
         current_price = get_latest_price_from_csv(symbol)
+
+    if current_price is None and status == 'OPEN' and live_prices:
+        current_price = live_prices.get(symbol)
 
     # Find conversion rate to AUD
     # Most pairs are XXX_USD. So we need AUD_USD to convert USD profit to AUD.
@@ -94,6 +112,8 @@ def calculate_forex_metrics(item_data: dict, signals: List[dict]) -> dict:
         csv_rate = get_latest_price_from_csv('AUD_USD')
         if csv_rate:
             aud_usd_rate = csv_rate
+        elif live_prices and 'AUD_USD' in live_prices:
+            aud_usd_rate = live_prices['AUD_USD']
 
     # Gain/Loss in native currency
     native_gain_loss = 0.0
@@ -168,31 +188,32 @@ async def get_trade_history(
             query = query.where('strategy', '==', strategy)
             
         docs = query.stream()
-        
+
+        # Materialise docs so we can pre-fetch live prices in one batch call
+        all_docs = [(doc.id, doc.to_dict()) for doc in docs]
+
         forex_data = get_forex_data()
         signals = forex_data.get('signals', [])
-        
+
+        # Batch-fetch live Oanda prices for all OPEN trade symbols
+        live_prices = fetch_live_prices_for_open_trades([d for _, d in all_docs])
+
         items = []
-        for doc in docs:
-            data = doc.to_dict()
-            
-            # Apply date filters manually (Firestore doesn't support complex inequality on different fields easily with this structure)
-            # sell_date is stored as ISO string in 'sell_date' field for CLOSED trades
-            # buy_date is stored as ISO string in 'buy_date' field
-            
+        for doc_id, data in all_docs:
+            # Apply date filters manually
             item_date_str = data.get('sell_date') if status == 'CLOSED' else data.get('buy_date')
             if not item_date_str:
                 continue
-                
+
             item_date = datetime.strptime(item_date_str, "%Y-%m-%d").date()
-            
+
             if start_date and item_date < start_date:
                 continue
             if end_date and item_date > end_date:
                 continue
-                
-            metrics = calculate_forex_metrics(data, signals)
-            
+
+            metrics = calculate_forex_metrics(data, signals, live_prices)
+
             # Date handling
             buy_date = datetime.strptime(data.get('buy_date'), "%Y-%m-%d").date()
             sell_date = None
@@ -200,7 +221,7 @@ async def get_trade_history(
                 sell_date = datetime.strptime(data.get('sell_date'), "%Y-%m-%d").date()
 
             items.append(ForexPortfolioItemResponse(
-                id=doc.id,
+                id=doc_id,
                 symbol=data.get('symbol'),
                 direction=data.get('direction', 'BUY'),
                 buy_date=buy_date,
@@ -534,26 +555,28 @@ async def list_forex_portfolio(email: str = Depends(get_current_user_email)):
     try:
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
         docs = portfolio_ref.stream()
-        
+
         forex_data = get_forex_data()
         signals = forex_data.get('signals', [])
-        
+
+        all_docs_data = [doc.to_dict() | {'_id': doc.id} for doc in docs]
+        live_prices = fetch_live_prices_for_open_trades(all_docs_data)
+
         items = []
-        for doc in docs:
-            data = doc.to_dict()
-            metrics = calculate_forex_metrics(data, signals)
-            
+        for data in all_docs_data:
+            metrics = calculate_forex_metrics(data, signals, live_prices)
+
             # Date handling
             buy_date = data.get('buy_date')
             if isinstance(buy_date, str):
                 buy_date = datetime.strptime(buy_date, "%Y-%m-%d").date()
-            
+
             sell_date = data.get('sell_date')
             if isinstance(sell_date, str):
                 sell_date = datetime.strptime(sell_date, "%Y-%m-%d").date()
 
             items.append(ForexPortfolioItemResponse(
-                id=doc.id,
+                id=data.get('_id', ''),
                 symbol=data.get('symbol'),
                 direction=data.get('direction', 'BUY'),
                 buy_date=buy_date,
@@ -571,7 +594,7 @@ async def list_forex_portfolio(email: str = Depends(get_current_user_email)):
                 gain_loss_aud=metrics['gain_loss_aud'] if data.get('status') == 'OPEN' else None,
                 gain_loss_percent=metrics['gain_loss_percent'],
                 realized_gain_aud=metrics['gain_loss_aud'] if data.get('status') == 'CLOSED' else None,
-                actual_rr=data.get('actual_rr')  # R:R from Firestore if available
+                actual_rr=data.get('actual_rr')
             ))
             
         return items
@@ -769,10 +792,19 @@ async def sync_oanda_closes(
                 closed_trade = closed_trades[0]
 
                 # Update Firestore with exit data
+                # Parse sell_date to YYYY-MM-DD (strip time component)
+                closed_at_raw = closed_trade.get('closed_at') or ''
+                try:
+                    sell_date_str = datetime.fromisoformat(
+                        closed_at_raw.replace('Z', '+00:00')
+                    ).strftime("%Y-%m-%d")
+                except Exception:
+                    sell_date_str = datetime.utcnow().strftime("%Y-%m-%d")
+
                 doc.reference.update({
                     'status': 'CLOSED',
                     'sell_price': closed_trade.get('exit_price'),
-                    'sell_date': closed_trade.get('closed_at'),
+                    'sell_date': sell_date_str,
                     'pnl': closed_trade.get('pnl'),
                     'closed_by': 'OandaSync',
                     'updated_at': datetime.utcnow()
@@ -790,6 +822,86 @@ async def sync_oanda_closes(
     except Exception as e:
         logger.error(f"Error syncing Oanda closes: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to sync: {str(e)}")
+
+
+@router.post("/backfill-sell-prices", description="Backfill missing sell_price for CLOSED trades that have oanda_trade_id")
+async def backfill_sell_prices(
+    email: str = Depends(get_current_user_email)
+):
+    """
+    One-time backfill: fetch actual exit prices from Oanda for CLOSED Firestore trades
+    that are missing sell_price (e.g. trades that were closed before the sync fix).
+    """
+    try:
+        portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
+        closed_docs = list(portfolio_ref.where('status', '==', 'CLOSED').stream())
+
+        SYNC_START = date(2026, 2, 19)
+        backfilled = 0
+        skipped = 0
+
+        for doc in closed_docs:
+            data = doc.to_dict()
+
+            # Only process trades opened on or after the sync feature launch date
+            buy_date_str = data.get('buy_date') or ''
+            try:
+                trade_open_date = datetime.strptime(buy_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                trade_open_date = None
+
+            if trade_open_date is None or trade_open_date < SYNC_START:
+                skipped += 1
+                continue
+
+            if data.get('sell_price'):
+                skipped += 1
+                continue
+
+            trade_id = data.get('oanda_trade_id')
+            if not trade_id:
+                skipped += 1
+                continue
+
+            closed_trades = OandaPriceService.get_closed_trades_by_id([trade_id])
+            if not closed_trades:
+                skipped += 1
+                continue
+
+            ct = closed_trades[0]
+            exit_price = ct.get('exit_price')
+            if not exit_price:
+                skipped += 1
+                continue
+
+            closed_at_raw = ct.get('closed_at') or ''
+            try:
+                sell_date_str = datetime.fromisoformat(
+                    closed_at_raw.replace('Z', '+00:00')
+                ).strftime("%Y-%m-%d")
+            except Exception:
+                sell_date_str = data.get('sell_date') or datetime.utcnow().strftime("%Y-%m-%d")
+
+            doc.reference.update({
+                'sell_price': exit_price,
+                'sell_date': sell_date_str,
+                'pnl': ct.get('pnl', 0.0),
+                'updated_at': datetime.utcnow()
+            })
+            backfilled += 1
+            logger.info(f"Backfilled trade {trade_id}: sell_price={exit_price}")
+
+        return {
+            "status": "success",
+            "backfilled": backfilled,
+            "skipped": skipped,
+            "message": f"Backfilled {backfilled} trades, skipped {skipped}"
+        }
+
+    except Exception as e:
+        logger.error(f"Error backfilling sell prices: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to backfill: {str(e)}")
+
 
 @router.post("/check-exits")
 async def check_portfolio_exits(email: str = Depends(get_current_user_email)):

@@ -3,6 +3,46 @@
   color: var(--text-primary);
 }
 
+.analytics-filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.analytics-filters .filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.analytics-filters .filter-group input[type="date"] {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 4px;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.analytics-filters .load-btn {
+  padding: 6px 16px;
+  background: var(--accent-color, #00b4d8);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.analytics-filters .load-btn:hover {
+  opacity: 0.85;
+}
+
 .summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

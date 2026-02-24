@@ -11,8 +11,12 @@ const AnalyticsDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // Feature was implemented on 2026-02-19; default analytics to that date onwards
+  const SYNC_START_DATE = '2026-02-19';
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+
+  const [startDate, setStartDate] = useState(SYNC_START_DATE);
+  const [endDate, setEndDate] = useState(getTodayDate());
 
   const loadAnalytics = async () => {
     setLoading(true);
@@ -20,7 +24,7 @@ const AnalyticsDashboard = () => {
       const params = {};
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
-      
+
       const data = await fetchTradeAnalytics(params);
       setAnalytics(data);
       setError(null);
@@ -36,16 +40,30 @@ const AnalyticsDashboard = () => {
     loadAnalytics();
   }, []);
 
-  if (loading) return <div className="loading-state">Loading analytics...</div>;
-  if (error) return <div className="error-state">{error}</div>;
-  if (!analytics || analytics.summary.total_trades === 0) {
-    return <div className="empty-state">No trade data available for analytics.</div>;
-  }
-
-  const { summary, by_strategy, by_month, equity_curve } = analytics;
+  const { summary, by_strategy, by_month, equity_curve } = analytics || {};
 
   return (
     <div className="analytics-dashboard">
+      <div className="analytics-filters">
+        <div className="filter-group">
+          <label>From:</label>
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </div>
+        <div className="filter-group">
+          <label>To:</label>
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </div>
+        <button className="load-btn" onClick={loadAnalytics}>Apply</button>
+      </div>
+
+      {loading ? (
+        <div className="loading-state">Loading analytics...</div>
+      ) : error ? (
+        <div className="error-state">{error}</div>
+      ) : !analytics || analytics.summary.total_trades === 0 ? (
+        <div className="empty-state">No trade data available for the selected date range.</div>
+      ) : (
+        <>
       <div className="summary-cards">
         <SummaryCard
           title="Net P&L (AUD)"
@@ -92,11 +110,13 @@ const AnalyticsDashboard = () => {
           title="Win/Loss Distribution" 
         />
 
-        <StrategyComparison 
-          data={by_strategy} 
-          title="Strategy Performance" 
+        <StrategyComparison
+          data={by_strategy}
+          title="Strategy Performance"
         />
       </div>
+        </>
+      )}
     </div>
   );
 };

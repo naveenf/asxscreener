@@ -255,11 +255,20 @@ class PortfolioMonitor:
                 if closed_trades:
                     closed_trade = closed_trades[0]
 
+                    # Parse sell_date to YYYY-MM-DD string (strip time component)
+                    closed_at_raw = closed_trade.get('closed_at') or ''
+                    try:
+                        sell_date = datetime.fromisoformat(
+                            closed_at_raw.replace('Z', '+00:00')
+                        ).strftime("%Y-%m-%d")
+                    except Exception:
+                        sell_date = datetime.utcnow().strftime("%Y-%m-%d")
+
                     # Update Firestore with exit data
                     doc.reference.update({
                         'status': 'CLOSED',
                         'sell_price': closed_trade.get('exit_price'),
-                        'sell_date': closed_trade.get('closed_at'),
+                        'sell_date': sell_date,
                         'pnl': closed_trade.get('pnl'),
                         'closed_by': 'OandaSync',
                         'updated_at': datetime.utcnow()
