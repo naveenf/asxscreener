@@ -235,6 +235,7 @@ class OandaTradeService:
                 from .commodity_sniper_detector import CommoditySniperDetector
                 from .heiken_ashi_detector import HeikenAshiDetector
                 from .silver_momentum_detector import SilverMomentumDetector
+                from .sma_scalping_detector import SmaScalpingDetector
 
                 strategy_map = {
                     'PVTScalping': PVTScalpingDetector(),
@@ -249,6 +250,7 @@ class OandaTradeService:
                     'CommoditySniper': CommoditySniperDetector(),
                     'HeikenAshi': HeikenAshiDetector(),
                     'SilverMomentum': SilverMomentumDetector(),
+                    'SmaScalping': SmaScalpingDetector(),
                 }
 
                 strategy_obj = strategy_map.get(strategy_name)

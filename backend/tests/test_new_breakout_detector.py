@@ -6,33 +6,27 @@ from backend.app.services.indicators import TechnicalIndicators # To ensure indi
 # Dummy data for testing
 @pytest.fixture
 def dummy_data():
-    # Create sample dataframes for 15m and 4h
-    # Ensure enough data for indicator calculation (e.g., 200 bars for SMA200)
-    # And for HTF alignment
-    
-    # 15m data
+    # 15m data - create a series of closes that can show breakout
     data_15m = {
         'Date': pd.to_datetime(pd.date_range(start='2023-01-01', periods=250, freq='15min')),
-        'Open': [i + 100 for i in range(250)],
-        'High': [i + 101 for i in range(250)],
-        'Low': [i + 99 for i in range(250)],
-        'Close': [i + 100.5 for i in range(250)],
+        'Open': [100 + i*0.05 for i in range(250)],
+        'High': [100.1 + i*0.05 for i in range(250)],
+        'Low': [99.9 + i*0.05 for i in range(250)],
+        'Close': [100 + i*0.05 for i in range(250)],
         'Volume': [1000 + i for i in range(250)]
     }
     df_15m = pd.DataFrame(data_15m).set_index('Date')
-    df_15m = TechnicalIndicators.add_all_indicators(df_15m)
 
-    # 4h data (aligned to 15m)
+    # 4h data - strongly bullish trend to guarantee ADX, DI+, EMA conditions are met
     data_4h = {
         'Date': pd.to_datetime(pd.date_range(start='2023-01-01', periods=20, freq='4H')),
-        'Open': [i + 90 for i in range(20)],
-        'High': [i + 92 for i in range(20)],
-        'Low': [i + 88 for i in range(20)],
-        'Close': [i + 90.5 for i in range(20)],
+        'Open': [100 + i*10 for i in range(20)],
+        'High': [102 + i*10 for i in range(20)],
+        'Low': [98 + i*10 for i in range(20)],
+        'Close': [101 + i*10 for i in range(20)],
         'Volume': [5000 + i*10 for i in range(20)]
     }
     df_4h = pd.DataFrame(data_4h).set_index('Date')
-    df_4h = TechnicalIndicators.add_all_indicators(df_4h)
 
     return {
         'base': df_15m,
@@ -47,44 +41,78 @@ def test_new_breakout_detector_analyze_no_signal(dummy_data):
     detector = NewBreakoutDetector(adx_threshold=50) # Set high ADX to reduce signals
     symbol = "TEST_PAIR"
     
-    # Manually ensure no signal by setting conditions that won't trigger
-    # In dummy_data, Close is generally rising, so a bullish trend.
-    # We need to make sure the breakout condition isn't met or HTF isn't strong enough.
-    
-    # For a no-signal scenario, let's pass data where HTF is neutral or breakout isn't clear
+    df_15m = dummy_data['base'].copy() # Work on a copy
+    df_4h = dummy_data['htf'].copy()   # Work on a copy
+
+    # Add all indicators to both dataframes within the test context
+    df_15m = TechnicalIndicators.add_all_indicators(df_15m)
+    df_4h = TechnicalIndicators.add_all_indicators(df_4h)
     
     # Example: Create a scenario where ADX is too low for HTF trend
-    dummy_data['htf']['ADX'].iloc[-1] = 10 # Force low ADX
-    dummy_data['htf']['ADX'].iloc[-2] = 9 # Force low ADX
+    df_4h.loc[df_4h.index[-1], 'ADX'] = 10 # Force low ADX
+    df_4h.loc[df_4h.index[-2], 'ADX'] = 9 # Force low ADX
 
-    result = detector.analyze(dummy_data, symbol, target_rr=2.0)
+    # Pass the modified dataframes to the detector
+    modified_dummy_data = {'base': df_15m, 'htf': df_4h}
+    result = detector.analyze(modified_dummy_data, symbol, target_rr=2.0)
     assert result is None
 
 def test_new_breakout_detector_analyze_buy_signal(dummy_data):
-    # Adjust dummy data to generate a BUY signal
-    df_15m = dummy_data['base']
-    df_4h = dummy_data['htf']
     symbol = "TEST_PAIR"
-    
-    # Ensure strong bullish HTF trend
-    df_4h['Close'].iloc[-1] = 1000 # High close
-    df_4h['EMA34'].iloc[-1] = 900
-    df_4h['ADX'].iloc[-1] = 30 # Strong ADX
-    df_4h['DIPlus'].iloc[-1] = 40
-    df_4h['DIMinus'].iloc[-1] = 20
-    
-    # Ensure 15m breakout
-    # Create a recent high that can be broken
     sr_lookback = 20
-    recent_high_idx = df_15m['High'].iloc[-sr_lookback:-1].idxmax()
-    df_15m['High'].loc[recent_high_idx] = 150 # Some high within lookback
 
-    # Current close breaks a recent high
-    df_15m['Close'].iloc[-1] = df_15m['High'].iloc[-sr_lookback:-1].max() + 5
-    df_15m['Close'].iloc[-2] = df_15m['High'].iloc[-sr_lookback:-1].max() - 1
+    # --- Setup df_4h for a clear bullish trend ---
+    num_candles_4h = 20
+    closes_4h = [100.0 + i * 5 for i in range(num_candles_4h)]
+    highs_4h = [c + 2 for c in closes_4h]
+    lows_4h = [c - 2 for c in closes_4h]
+    df_4h_raw = pd.DataFrame({
+        'Date': pd.to_datetime(pd.date_range(start='2023-01-01', periods=num_candles_4h, freq='4H')),
+        'Open': [c - 1 for c in closes_4h],
+        'High': highs_4h,
+        'Low': lows_4h,
+        'Close': closes_4h,
+        'Volume': [1000] * num_candles_4h
+    }).set_index('Date')
+    df_4h = TechnicalIndicators.add_all_indicators(df_4h_raw.copy()) # Process with indicators
+
+    # --- Setup df_15m for a clear breakout ---
+    num_candles_15m = 250
+    closes_15m_base = [100.0] * (num_candles_15m - 2)
+    highs_15m_base = [c + 0.1 for c in closes_15m_base]
+    lows_15m_base = [c - 0.1 for c in closes_15m_base]
+
+    recent_high_val = 105.0 # Define a specific recent high to break
+    # Place a high value before the last few candles to be the "recent_high"
+    highs_15m_base[-sr_lookback + 5] = recent_high_val + 0.5 # Ensure a high point exists
+
+    # Ensure previous candle was below or at recent_high, and current breaks it
+    prev_close = recent_high_val - 0.1
+    current_close = recent_high_val + 1.0
+
+    closes_15m = closes_15m_base + [prev_close, current_close]
+    highs_15m = [c + 0.1 for c in closes_15m]
+    lows_15m = [c - 0.1 for c in closes_15m]
+
+    df_15m_raw = pd.DataFrame({
+        'Date': pd.to_datetime(pd.date_range(start='2023-01-01', periods=len(closes_15m), freq='15min')),
+        'Open': [c - 0.05 for c in closes_15m],
+        'High': highs_15m,
+        'Low': lows_15m,
+        'Close': closes_15m,
+        'Volume': [1000] * len(closes_15m)
+    }).set_index('Date')
+    df_15m = TechnicalIndicators.add_all_indicators(df_15m_raw.copy()) # Process with indicators
+
+    # Manually ensure the last two closes reflect the breakout over the *calculated* recent high
+    # We find the recent_high from the processed dataframe, then ensure the last two closes break it.
+    calculated_recent_high = df_15m['High'].iloc[-sr_lookback:-1].max()
+    df_15m.loc[df_15m.index[-1], 'Close'] = calculated_recent_high + 1.0
+    df_15m.loc[df_15m.index[-2], 'Close'] = calculated_recent_high - 0.1
 
     detector = NewBreakoutDetector(adx_threshold=25, sr_lookback_candles=sr_lookback)
-    result = detector.analyze(dummy_data, symbol, target_rr=2.0)
+    modified_dummy_data = {'base': df_15m, 'htf': df_4h}
+    result = detector.analyze(modified_dummy_data, symbol, target_rr=2.0)
     
     assert result is not None
     assert result['signal'] == "BUY"

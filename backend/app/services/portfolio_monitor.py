@@ -25,6 +25,7 @@ from .sniper_detector import SniperDetector
 from .notification import EmailService
 from .trade_closer import TradeCloserService
 from .oanda_price import OandaPriceService
+from .sma_scalping_detector import SmaScalpingDetector
 
 class PortfolioMonitor:
     def __init__(self):
@@ -38,7 +39,8 @@ class PortfolioMonitor:
             "SilverSniper": SilverSniperDetector(),
             "CommoditySniper": CommoditySniperDetector(),
             "TripleTrend": TripleTrendDetector(),
-            "Sniper": SniperDetector()
+            "Sniper": SniperDetector(),
+            "SmaScalping": SmaScalpingDetector()
         }
         self.data_dir = settings.DATA_DIR / "forex_raw"
 
@@ -105,6 +107,7 @@ class PortfolioMonitor:
             timeframe_map = {
                 "SilverSniper": "5m",
                 "CommoditySniper": "5m",
+                "SmaScalping": "5m",
                 "DailyORB": "15m",
                 "NewBreakout": "15m",
                 "EnhancedSniper": "15m",

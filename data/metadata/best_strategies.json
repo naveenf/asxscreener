@@ -1,8 +1,20 @@
 {
   "XAU_USD": {
-    "strategy": "HeikenAshi",
-    "timeframe": "1h",
-    "target_rr": 5.0
+    "strategies": [
+      {
+        "strategy": "HeikenAshi",
+        "timeframe": "1h",
+        "target_rr": 5.0
+      },
+      {
+        "strategy": "SmaScalping",
+        "timeframe": "5m",
+        "target_rr": 5.0,
+        "params": {
+          "di_threshold": 35.0
+        }
+      }
+    ]
   },
   "BCO_USD": {
     "strategy": "CommoditySniper",
@@ -90,6 +102,14 @@
           "rsi_entry_short": 30,
           "rsi_exit_long": 33,
           "rsi_exit_short": 67
+        }
+      },
+      {
+        "strategy": "SmaScalping",
+        "timeframe": "5m",
+        "target_rr": 10.0,
+        "params": {
+          "di_threshold": 35.0
         }
       }
     ]
