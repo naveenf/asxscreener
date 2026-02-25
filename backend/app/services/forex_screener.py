@@ -9,9 +9,12 @@ import pandas as pd
 import json
 import subprocess
 import sys
+import logging
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 from .indicators import TechnicalIndicators
 from .strategy_interface import ForexStrategy
@@ -215,6 +218,7 @@ class ForexScreener:
 
         total_analyzed = 0
 
+        logger.info(f"Starting screener: {len(pairs)} pairs, mode={mode}")
         print(f"\n🚀 Starting Dynamic Forex Screener ({len(pairs)} pairs loaded, mode={mode})")
         print(f"Strategy Map Loaded: {len(self.strategy_map)} entries")
 
@@ -315,14 +319,17 @@ class ForexScreener:
 
                         if is_duplicate:
                             print(f"Processing {symbol}... ✓ {result['signal']} ({strategy_name}) [DUPLICATE - Skipped]")
+                            logger.info(f"SIGNAL DUPLICATE | {symbol} | {strategy_name} | {result['signal']} | tf={result.get('timeframe_used')} | ts={result.get('timestamp')}")
                         else:
                             print(f"Processing {symbol}... ✓ {result['signal']} ({strategy_name})")
+                            logger.info(f"SIGNAL FOUND | {symbol} | {strategy_name} | {result['signal']} | score={result.get('score')} | tf={result.get('timeframe_used')} | price={result.get('price')} | sl={result.get('stop_loss')} | tp={result.get('take_profit')} | ts={result.get('timestamp')}")
                             all_signals.append(result)
                     else:
                         print(f"Processing {symbol}... ✓ No signal ({strategy_name})")
 
                 except Exception as e:
                     print(f"Processing {symbol}... ✗ Error in {strategy_name}: {e}")
+                    logger.error(f"SIGNAL ERROR | {symbol} | {strategy_name} | {e}")
 
         # Rank all signals by score
         all_signals.sort(key=lambda x: x['score'], reverse=True)
@@ -344,5 +351,6 @@ class ForexScreener:
         print(f"\n📊 Analysis Complete: {len(all_signals)} signals found")
         if all_signals:
             print(f"Top Signal: {all_signals[0]['symbol']} ({all_signals[0]['strategy']}) - Score: {all_signals[0]['score']}")
+        logger.info(f"Screener complete: {len(all_signals)} active signals")
 
         return results

@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import logging
 import time
+from pathlib import Path
+from logging.handlers import RotatingFileHandler
 import pandas as pd
 
 # Global Pandas Configuration to silence FutureWarnings
@@ -19,12 +21,26 @@ from .api.routes import router
 from .config import settings
 from .services.tasks import run_forex_refresh_task, run_stock_refresh_task
 
-# Setup logging
+# Setup logging — console for everything, file handler scoped to services only
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
 logger = logging.getLogger("asx_api")
+
+# Attach rotating file handler to service loggers only (excludes HTTP request noise)
+_log_dir = Path(__file__).parent.parent.parent / "logs"
+_log_dir.mkdir(parents=True, exist_ok=True)
+_file_handler = RotatingFileHandler(
+    _log_dir / "screener.log",
+    maxBytes=10 * 1024 * 1024,  # 10 MB
+    backupCount=5,
+    encoding="utf-8",
+)
+_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+_file_handler.setLevel(logging.INFO)
+for _name in ("app.services", "screener"):
+    logging.getLogger(_name).addHandler(_file_handler)
 
 # Create FastAPI app
 app = FastAPI(

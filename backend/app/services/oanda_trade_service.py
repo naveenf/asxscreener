@@ -10,7 +10,7 @@ from .oanda_price import OandaPriceService
 from ..config import settings
 from ..firebase_setup import db
 from google.cloud import firestore
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -199,8 +199,9 @@ class OandaTradeService:
                 continue
 
             # === CRITICAL FIX #1: Signal Freshness Check ===
-            # Don't trade signals older than 5 minutes (prevents stale signal execution on restart)
-            from datetime import datetime, timedelta
+            # Signal timestamp = candle OPEN time, so age is always >= 1 full candle period
+            # by the time execution runs. Use 1.5x candle period as the cutoff so we accept
+            # the most recent completed candle but reject anything older.
             signal_timestamp = signal.get('timestamp')
             if signal_timestamp:
                 try:
@@ -210,10 +211,12 @@ class OandaTradeService:
                         signal_time = signal_timestamp
 
                     signal_age = datetime.now(signal_time.tzinfo) - signal_time
-                    max_age = timedelta(minutes=5)
+                    timeframe = signal.get('timeframe_used', '15m')
+                    max_age_minutes = {'5m': 10, '15m': 25, '1h': 90, '4h': 360}.get(timeframe, 25)
+                    max_age = timedelta(minutes=max_age_minutes)
 
                     if signal_age > max_age:
-                        logger.warning(f"Skipping {symbol}: Signal is {signal_age.total_seconds()/60:.1f} minutes old (max: 5 min)")
+                        logger.warning(f"Skipping {symbol}: Signal is {signal_age.total_seconds()/60:.1f} minutes old (max: {max_age_minutes} min, tf: {timeframe})")
                         continue
                 except Exception as e:
                     logger.warning(f"Could not parse signal timestamp for {symbol}: {e}")

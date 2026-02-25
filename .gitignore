@@ -51,6 +51,7 @@ frontend/dist/
 Thumbs.db
 
 # Logs
+logs/
 *.log
 download_log_*.txt
 
