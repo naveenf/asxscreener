@@ -61,6 +61,7 @@ class SmaScalpingDetector(ForexStrategy):
             latest['Close'] > latest['SMA50'] and
             latest['Close'] > latest['SMA100'] and
             latest['DIPlus'] > di_threshold and
+            latest['DIPlus'] > latest['DIMinus'] and
             adx_ok
         )
 
@@ -69,6 +70,7 @@ class SmaScalpingDetector(ForexStrategy):
             latest['Close'] < latest['SMA50'] and
             latest['Close'] < latest['SMA100'] and
             latest['DIMinus'] > di_threshold and
+            latest['DIMinus'] > latest['DIPlus'] and
             adx_ok
         )
 
@@ -81,6 +83,12 @@ class SmaScalpingDetector(ForexStrategy):
 
         # Get last 2 candles before entry candle
         prev_candles = df_with_indicators.iloc[-3:-1]
+
+        # Structural validity: entry must not have already broken through the SL level
+        if signal_type == "BUY" and price < prev_candles['Low'].min():
+            return None
+        if signal_type == "SELL" and price > prev_candles['High'].max():
+            return None
 
         # ATR floor: SL must be at least 1x ATR to avoid noise-triggered stops
         atr = float(latest['ATR']) if 'ATR' in latest.index and pd.notna(latest['ATR']) else None
