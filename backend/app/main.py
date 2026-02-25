@@ -39,8 +39,7 @@ _file_handler = RotatingFileHandler(
 )
 _file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 _file_handler.setLevel(logging.INFO)
-for _name in ("app.services", "screener"):
-    logging.getLogger(_name).addHandler(_file_handler)
+logging.getLogger("app.services").addHandler(_file_handler)
 
 # Create FastAPI app
 app = FastAPI(

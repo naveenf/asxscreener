@@ -27,17 +27,6 @@
       "cooldown_hours": 4
     }
   },
-  "WHEAT_USD": {
-    "strategy": "CommoditySniper",
-    "timeframe": "5m",
-    "target_rr": 3.0,
-    "params": {
-      "squeeze_threshold": 1.3,
-      "adx_min": 25,
-      "require_fvg": true,
-      "cooldown_hours": 0
-    }
-  },
   "XAG_USD": {
     "strategies": [
       {
@@ -115,19 +104,52 @@
     ]
   },
   "JP225_USD": {
-    "strategy": "HeikenAshi",
-    "timeframe": "1h",
-    "target_rr": 5.0
+    "strategies": [
+      {
+        "strategy": "HeikenAshi",
+        "timeframe": "1h",
+        "target_rr": 5.0
+      },
+      {
+        "strategy": "SmaScalping",
+        "timeframe": "5m",
+        "target_rr": 5.0,
+        "params": {
+          "di_threshold": 30.0,
+          "adx_min": 20.0
+        }
+      }
+    ]
   },
   "AUD_USD": {
-    "strategy": "EnhancedSniper",
-    "timeframe": "15m",
-    "target_rr": 2.5,
+    "strategies": [
+      {
+        "strategy": "EnhancedSniper",
+        "timeframe": "15m",
+        "target_rr": 2.5,
+        "params": {
+          "squeeze_threshold": 1.3,
+          "use_squeeze": false,
+          "cooldown_hours": 0,
+          "time_blocks": [0, 9, 14, 15]
+        }
+      },
+      {
+        "strategy": "SmaScalping",
+        "timeframe": "5m",
+        "target_rr": 2.5,
+        "params": {
+          "di_threshold": 35.0
+        }
+      }
+    ]
+  },
+  "USD_CAD": {
+    "strategy": "SmaScalping",
+    "timeframe": "5m",
+    "target_rr": 3.0,
     "params": {
-      "squeeze_threshold": 1.3,
-      "use_squeeze": false,
-      "cooldown_hours": 0,
-      "time_blocks": [0, 9, 14, 15]
+      "di_threshold": 35.0
     }
   },
   "USD_CHF": {
@@ -165,6 +187,14 @@
           "rsi_entry_short": 30,
           "rsi_exit_long": 33,
           "rsi_exit_short": 67
+        }
+      },
+      {
+        "strategy": "SmaScalping",
+        "timeframe": "5m",
+        "target_rr": 4.5,
+        "params": {
+          "di_threshold": 35.0
         }
       }
     ]

@@ -7,9 +7,10 @@ class SmaScalpingDetector(ForexStrategy):
     """
     5-minute scalping strategy using SMAs (20, 50, 100) and DMI.
     """
-    def __init__(self, di_threshold: float = 35.0, rr: float = 5.0):
+    def __init__(self, di_threshold: float = 35.0, rr: float = 5.0, adx_min: float = 0.0):
         self.di_threshold = di_threshold
         self.rr = rr
+        self.adx_min = adx_min
 
     def get_name(self) -> str:
         return "SmaScalping"
@@ -22,8 +23,9 @@ class SmaScalpingDetector(ForexStrategy):
         if df is None or len(df) < 101: # Need enough data for SMA 100
             return None
 
-        # Read di_threshold from runtime params (allows per-asset JSON override)
+        # Read thresholds from runtime params (allows per-asset JSON override)
         di_threshold = params.get('di_threshold', self.di_threshold) if params else self.di_threshold
+        adx_min      = params.get('adx_min', self.adx_min)           if params else self.adx_min
 
         # -- Calculate Indicators --
         # Use add_all_indicators to ensure all necessary indicators are present
@@ -47,23 +49,27 @@ class SmaScalpingDetector(ForexStrategy):
 
         
         # Ensure indicator values are present
-        required_cols = ['SMA20', 'SMA50', 'SMA100', 'DIPlus', 'DIMinus', 'Low', 'High']
+        required_cols = ['SMA20', 'SMA50', 'SMA100', 'DIPlus', 'DIMinus', 'ADX', 'Low', 'High']
         if not all(col in latest.index and pd.notna(latest[col]) for col in required_cols):
             return None
-            
+
+        adx_ok = latest['ADX'] >= adx_min  # passes when adx_min=0
+
         # -- Entry Conditions --
         is_buy_signal = (
             latest['Close'] > latest['SMA20'] and
             latest['Close'] > latest['SMA50'] and
             latest['Close'] > latest['SMA100'] and
-            latest['DIPlus'] > di_threshold
+            latest['DIPlus'] > di_threshold and
+            adx_ok
         )
 
         is_sell_signal = (
             latest['Close'] < latest['SMA20'] and
             latest['Close'] < latest['SMA50'] and
             latest['Close'] < latest['SMA100'] and
-            latest['DIMinus'] > di_threshold
+            latest['DIMinus'] > di_threshold and
+            adx_ok
         )
 
         if not (is_buy_signal or is_sell_signal):
@@ -72,21 +78,24 @@ class SmaScalpingDetector(ForexStrategy):
         # -- SL/TP Calculation --
         price = float(latest['Close'])
         signal_type = "BUY" if is_buy_signal else "SELL"
-        
+
         # Get last 2 candles before entry candle
         prev_candles = df_with_indicators.iloc[-3:-1]
 
+        # ATR floor: SL must be at least 1x ATR to avoid noise-triggered stops
+        atr = float(latest['ATR']) if 'ATR' in latest.index and pd.notna(latest['ATR']) else None
+
         rr = target_rr if target_rr > 0 else self.rr
         if signal_type == "BUY":
-            # SL is the lowest of the previous 2 candles + spread
-            sl_price = prev_candles['Low'].min()
-            stop_loss = sl_price - spread
+            structural_distance = price - prev_candles['Low'].min()
+            stop_distance = max(structural_distance, atr) if atr else structural_distance
+            stop_loss = price - stop_distance - spread
             risk = price - stop_loss
             take_profit = price + (risk * rr)
-        else: # SELL
-            # SL is the highest of the previous 2 candles + spread
-            sl_price = prev_candles['High'].max()
-            stop_loss = sl_price + spread
+        else:  # SELL
+            structural_distance = prev_candles['High'].max() - price
+            stop_distance = max(structural_distance, atr) if atr else structural_distance
+            stop_loss = price + stop_distance + spread
             risk = stop_loss - price
             take_profit = price - (risk * rr)
 
@@ -109,6 +118,7 @@ class SmaScalpingDetector(ForexStrategy):
                 "SMA100": round(float(latest['SMA100']), 5),
                 "DIPlus": round(float(latest['DIPlus']), 2),
                 "DIMinus": round(float(latest['DIMinus']), 2),
+                "ADX": round(float(latest['ADX']), 2),
             }
         }
 

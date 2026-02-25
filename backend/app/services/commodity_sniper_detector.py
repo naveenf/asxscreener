@@ -30,7 +30,6 @@ class CommoditySniperDetector(ForexStrategy):
 
     # Default Time filters based on backtest analysis if not provided in params
     HIGH_LOSS_HOURS = {
-        'WHEAT_USD': [8, 11, 15],  # 73% of losses occurred in these hours
         'BCO_USD': [8, 14, 15]     # 41% of losses occurred in these hours
     }
 

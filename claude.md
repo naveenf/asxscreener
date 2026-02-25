@@ -262,11 +262,10 @@ asx-screener/
     *   **Confirmation:** 15m Trend alignment with stricter ADX requirements.
     *   **Time Filter:** Blocks entry during high-loss hours (08:00, 11:00, 14:00, 15:00 UTC).
     *   **Cooldown:** Optional 4-hour wait period between trades to prevent overtrading.
-    *   **FVG:** Configurable - WHEAT requires it, BCO doesn't.
+    *   **FVG:** Configurable - BCO doesn't require it.
     *   **Exit:** 3.0x Risk or BB Middle cross.
-*   **Best For:** WHEAT_USD, BCO_USD (Oil).
+*   **Best For:** BCO_USD (Oil). *(WHEAT_USD removed Feb 26, 2026 — spread cost ~62% of risk budget on small accounts, unviable)*
 *   **Performance (2026-02-03):**
-    *   WHEAT: 42.9% win rate, +8.09% return, Sharpe 0.73
     *   BCO: 44.4% win rate, +11.70% return, Sharpe 0.96
 
 ### 10. Heiken Ashi Gold (Hardened)
@@ -324,7 +323,26 @@ asx-screener/
     *   NOT viable on Asian indices (JP225) or Oil (BCO) - different market regimes
 *   **Deployment Status:** UK100_GBP live (Feb 23), NAS100_USD+Silver validation in progress.
 
-## Latest Update: Silver Strategy Optimization (February 18, 2026)
+## Latest Update: WHEAT Removal + SmaScalping ATR SL Fix (February 26, 2026)
+
+### WHEAT_USD Removed
+- **Reason:** Spread cost (~$10/trade) consumed 62.5% of risk budget on an $800 account at 2% risk ($16), making the edge unviable. Spread-to-risk ratio should be <15% for scalping strategies.
+- **Files changed:** `best_strategies.json`, `forex_pairs.json`, `commodity_sniper_detector.py`
+
+### SmaScalping ATR Floor for Stop Loss
+- **Problem:** When the 2-candle structural swing (previous high/low) was tighter than current market noise, stops were hit immediately by normal price movement.
+- **Fix:** `stop_distance = max(structural_distance, 1 × ATR(14))` — SL is always at least 1 ATR from entry, giving the trade room past noise.
+- **File:** `backend/app/services/sma_scalping_detector.py`
+
+### SmaScalping Expanded Deployment
+- **JP225_USD:** Added SmaScalping (5m, 5.0 RR, DI>30, ADX>20) alongside HeikenAshi
+- **AUD_USD:** Added SmaScalping (5m, 2.5 RR, DI>35) alongside EnhancedSniper
+- **USD_CAD:** SmaScalping as primary strategy (5m, 3.0 RR, DI>35)
+- **NAS100_USD:** Added SmaScalping (5m, 4.5 RR, DI>35) alongside NewBreakout + PVTScalping
+
+---
+
+## Previous Update: Silver Strategy Optimization (February 18, 2026)
 
 ### Implementation Changes
 Applied time-based volatility filters to Silver strategies to eliminate false signals during peak London-NY overlap (14:00-16:00 UTC / 1:00-3:00 AM Sydney):
@@ -395,8 +413,7 @@ The following assets and strategies have been verified with consistent positive 
 | 5 | **Silver (XAG_USD)** | DailyORB + SilverSniper + SilverMomentum + PVT | **+35.25%+** | 59+ | 37.3%+ | ✅ **ENHANCED** |
 | 4 | **USD_CHF** | NewBreakout | **+60.96%** | 216 | 40.74% | ✅ **NEWLY ADDED** |
 | 5 | **NAS100_USD** | NewBreakout | **+24.07%** | 156 | 38.46% | ✅ **NEWLY ADDED** |
-| 6 | **WHEAT** | CommoditySniper | **+7.95%** | 14 | 35.7% | ✅ ACTIVE |
-| 7 | **AUD_USD** | **EnhancedSniper** | **+3.0%** | **66.7%** | ✅ **READY** |
+| 6 | **AUD_USD** | EnhancedSniper + SmaScalping | **+3.0%** | — | 66.7% | ✅ **ACTIVE** |
 | 8 | **BCO (Oil)** | CommoditySniper | **+2.03%** | 13 | 30.8% | ⚠️ MONITORING |
 
 **Average Portfolio ROI (Top 5):** **+21.8%** ✅
@@ -560,4 +577,4 @@ When adding new strategies or optimizations:
 4. Follow naming conventions above
 5. Include comparison tables for major changes
 
-**Last Updated:** February 17, 2026 (Silver Strategy 3-Strat Implementation)
+**Last Updated:** February 26, 2026 (WHEAT removal, SmaScalping ATR SL floor, multi-pair SmaScalping expansion)
