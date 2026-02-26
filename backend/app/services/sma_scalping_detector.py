@@ -7,10 +7,11 @@ class SmaScalpingDetector(ForexStrategy):
     """
     5-minute scalping strategy using SMAs (20, 50, 100) and DMI.
     """
-    def __init__(self, di_threshold: float = 35.0, rr: float = 5.0, adx_min: float = 0.0):
+    def __init__(self, di_threshold: float = 35.0, rr: float = 5.0, adx_min: float = 0.0, di_persist: int = 1):
         self.di_threshold = di_threshold
         self.rr = rr
         self.adx_min = adx_min
+        self.di_persist = di_persist
 
     def get_name(self) -> str:
         return "SmaScalping"
@@ -26,6 +27,7 @@ class SmaScalpingDetector(ForexStrategy):
         # Read thresholds from runtime params (allows per-asset JSON override)
         di_threshold = params.get('di_threshold', self.di_threshold) if params else self.di_threshold
         adx_min      = params.get('adx_min', self.adx_min)          if params else self.adx_min
+        di_persist   = int(params.get('di_persist', self.di_persist)) if params else self.di_persist
 
         # -- Calculate Indicators --
         # Use add_all_indicators to ensure all necessary indicators are present
@@ -45,9 +47,11 @@ class SmaScalpingDetector(ForexStrategy):
         if 'SMA100' not in df_with_indicators.columns:
             df_with_indicators['SMA100'] = TechnicalIndicators.calculate_sma(df_with_indicators, period=100)
 
+        if len(df_with_indicators) < di_persist + 1:
+            return None
+
         latest = df_with_indicators.iloc[-1]
 
-        
         # Ensure indicator values are present
         required_cols = ['SMA20', 'SMA50', 'SMA100', 'DIPlus', 'DIMinus', 'ADX', 'Low', 'High']
         if not all(col in latest.index and pd.notna(latest[col]) for col in required_cols):
@@ -55,12 +59,18 @@ class SmaScalpingDetector(ForexStrategy):
 
         adx_ok = latest['ADX'] >= adx_min  # passes when adx_min=0
 
+        # DI persistence: DI+ (or DI-) must have been above threshold for the last di_persist candles
+        # Prevents entries on single-candle DI spikes that immediately reverse
+        recent = df_with_indicators.iloc[-di_persist:]
+        di_plus_pers  = all(pd.notna(row['DIPlus'])  and row['DIPlus']  > di_threshold for _, row in recent.iterrows())
+        di_minus_pers = all(pd.notna(row['DIMinus']) and row['DIMinus'] > di_threshold for _, row in recent.iterrows())
+
         # -- Entry Conditions --
         is_buy_signal = (
             latest['Close'] > latest['SMA20'] and
             latest['Close'] > latest['SMA50'] and
             latest['Close'] > latest['SMA100'] and
-            latest['DIPlus'] > di_threshold and
+            di_plus_pers and
             latest['DIPlus'] > latest['DIMinus'] and
             adx_ok
         )
@@ -69,7 +79,7 @@ class SmaScalpingDetector(ForexStrategy):
             latest['Close'] < latest['SMA20'] and
             latest['Close'] < latest['SMA50'] and
             latest['Close'] < latest['SMA100'] and
-            latest['DIMinus'] > di_threshold and
+            di_minus_pers and
             latest['DIMinus'] > latest['DIPlus'] and
             adx_ok
         )

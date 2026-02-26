@@ -330,22 +330,50 @@ asx-screener/
 *   **Entry Conditions (LONG):**
     *   Price > SMA20, SMA50, SMA100 (full bullish stack)
     *   DI+ > DI- (dominant bullish momentum)
-    *   DI+ > configurable threshold (default 35, JP225 uses 30)
+    *   DI+ > configurable threshold (default 35, JP225 uses 30) for `di_persist` consecutive candles
     *   ADX ≥ adx_min (default 0, JP225 uses 20)
-*   **Gate 1 — Freshness:** DI+ must have crossed above DI- within the last N candles (default 5 = 25 min; AUD_USD and USD_CAD use 10 = 50 min to account for slower DI transitions). Prevents entering a trend that has been running for many candles.
-*   **Gate 2 — Correction:** At least one candle low in the last 20 candles must have touched SMA20 (for BUY). Prevents re-entry after an extended trend without a pullback to the mean. First entries are naturally unaffected — price crosses SMA20 to start the trend, satisfying this gate immediately.
+*   **DI Persistence (`di_persist`):** DI+ (BUY) or DI- (SELL) must have been above the threshold for the last N candles, not just the current one. Default is 1 (single-candle check). JP225 uses `di_persist: 2` — JP225 DI frequently spikes above threshold for a single candle then retreats (Asian index volatility regime), causing same-candle SL hits. Requiring 2 consecutive candles above threshold eliminates this. Do NOT apply to XAG/NAS100 — their DI spikes immediately follow through, and requiring persistence destroys their edge (XAG drops from +86% → +10% ROI).
 *   **Structural Validity:** Entry price must not be below the previous 2-candle lows (BUY) or above the previous 2-candle highs (SELL) — rejects signals where price has already broken through the structural SL level.
 *   **Stop Loss:** `max(structural_distance, 1×ATR)` — structural SL from previous 2-candle lows/highs, floored by ATR to avoid noise-triggered stops.
-*   **Take Profit:** Configurable per pair (XAG: 3.0R, XAU: 5.0R, JP225: 5.0R, AUD_USD: 2.5R, USD_CAD: 3.0R, NAS100: 4.5R).
+*   **Take Profit:** Configurable per pair (XAG: 10.0R, XAU: 5.0R, JP225: 5.0R, AUD_USD: 2.5R, USD_CAD: 3.0R, NAS100: 4.5R).
 *   **Best For:** XAU_USD, XAG_USD, JP225_USD, AUD_USD, USD_CAD, NAS100_USD.
 
-## Latest Update: SmaScalping Signal Quality Hardening (February 26, 2026)
+## Latest Update: SmaScalping JP225 DI Persistence Filter (February 26, 2026)
+
+### Problem
+JP225 produced false signals where DI+ briefly spiked above 30 for a single candle then immediately retreated, causing same-candle SL hits. Root cause: JP225 (Asian index) has a choppier DI regime than commodities/forex — threshold crossings are less reliable on a single candle.
+
+### Fix: `di_persist: 2` for JP225 only
+- **Parameter:** `di_persist` in `sma_scalping_detector.py` — requires DI+ (BUY) or DI- (SELL) to be above threshold for the last N consecutive candles before entry.
+- **JP225:** `di_persist: 2` — must sustain DI+ > 30 for 2 candles (10 minutes). Eliminates spike entries.
+- **All other pairs:** `di_persist: 1` (default) — unchanged behavior.
+
+### Backtest Results — JP225 with di_persist=2 vs baseline
+
+| Filter | Trades | WR% | ROI | Sharpe | MaxDD |
+|--------|--------|-----|-----|--------|-------|
+| persist=1 (baseline) | 39 | 30.8% | +36.9% | 4.65 | -5.85% |
+| **persist=2 (deployed)** | **38** | **34.2%** | **+46.7%** | **5.63** | **-5.85%** |
+| persist=3 | 42 | 28.6% | +32.8% | 4.01 | -6.79% |
+
+### Why NOT to apply this globally
+Tested di_persist=2 on all pairs — only JP225 benefits. For XAG and NAS100, the DI spike immediately follows through and requiring 2-candle persistence destroys the edge:
+- XAG: +86% ROI → +10% ROI (persist=2)
+- NAS100: +20% ROI → +2.5% ROI (persist=2)
+
+**Rule:** Only use `di_persist > 1` for instruments with choppy DI regimes. JP225 qualifies; commodities and US indices do not.
+
+### Files changed
+- `backend/app/services/sma_scalping_detector.py` — added `di_persist` parameter
+- `data/metadata/best_strategies.json` — set `di_persist: 2` on JP225_USD SmaScalping
+
+---
+
+## Previous Update: SmaScalping Signal Quality Hardening (February 26, 2026)
 
 ### SmaScalping Entry Guards (all 6 pairs: XAU, XAG, JP225, AUD_USD, USD_CAD, NAS100)
 1. **DI dominance check** — BUY requires `DI+ > DI-`, SELL requires `DI- > DI+`. Fixes counter-trend entries (e.g., JP225 BUY firing while DI- was dominant).
 2. **Structural validity** — Rejects BUY if entry price is already below previous 2-candle lows (broken support), and SELL if above previous 2-candle highs (broken resistance).
-3. **Gate 1 (Freshness)** — DI crossover must have occurred within last N candles. Default 5 (fast pairs: XAU, XAG, JP225, NAS100); 10 for slow forex pairs (AUD_USD, USD_CAD). Prevents stale mid-trend entries.
-4. **Gate 2 (Correction)** — Price must have touched SMA20 within last 20 candles before re-entry. Prevents entering after an extended 1:5 move without a pullback. Does not affect first entries.
 
 ### Dedup Fix (forex_screener.py)
 - Stale signal eviction moved to **before** `analyze()` — old card is now cleared whether or not a new signal fires, not only when a new one does.
@@ -353,8 +381,6 @@ asx-screener/
 
 ### Config Fixes (best_strategies.json)
 - **XAG_USD SmaScalping:** `target_rr` kept at 10.0 — backed by backtest; Silver is highly volatile and trends 5-10R in strong moves. SMA20 exit acts as fallback when TP is not reached.
-- **AUD_USD SmaScalping:** Added `di_cross_window: 10` (50 min window for slow forex pair).
-- **USD_CAD SmaScalping:** Added `di_cross_window: 10` (50 min window for slow forex pair).
 
 ---
 

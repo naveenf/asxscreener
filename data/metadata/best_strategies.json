@@ -116,7 +116,8 @@
         "target_rr": 5.0,
         "params": {
           "di_threshold": 30.0,
-          "adx_min": 20.0
+          "adx_min": 20.0,
+          "di_persist": 2
         }
       }
     ]
