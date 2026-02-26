@@ -3,7 +3,7 @@
 ## Project Overview
 The ASX Stock Screener is a full-stack application designed to identify trading opportunities on the Australian Securities Exchange (ASX) and Global Forex/Commodity markets. It uses a **Dynamic Strategy Selection** engine to apply the most effective algorithm for each asset class.
 
-The system implements twelve core trading strategies:
+The system implements thirteen core trading strategies:
 1.  **Trend Following** (ADX/DI)
 2.  **Mean Reversion** (Bollinger Bands/RSI)
 3.  **Squeeze** (Volatility Compression Breakout)
@@ -15,6 +15,7 @@ The system implements twelve core trading strategies:
 9.  **Triple Trend** (Fibonacci + Supertrend + Instant Trend)
 10. **Heiken Ashi Gold** (Noise-filtered trend following)
 11. **PVT Scalping** (Price Volume Trend + Quality Filters + Circuit Breaker)
+12. **SMA Scalping** (5m SMA Stack + DMI with Freshness and Correction Gates)
 
 Calculations match **Pine Script** (TradingView) standards, using "Wilder's Smoothing" for technical accuracy.
 
@@ -323,7 +324,41 @@ asx-screener/
     *   NOT viable on Asian indices (JP225) or Oil (BCO) - different market regimes
 *   **Deployment Status:** UK100_GBP live (Feb 23), NAS100_USD+Silver validation in progress.
 
-## Latest Update: WHEAT Removal + SmaScalping ATR SL Fix (February 26, 2026)
+### 12. SMA Scalping (5m SMA Stack + DMI)
+*   **Logic:** 5-minute momentum scalping requiring full SMA stack alignment and fresh DMI crossover with a prior mean-reversion correction.
+*   **Indicators:** SMA20, SMA50, SMA100, DI+, DI-, ADX.
+*   **Entry Conditions (LONG):**
+    *   Price > SMA20, SMA50, SMA100 (full bullish stack)
+    *   DI+ > DI- (dominant bullish momentum)
+    *   DI+ > configurable threshold (default 35, JP225 uses 30)
+    *   ADX ≥ adx_min (default 0, JP225 uses 20)
+*   **Gate 1 — Freshness:** DI+ must have crossed above DI- within the last N candles (default 5 = 25 min; AUD_USD and USD_CAD use 10 = 50 min to account for slower DI transitions). Prevents entering a trend that has been running for many candles.
+*   **Gate 2 — Correction:** At least one candle low in the last 20 candles must have touched SMA20 (for BUY). Prevents re-entry after an extended trend without a pullback to the mean. First entries are naturally unaffected — price crosses SMA20 to start the trend, satisfying this gate immediately.
+*   **Structural Validity:** Entry price must not be below the previous 2-candle lows (BUY) or above the previous 2-candle highs (SELL) — rejects signals where price has already broken through the structural SL level.
+*   **Stop Loss:** `max(structural_distance, 1×ATR)` — structural SL from previous 2-candle lows/highs, floored by ATR to avoid noise-triggered stops.
+*   **Take Profit:** Configurable per pair (XAG: 3.0R, XAU: 5.0R, JP225: 5.0R, AUD_USD: 2.5R, USD_CAD: 3.0R, NAS100: 4.5R).
+*   **Best For:** XAU_USD, XAG_USD, JP225_USD, AUD_USD, USD_CAD, NAS100_USD.
+
+## Latest Update: SmaScalping Signal Quality Hardening (February 26, 2026)
+
+### SmaScalping Entry Guards (all 6 pairs: XAU, XAG, JP225, AUD_USD, USD_CAD, NAS100)
+1. **DI dominance check** — BUY requires `DI+ > DI-`, SELL requires `DI- > DI+`. Fixes counter-trend entries (e.g., JP225 BUY firing while DI- was dominant).
+2. **Structural validity** — Rejects BUY if entry price is already below previous 2-candle lows (broken support), and SELL if above previous 2-candle highs (broken resistance).
+3. **Gate 1 (Freshness)** — DI crossover must have occurred within last N candles. Default 5 (fast pairs: XAU, XAG, JP225, NAS100); 10 for slow forex pairs (AUD_USD, USD_CAD). Prevents stale mid-trend entries.
+4. **Gate 2 (Correction)** — Price must have touched SMA20 within last 20 candles before re-entry. Prevents entering after an extended 1:5 move without a pullback. Does not affect first entries.
+
+### Dedup Fix (forex_screener.py)
+- Stale signal eviction moved to **before** `analyze()` — old card is now cleared whether or not a new signal fires, not only when a new one does.
+- Removed dead `_is_duplicate_signal` method (replaced by the eviction pattern).
+
+### Config Fixes (best_strategies.json)
+- **XAG_USD SmaScalping:** `target_rr` kept at 10.0 — backed by backtest; Silver is highly volatile and trends 5-10R in strong moves. SMA20 exit acts as fallback when TP is not reached.
+- **AUD_USD SmaScalping:** Added `di_cross_window: 10` (50 min window for slow forex pair).
+- **USD_CAD SmaScalping:** Added `di_cross_window: 10` (50 min window for slow forex pair).
+
+---
+
+## Previous Update: WHEAT Removal + SmaScalping ATR SL Fix (February 26, 2026)
 
 ### WHEAT_USD Removed
 - **Reason:** Spread cost (~$10/trade) consumed 62.5% of risk budget on an $800 account at 2% risk ($16), making the edge unviable. Spread-to-risk ratio should be <15% for scalping strategies.

@@ -25,7 +25,7 @@ class SmaScalpingDetector(ForexStrategy):
 
         # Read thresholds from runtime params (allows per-asset JSON override)
         di_threshold = params.get('di_threshold', self.di_threshold) if params else self.di_threshold
-        adx_min      = params.get('adx_min', self.adx_min)           if params else self.adx_min
+        adx_min      = params.get('adx_min', self.adx_min)          if params else self.adx_min
 
         # -- Calculate Indicators --
         # Use add_all_indicators to ensure all necessary indicators are present
@@ -77,9 +77,10 @@ class SmaScalpingDetector(ForexStrategy):
         if not (is_buy_signal or is_sell_signal):
             return None
 
+        signal_type = "BUY" if is_buy_signal else "SELL"
+
         # -- SL/TP Calculation --
         price = float(latest['Close'])
-        signal_type = "BUY" if is_buy_signal else "SELL"
 
         # Get last 2 candles before entry candle
         prev_candles = df_with_indicators.iloc[-3:-1]

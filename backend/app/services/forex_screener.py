@@ -76,62 +76,6 @@ class ForexScreener:
         print("⚠️ No best_strategies.json found. Defaulting to TrendFollowing.")
         return {}
 
-    def _is_duplicate_signal(self, existing_signals: List[Dict], new_signal: Dict) -> bool:
-        """
-        Check if a signal is a duplicate of an existing signal.
-
-        A signal is considered a duplicate if:
-        - Same symbol
-        - Same strategy
-        - Same direction (BUY/SELL)
-        - Similar timestamp (within 5 minutes)
-
-        Args:
-            existing_signals: List of existing signals
-            new_signal: New signal to check
-
-        Returns:
-            bool: True if duplicate, False otherwise
-        """
-        new_symbol = new_signal.get('symbol')
-        new_strategy = new_signal.get('strategy')
-        new_direction = new_signal.get('signal')
-        new_timestamp = new_signal.get('timestamp')
-
-        if not all([new_symbol, new_strategy, new_direction, new_timestamp]):
-            return False
-
-        # Parse new signal timestamp
-        try:
-            if isinstance(new_timestamp, str):
-                new_time = datetime.fromisoformat(new_timestamp.replace('Z', '+00:00'))
-            else:
-                new_time = new_timestamp
-        except Exception:
-            return False
-
-        # Check against existing signals
-        for existing in existing_signals:
-            if (existing.get('symbol') == new_symbol and
-                existing.get('strategy') == new_strategy and
-                existing.get('signal') == new_direction):
-
-                # Check timestamp similarity (within 5 minutes)
-                existing_timestamp = existing.get('timestamp')
-                try:
-                    if isinstance(existing_timestamp, str):
-                        existing_time = datetime.fromisoformat(existing_timestamp.replace('Z', '+00:00'))
-                    else:
-                        existing_time = existing_timestamp
-
-                    time_diff = abs((new_time - existing_time).total_seconds())
-                    if time_diff < 300:  # 5 minutes = 300 seconds
-                        return True
-                except Exception:
-                    continue
-
-        return False
-
     def _load_data_mtf(self, symbol: str) -> Dict[str, pd.DataFrame]:
         """Load 15m, 1h, 4h data."""
         data = {}
@@ -304,6 +248,14 @@ class ForexScreener:
                         if spread > 0:
                             print(f"   Debug: {symbol} Spread = {spread:.5f}")
 
+                    # Evict stale signal for this symbol+strategy before analyzing.
+                    # Ensures the old card is removed whether or not a new signal fires.
+                    # Only applies to pairs actually being screened this cycle (skipped pairs
+                    # never reach this point, so their signals are preserved in sniper mode).
+                    all_signals = [s for s in all_signals
+                                   if not (s.get('symbol') == symbol and
+                                           s.get('strategy') == strategy_name)]
+
                     # Analyze
                     result = strategy.analyze(data, symbol, target_rr=target_rr, spread=spread, params=params_dict)
                     total_analyzed += 1
@@ -314,16 +266,9 @@ class ForexScreener:
                         result['type'] = pair.get('type', 'Unknown')
                         result['timeframe_used'] = base_tf
 
-                        # Check for duplicates before adding
-                        is_duplicate = self._is_duplicate_signal(all_signals, result)
-
-                        if is_duplicate:
-                            print(f"Processing {symbol}... ✓ {result['signal']} ({strategy_name}) [DUPLICATE - Skipped]")
-                            logger.info(f"SIGNAL DUPLICATE | {symbol} | {strategy_name} | {result['signal']} | tf={result.get('timeframe_used')} | ts={result.get('timestamp')}")
-                        else:
-                            print(f"Processing {symbol}... ✓ {result['signal']} ({strategy_name})")
-                            logger.info(f"SIGNAL FOUND | {symbol} | {strategy_name} | {result['signal']} | score={result.get('score')} | tf={result.get('timeframe_used')} | price={result.get('price')} | sl={result.get('stop_loss')} | tp={result.get('take_profit')} | ts={result.get('timestamp')}")
-                            all_signals.append(result)
+                        print(f"Processing {symbol}... ✓ {result['signal']} ({strategy_name})")
+                        logger.info(f"SIGNAL FOUND | {symbol} | {strategy_name} | {result['signal']} | score={result.get('score')} | tf={result.get('timeframe_used')} | price={result.get('price')} | sl={result.get('stop_loss')} | tp={result.get('take_profit')} | ts={result.get('timestamp')}")
+                        all_signals.append(result)
                     else:
                         print(f"Processing {symbol}... ✓ No signal ({strategy_name})")
 
