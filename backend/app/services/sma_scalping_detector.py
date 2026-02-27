@@ -3,70 +3,65 @@ import pandas as pd
 from .strategy_interface import ForexStrategy
 from .indicators import TechnicalIndicators
 
+
 class SmaScalpingDetector(ForexStrategy):
     """
-    5-minute scalping strategy using SMAs (20, 50, 100) and DMI.
+    SMA stack + DMI scalping strategy.
+
+    Entry requires full SMA alignment (20/50/100), DI dominance, and DI
+    persistence — DI must have been above the threshold for di_persist
+    consecutive candles to prevent single-candle spike entries.
+
+    Timeframe is configured per-pair in best_strategies.json (5m or 15m).
     """
-    def __init__(self, di_threshold: float = 35.0, rr: float = 5.0, adx_min: float = 0.0, di_persist: int = 1):
+
+    def __init__(self, di_threshold: float = 35.0, rr: float = 5.0,
+                 adx_min: float = 0.0, di_persist: int = 1):
         self.di_threshold = di_threshold
         self.rr = rr
         self.adx_min = adx_min
-        self.di_persist = di_persist
+        self.di_persist = max(1, di_persist)
 
     def get_name(self) -> str:
         return "SmaScalping"
 
-    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str, target_rr: float = 5.0, spread: float = 0.0, params: Optional[Dict] = None) -> Optional[Dict]:
-        """
-        Analyze entry conditions.
-        """
-        df = data.get('base') # Assumes 'base' is the 5-min timeframe
-        if df is None or len(df) < 101: # Need enough data for SMA 100
+    def analyze(self, data: Dict[str, pd.DataFrame], symbol: str,
+                target_rr: float = 5.0, spread: float = 0.0,
+                params: Optional[Dict] = None) -> Optional[Dict]:
+
+        df = data.get('base')
+        if df is None or len(df) < 101:
             return None
 
-        # Read thresholds from runtime params (allows per-asset JSON override)
-        di_threshold = params.get('di_threshold', self.di_threshold) if params else self.di_threshold
-        adx_min      = params.get('adx_min', self.adx_min)          if params else self.adx_min
-        di_persist   = int(params.get('di_persist', self.di_persist)) if params else self.di_persist
+        # Per-asset param overrides from best_strategies.json
+        di_threshold = float(params.get('di_threshold', self.di_threshold)) if params else self.di_threshold
+        adx_min      = float(params.get('adx_min',      self.adx_min))      if params else self.adx_min
+        di_persist   = max(1, int(params.get('di_persist', self.di_persist))) if params else self.di_persist
 
-        # -- Calculate Indicators --
-        # Use add_all_indicators to ensure all necessary indicators are present
-        # This will calculate ADX, SMA20, SMA50, SMA100, etc.
-        # We need to ensure that the SMA periods we need are calculated by add_all_indicators.
-        # Currently, add_all_indicators only calculates SMA200 by default.
-        # So we either need to modify add_all_indicators or calculate specifically.
-        # For this strategy, specific calculation is fine to keep it isolated.
-        # Re-adding individual indicator calculations but using df_with_indicators variable.
-        df_with_indicators = TechnicalIndicators.add_all_indicators(df)
-        
-        # Ensure our specific SMAs are present, add them if add_all_indicators didn't include them
-        if 'SMA20' not in df_with_indicators.columns:
-            df_with_indicators['SMA20'] = TechnicalIndicators.calculate_sma(df_with_indicators, period=20)
-        if 'SMA50' not in df_with_indicators.columns:
-            df_with_indicators['SMA50'] = TechnicalIndicators.calculate_sma(df_with_indicators, period=50)
-        if 'SMA100' not in df_with_indicators.columns:
-            df_with_indicators['SMA100'] = TechnicalIndicators.calculate_sma(df_with_indicators, period=100)
-
-        if len(df_with_indicators) < di_persist + 1:
+        if len(df) < di_persist + 1:
             return None
 
-        latest = df_with_indicators.iloc[-1]
+        df = df.copy()
+        df = TechnicalIndicators.add_all_indicators(df)
+        for period, col in [(20, 'SMA20'), (50, 'SMA50'), (100, 'SMA100')]:
+            if col not in df.columns:
+                df[col] = df['Close'].rolling(period).mean()
 
-        # Ensure indicator values are present
-        required_cols = ['SMA20', 'SMA50', 'SMA100', 'DIPlus', 'DIMinus', 'ADX', 'Low', 'High']
-        if not all(col in latest.index and pd.notna(latest[col]) for col in required_cols):
+        latest = df.iloc[-1]
+
+        required = ['SMA20', 'SMA50', 'SMA100', 'DIPlus', 'DIMinus', 'ADX', 'Low', 'High']
+        if not all(col in latest.index and pd.notna(latest[col]) for col in required):
             return None
 
-        adx_ok = latest['ADX'] >= adx_min  # passes when adx_min=0
+        adx_ok = latest['ADX'] >= adx_min
 
-        # DI persistence: DI+ (or DI-) must have been above threshold for the last di_persist candles
-        # Prevents entries on single-candle DI spikes that immediately reverse
-        recent = df_with_indicators.iloc[-di_persist:]
-        di_plus_pers  = all(pd.notna(row['DIPlus'])  and row['DIPlus']  > di_threshold for _, row in recent.iterrows())
-        di_minus_pers = all(pd.notna(row['DIMinus']) and row['DIMinus'] > di_threshold for _, row in recent.iterrows())
+        # DI persistence: last di_persist rows must all exceed the threshold
+        recent_di_plus  = df['DIPlus'].iloc[-di_persist:].values
+        recent_di_minus = df['DIMinus'].iloc[-di_persist:].values
+        di_plus_pers  = bool((recent_di_plus  > di_threshold).all())
+        di_minus_pers = bool((recent_di_minus > di_threshold).all())
 
-        # -- Entry Conditions --
-        is_buy_signal = (
+        is_buy = (
             latest['Close'] > latest['SMA20'] and
             latest['Close'] > latest['SMA50'] and
             latest['Close'] > latest['SMA100'] and
@@ -74,8 +69,7 @@ class SmaScalpingDetector(ForexStrategy):
             latest['DIPlus'] > latest['DIMinus'] and
             adx_ok
         )
-
-        is_sell_signal = (
+        is_sell = (
             latest['Close'] < latest['SMA20'] and
             latest['Close'] < latest['SMA50'] and
             latest['Close'] < latest['SMA100'] and
@@ -84,97 +78,78 @@ class SmaScalpingDetector(ForexStrategy):
             adx_ok
         )
 
-        if not (is_buy_signal or is_sell_signal):
+        if not (is_buy or is_sell):
             return None
 
-        signal_type = "BUY" if is_buy_signal else "SELL"
-
-        # -- SL/TP Calculation --
+        signal_type = "BUY" if is_buy else "SELL"
         price = float(latest['Close'])
 
-        # Get last 2 candles before entry candle
-        prev_candles = df_with_indicators.iloc[-3:-1]
-
-        # Structural validity: entry must not have already broken through the SL level
-        if signal_type == "BUY" and price < prev_candles['Low'].min():
+        # Structural validity: reject if price already past the 2-candle SL level
+        prev = df.iloc[-3:-1]
+        if signal_type == "BUY"  and price < prev['Low'].min():
             return None
-        if signal_type == "SELL" and price > prev_candles['High'].max():
+        if signal_type == "SELL" and price > prev['High'].max():
             return None
 
-        # ATR floor: SL must be at least 1x ATR to avoid noise-triggered stops
+        # ATR floor: SL is at least 1×ATR to avoid noise-triggered stops
         atr = float(latest['ATR']) if 'ATR' in latest.index and pd.notna(latest['ATR']) else None
+        rr  = target_rr if target_rr > 0 else self.rr
 
-        rr = target_rr if target_rr > 0 else self.rr
         if signal_type == "BUY":
-            structural_distance = price - prev_candles['Low'].min()
-            stop_distance = max(structural_distance, atr) if atr else structural_distance
-            stop_loss = price - stop_distance - spread
-            risk = price - stop_loss
-            take_profit = price + (risk * rr)
-        else:  # SELL
-            structural_distance = prev_candles['High'].max() - price
-            stop_distance = max(structural_distance, atr) if atr else structural_distance
-            stop_loss = price + stop_distance + spread
-            risk = stop_loss - price
-            take_profit = price - (risk * rr)
+            structural  = price - prev['Low'].min()
+            stop_dist   = max(structural, atr) if atr else structural
+            stop_loss   = price - stop_dist - spread
+            risk        = price - stop_loss
+            take_profit = price + risk * rr
+        else:
+            structural  = prev['High'].max() - price
+            stop_dist   = max(structural, atr) if atr else structural
+            stop_loss   = price + stop_dist + spread
+            risk        = stop_loss - price
+            take_profit = price - risk * rr
 
-        # Basic validation
         if risk <= 0:
             return None
 
         return {
-            "signal": signal_type,
-            "score": 75.0, # Base score
-            "strategy": self.get_name(),
-            "symbol": symbol,
-            "price": price,
-            "timestamp": latest.name.isoformat() if hasattr(latest.name, 'isoformat') else str(latest.name),
-            "stop_loss": stop_loss,
+            "signal":      signal_type,
+            "score":       75.0,
+            "strategy":    self.get_name(),
+            "symbol":      symbol,
+            "price":       price,
+            "timestamp":   latest.name.isoformat() if hasattr(latest.name, 'isoformat') else str(latest.name),
+            "stop_loss":   stop_loss,
             "take_profit": take_profit,
             "indicators": {
-                "SMA20": round(float(latest['SMA20']), 5),
-                "SMA50": round(float(latest['SMA50']), 5),
-                "SMA100": round(float(latest['SMA100']), 5),
-                "DIPlus": round(float(latest['DIPlus']), 2),
+                "SMA20":   round(float(latest['SMA20']),   5),
+                "SMA50":   round(float(latest['SMA50']),   5),
+                "SMA100":  round(float(latest['SMA100']),  5),
+                "DIPlus":  round(float(latest['DIPlus']),  2),
                 "DIMinus": round(float(latest['DIMinus']), 2),
-                "ADX": round(float(latest['ADX']), 2),
-            }
+                "ADX":     round(float(latest['ADX']),     2),
+            },
         }
 
-    def check_exit(self, data: Dict[str, pd.DataFrame], direction: str, entry_price: float) -> Optional[Dict]:
-        """
-        Check exit conditions.
-        Exit for BUY if price closes below SMA20.
-        Exit for SELL if price closes above SMA20.
-        """
+    def check_exit(self, data: Dict[str, pd.DataFrame], direction: str,
+                   entry_price: float) -> Optional[Dict]:
+        """Exit when price closes on the wrong side of SMA20."""
         df = data.get('base')
-        if df is None or len(df) < 21: # Need enough data for SMA20
+        if df is None or len(df) < 21:
             return None
 
-        # -- Calculate Indicator --
-        df_with_indicators = TechnicalIndicators.add_all_indicators(df)
-        if 'SMA20' not in df_with_indicators.columns:
-            df_with_indicators['SMA20'] = TechnicalIndicators.calculate_sma(df_with_indicators, period=20)
-        
-        latest = df_with_indicators.iloc[-1]
-        
+        df = df.copy()
+        df = TechnicalIndicators.add_all_indicators(df)
+        if 'SMA20' not in df.columns:
+            df['SMA20'] = df['Close'].rolling(20).mean()
+
+        latest = df.iloc[-1]
         if pd.isna(latest['SMA20']):
             return None
 
-        exit_signal = False
-        reason = None
-
-        if direction == "BUY" and latest['Close'] < latest['SMA20']:
-            exit_signal = True
-            reason = f"Close ({latest['Close']:.5f}) crossed below SMA20 ({latest['SMA20']:.5f})"
-        elif direction == "SELL" and latest['Close'] > latest['SMA20']:
-            exit_signal = True
-            reason = f"Close ({latest['Close']:.5f}) crossed above SMA20 ({latest['SMA20']:.5f})"
-
-        if exit_signal:
-            return {
-                "exit_signal": True,
-                "reason": reason
-            }
-        
+        if direction == "BUY"  and latest['Close'] < latest['SMA20']:
+            return {"exit_signal": True,
+                    "reason": f"Close ({latest['Close']:.5f}) crossed below SMA20 ({latest['SMA20']:.5f})"}
+        if direction == "SELL" and latest['Close'] > latest['SMA20']:
+            return {"exit_signal": True,
+                    "reason": f"Close ({latest['Close']:.5f}) crossed above SMA20 ({latest['SMA20']:.5f})"}
         return None

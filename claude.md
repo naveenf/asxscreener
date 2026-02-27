@@ -15,7 +15,7 @@ The system implements thirteen core trading strategies:
 9.  **Triple Trend** (Fibonacci + Supertrend + Instant Trend)
 10. **Heiken Ashi Gold** (Noise-filtered trend following)
 11. **PVT Scalping** (Price Volume Trend + Quality Filters + Circuit Breaker)
-12. **SMA Scalping** (5m SMA Stack + DMI with Freshness and Correction Gates)
+12. **SMA Scalping** (SMA Stack + DMI with DI Persistence Gate)
 
 Calculations match **Pine Script** (TradingView) standards, using "Wilder's Smoothing" for technical accuracy.
 
@@ -325,27 +325,61 @@ asx-screener/
 *   **Deployment Status:** UK100_GBP live (Feb 23), NAS100_USD+Silver validation in progress.
 
 ### 12. SMA Scalping (5m SMA Stack + DMI)
-*   **Logic:** 5-minute momentum scalping requiring full SMA stack alignment and fresh DMI crossover with a prior mean-reversion correction.
+*   **Logic:** SMA stack alignment + sustained DI threshold. DI must exceed the threshold for `di_persist` consecutive candles before entry, preventing single-candle spike entries.
 *   **Indicators:** SMA20, SMA50, SMA100, DI+, DI-, ADX.
 *   **Entry Conditions (LONG):**
     *   Price > SMA20, SMA50, SMA100 (full bullish stack)
     *   DI+ > DI- (dominant bullish momentum)
     *   DI+ > configurable threshold (default 35, JP225 uses 30) for `di_persist` consecutive candles
     *   ADX ≥ adx_min (default 0, JP225 uses 20)
-*   **DI Persistence (`di_persist`):** DI+ (BUY) or DI- (SELL) must have been above the threshold for the last N candles, not just the current one. Default is 1 (single-candle check). JP225 uses `di_persist: 2` — JP225 DI frequently spikes above threshold for a single candle then retreats (Asian index volatility regime), causing same-candle SL hits. Requiring 2 consecutive candles above threshold eliminates this. Do NOT apply to XAG/NAS100 — their DI spikes immediately follow through, and requiring persistence destroys their edge (XAG drops from +86% → +10% ROI).
+*   **DI Persistence (`di_persist`):** DI+ (BUY) or DI- (SELL) must have been above the threshold for the last N candles, not just the current one. Default is 1 (single-candle check). JP225 and AUD_USD use `di_persist: 2` — both pairs show DI spikes that don't sustain, leading to lower-quality entries. Requiring 2 consecutive candles improves Sharpe and WR at a small ROI cost. Do NOT apply to XAG/NAS100 — their DI spikes immediately follow through, and requiring persistence destroys their edge (XAG drops from +86% → +10% ROI).
 *   **Structural Validity:** Entry price must not be below the previous 2-candle lows (BUY) or above the previous 2-candle highs (SELL) — rejects signals where price has already broken through the structural SL level.
 *   **Stop Loss:** `max(structural_distance, 1×ATR)` — structural SL from previous 2-candle lows/highs, floored by ATR to avoid noise-triggered stops.
 *   **Take Profit:** Configurable per pair (XAG: 10.0R, XAU: 5.0R, JP225: 5.0R, AUD_USD: 2.5R, USD_CAD: 3.0R, NAS100: 4.5R).
-*   **Best For:** XAU_USD, XAG_USD, JP225_USD, AUD_USD, USD_CAD, NAS100_USD.
+*   **Timeframe per pair:** XAU_USD uses **15m** (all others use 5m). Gold's structured swing moves are better captured on 15m — the longer candle filters out DI spikes that generate false 5m entries.
+*   **Best For:** XAU_USD (15m), XAG_USD, JP225_USD, AUD_USD, USD_CAD, NAS100_USD (all 5m).
 
-## Latest Update: SmaScalping JP225 DI Persistence Filter (February 26, 2026)
+## Latest Update: XAU_USD SmaScalping moved to 15m (February 27, 2026)
+
+### Change
+XAU_USD SmaScalping timeframe switched from 5m → 15m, with `di_persist: 2` added.
+
+### Backtest Results — XAU SmaScalping 5m vs 15m
+
+| | 5m (old) | **15m (deployed)** | Delta |
+|--|--|--|--|
+| Config | DI>35 RR=5.0 p=1 | **DI>35 RR=5.0 p=2** | |
+| Period | 6 weeks | 4 months | longer |
+| Trades | 42 | 31 | -11 |
+| Win Rate | 23.8% | **35.5%** | +11.7% ✓ |
+| ROI | +18.09% | **+39.89%** | +21.8% ✓ |
+| Sharpe | 2.39 | **6.17** | +3.78 ✓ |
+| MaxDD | -6.79% | -7.73% | -0.94% |
+
+Gold moves in large structured swings that are well-defined on 15m. The 5m timeframe fires on DI spikes that reverse within the same 15m candle — the 15m candle naturally absorbs that noise.
+
+### Why Silver stays on 5m
+XAG tested on 15m shows Sharpe 3.07 vs 2.74 (marginal gain) but ROI drops from +86% to +47% and MaxDD worsens. Silver's fast impulse moves are better caught on 5m.
+
+### Scheduler — no changes needed
+- `dynamic` cron (`:01,:16,:31,:46`) fires 1 minute after each 15m candle close — this is the correct trigger for XAU 15m SmaScalping
+- `sniper` cron (`:06,:11,:21,:26,:36,:41,:51,:56`) still runs SmaScalping (needed for the 5 other pairs on 5m); XAU 15m will also be checked but reads the same 15m data between closes → dedup eviction prevents repeat signals
+- The screener automatically maps `timeframe: "15m"` → `data['base'] = 15_Min.csv`; no code change required
+
+### Files changed
+- `data/metadata/best_strategies.json` — XAU_USD SmaScalping: `5m` → `15m`, added `di_persist: 2`
+
+---
+
+## Previous Update: SmaScalping JP225 DI Persistence Filter (February 26, 2026)
 
 ### Problem
 JP225 produced false signals where DI+ briefly spiked above 30 for a single candle then immediately retreated, causing same-candle SL hits. Root cause: JP225 (Asian index) has a choppier DI regime than commodities/forex — threshold crossings are less reliable on a single candle.
 
-### Fix: `di_persist: 2` for JP225 only
+### Fix: `di_persist: 2` for JP225 and AUD_USD
 - **Parameter:** `di_persist` in `sma_scalping_detector.py` — requires DI+ (BUY) or DI- (SELL) to be above threshold for the last N consecutive candles before entry.
-- **JP225:** `di_persist: 2` — must sustain DI+ > 30 for 2 candles (10 minutes). Eliminates spike entries.
+- **JP225:** `di_persist: 2` — must sustain DI+ > 30 for 2 candles (10 minutes). Eliminates same-candle SL hits from single-candle DI spikes.
+- **AUD_USD:** `di_persist: 2` — improves Sharpe (+39%) and WR (+2.4%) at minor ROI cost (-1.9%). Validated separately.
 - **All other pairs:** `di_persist: 1` (default) — unchanged behavior.
 
 ### Backtest Results — JP225 with di_persist=2 vs baseline
@@ -353,19 +387,30 @@ JP225 produced false signals where DI+ briefly spiked above 30 for a single cand
 | Filter | Trades | WR% | ROI | Sharpe | MaxDD |
 |--------|--------|-----|-----|--------|-------|
 | persist=1 (baseline) | 39 | 30.8% | +36.9% | 4.65 | -5.85% |
-| **persist=2 (deployed)** | **38** | **34.2%** | **+46.7%** | **5.63** | **-5.85%** |
+| **persist=2 (deployed)** | **40** | **35.0%** | **+52.46%** | **5.89** | **-5.85%** |
 | persist=3 | 42 | 28.6% | +32.8% | 4.01 | -6.79% |
 
+### Backtest Results — AUD_USD with di_persist=2 vs baseline
+
+| Filter | Trades | WR% | ROI | Sharpe | MaxDD |
+|--------|--------|-----|-----|--------|-------|
+| persist=1 (baseline) | 69 | 34.8% | +15.07% | 1.91 | -7.30% |
+| **persist=2 (deployed)** | **43** | **37.2%** | **+13.17%** | **2.66** | **-6.36%** |
+
+Note: AUD_USD backtest covers 41 days (Jan 16 – Feb 26, 2026) — below the 50-trade statistical validity threshold. ⚠️ **MONITORING** — deployment is provisional, heavily influenced by a single BUY trend (Jan 19 – Feb 12). Treat as validated once 50+ live trades confirm edge.
+
+**USD_CAD monitoring note:** USD_CAD SmaScalping (Sharpe 1.02, 49 trades, +6.4% ROI, MaxDD -14.85%) is the weakest pair in the portfolio. Break-even WR at 3.0R is 25%; 95% CI lower bound on 28.6% WR overlaps break-even. ⚠️ **MONITORING** — suspend or pair with a complementary strategy if live WR falls below 25%.
+
 ### Why NOT to apply this globally
-Tested di_persist=2 on all pairs — only JP225 benefits. For XAG and NAS100, the DI spike immediately follows through and requiring 2-candle persistence destroys the edge:
+Tested di_persist=2 on all pairs — only JP225 and AUD_USD benefit. For XAG and NAS100, the DI spike immediately follows through and requiring 2-candle persistence destroys the edge:
 - XAG: +86% ROI → +10% ROI (persist=2)
 - NAS100: +20% ROI → +2.5% ROI (persist=2)
 
-**Rule:** Only use `di_persist > 1` for instruments with choppy DI regimes. JP225 qualifies; commodities and US indices do not.
+**Rule:** Use `di_persist: 2` for pairs with choppy or slow DI regimes (Asian indices, slower forex). Keep `di_persist: 1` for fast-moving commodities and US indices.
 
 ### Files changed
 - `backend/app/services/sma_scalping_detector.py` — added `di_persist` parameter
-- `data/metadata/best_strategies.json` — set `di_persist: 2` on JP225_USD SmaScalping
+- `data/metadata/best_strategies.json` — set `di_persist: 2` on JP225_USD and AUD_USD SmaScalping
 
 ---
 

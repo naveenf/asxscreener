@@ -8,10 +8,11 @@
       },
       {
         "strategy": "SmaScalping",
-        "timeframe": "5m",
+        "timeframe": "15m",
         "target_rr": 5.0,
         "params": {
-          "di_threshold": 35.0
+          "di_threshold": 35.0,
+          "di_persist": 2
         }
       }
     ]
@@ -140,7 +141,8 @@
         "timeframe": "5m",
         "target_rr": 2.5,
         "params": {
-          "di_threshold": 35.0
+          "di_threshold": 35.0,
+          "di_persist": 2
         }
       }
     ]

@@ -1,6 +1,22 @@
 """
-SmaScalping 5m — all-pairs backtest using deployed parameters.
-Generates data/backtest_sma_scalping_all_pairs.csv
+SmaScalping — deployed-pairs backtest using current production parameters.
+
+Matches the live detector exactly:
+  - DI threshold + DI dominance (DI+ > DI-)
+  - ADX min
+  - di_persist: DI must exceed threshold for N consecutive candles
+  - Structural validity: price not already past the 2-candle SL level
+  - ATR floor for stop loss: SL = max(structural_distance, 1×ATR)
+
+Deployed pairs and timeframes (Feb 2026):
+  XAU_USD   15m  DI>35  RR=5.0   di_persist=2
+  XAG_USD    5m  DI>35  RR=10.0  di_persist=1
+  JP225_USD  5m  DI>30  RR=5.0   di_persist=2  adx_min=20
+  AUD_USD    5m  DI>35  RR=2.5   di_persist=2
+  USD_CAD    5m  DI>35  RR=3.0   di_persist=1
+  NAS100_USD 5m  DI>35  RR=4.5   di_persist=1
+
+Generates: data/backtest_sma_scalping_all_pairs.csv
 """
 
 import sys
@@ -11,106 +27,108 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from backend.app.services.indicators import TechnicalIndicators
 
-DATA_DIR  = Path("data/forex_raw")
-OUT_FILE  = Path("data/backtest_sma_scalping_all_pairs.csv")
-
+DATA_DIR        = Path("data/forex_raw")
+OUT_FILE        = Path("data/backtest_sma_scalping_all_pairs.csv")
 INITIAL_BALANCE = 10_000.0
 RISK_PCT        = 0.01
 
-# Deployed parameters per pair (di_threshold, adx_min, target_rr, spread)
+# Current deployed parameters — keep in sync with best_strategies.json
 DEPLOYED = {
-    # Pairs added in current session — optimised params
-    "WHEAT_USD":   dict(di=30.0, adx=30.0, rr=3.0,  spread=0.010),
-    "NAS100_USD":  dict(di=35.0, adx=0.0,  rr=4.5,  spread=2.30),
-    "JP225_USD":   dict(di=30.0, adx=20.0, rr=5.0,  spread=17.0),
-    "AUD_USD":     dict(di=35.0, adx=0.0,  rr=2.5,  spread=0.0002),
-    "USD_CAD":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.0002),
-    # XAU/XAG already have dedicated backtest files — include for completeness
-    "XAU_USD":     dict(di=35.0, adx=0.0,  rr=5.0,  spread=0.50),
-    "XAG_USD":     dict(di=35.0, adx=0.0,  rr=10.0, spread=0.03),
-    # Reference pairs (not deployed, shown for comparison)
-    "BCO_USD":     dict(di=35.0, adx=0.0,  rr=5.0,  spread=0.05),
-    "EUR_USD":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.0001),
-    "GBP_USD":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.0002),
-    "USD_CHF":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.0002),
-    "USD_JPY":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.02),
-    "NZD_USD":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.0002),
-    "AUD_JPY":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.03),
-    "CAD_JPY":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.03),
-    "CHF_JPY":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.03),
-    "EUR_JPY":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.02),
-    "GBP_JPY":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.03),
-    "EUR_AUD":     dict(di=35.0, adx=0.0,  rr=3.0,  spread=0.0003),
-    "UK100_GBP":   dict(di=35.0, adx=0.0,  rr=5.0,  spread=1.0),
-    "XCU_USD":     dict(di=35.0, adx=0.0,  rr=5.0,  spread=0.001),
+    #          tf      di     adx    rr     persist  spread
+    "XAU_USD":    dict(tf="15m", di=35.0, adx=0.0,  rr=5.0,  persist=2, spread=0.50),
+    "XAG_USD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=10.0, persist=1, spread=0.03),
+    "JP225_USD":  dict(tf="5m",  di=30.0, adx=20.0, rr=5.0,  persist=2, spread=17.0),
+    "AUD_USD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=2.5,  persist=2, spread=0.0002),
+    "USD_CAD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=3.0,  persist=1, spread=0.0002),
+    "NAS100_USD": dict(tf="5m",  di=35.0, adx=0.0,  rr=4.5,  persist=1, spread=2.30),
 }
 
+TF_SUFFIX = {"5m": "5_Min", "15m": "15_Min"}
 
-def load_and_prep(symbol: str) -> pd.DataFrame:
-    csv = DATA_DIR / f"{symbol}_5_Min.csv"
+
+def load_and_prep(symbol: str, tf: str) -> pd.DataFrame:
+    suffix = TF_SUFFIX[tf]
+    csv = DATA_DIR / f"{symbol}_{suffix}.csv"
     df = pd.read_csv(csv, parse_dates=["Date"])
     df.set_index("Date", inplace=True)
     df.sort_index(inplace=True)
+    if df.index.tz is not None:
+        df.index = df.index.tz_localize(None)
     df = TechnicalIndicators.add_all_indicators(df)
     for p, col in [(20, "SMA20"), (50, "SMA50"), (100, "SMA100")]:
         df[col] = df["Close"].rolling(p).mean()
-    df.dropna(subset=["SMA20", "SMA50", "SMA100", "DIPlus", "DIMinus", "ADX"], inplace=True)
+    df.dropna(subset=["SMA20", "SMA50", "SMA100", "DIPlus", "DIMinus", "ADX", "ATR"],
+              inplace=True)
     return df
 
 
-def run_backtest(df, rr, di, adx_min, spread):
-    closes  = df["Close"].values
-    highs   = df["High"].values
-    lows    = df["Low"].values
-    sma20   = df["SMA20"].values
-    sma50   = df["SMA50"].values
-    sma100  = df["SMA100"].values
-    di_plus = df["DIPlus"].values
-    di_minus= df["DIMinus"].values
-    adx     = df["ADX"].values
+def run_backtest(df, rr, di, adx_min, spread, di_persist):
+    closes   = df["Close"].values
+    highs    = df["High"].values
+    lows     = df["Low"].values
+    sma20    = df["SMA20"].values
+    sma50    = df["SMA50"].values
+    sma100   = df["SMA100"].values
+    di_plus  = df["DIPlus"].values
+    di_minus = df["DIMinus"].values
+    adx_arr  = df["ADX"].values
+    atr_arr  = df["ATR"].values
 
     balance  = INITIAL_BALANCE
     trades   = []
     in_trade = False
     sl = tp = direction = None
 
-    for i in range(3, len(df)):
+    for i in range(max(3, di_persist), len(df)):
         c, h, l = closes[i], highs[i], lows[i]
 
+        # --- Exit ---
         if in_trade:
             if direction == "BUY":
-                if l <= sl:   trades.append(_close(balance, rr, False)); balance += trades[-1]["pnl"]; in_trade = False
-                elif h >= tp: trades.append(_close(balance, rr, True));  balance += trades[-1]["pnl"]; in_trade = False
+                if l <= sl:   trades.append(_close(balance, rr, False)); balance = trades[-1]["balance"]; in_trade = False
+                elif h >= tp: trades.append(_close(balance, rr, True));  balance = trades[-1]["balance"]; in_trade = False
             else:
-                if h >= sl:   trades.append(_close(balance, rr, False)); balance += trades[-1]["pnl"]; in_trade = False
-                elif l <= tp: trades.append(_close(balance, rr, True));  balance += trades[-1]["pnl"]; in_trade = False
-            if not in_trade:
-                trades[-1]["balance"] = balance
+                if h >= sl:   trades.append(_close(balance, rr, False)); balance = trades[-1]["balance"]; in_trade = False
+                elif l <= tp: trades.append(_close(balance, rr, True));  balance = trades[-1]["balance"]; in_trade = False
             continue
 
-        adx_ok   = adx[i] >= adx_min
-        is_buy   = (c > sma20[i] and c > sma50[i] and c > sma100[i]
-                    and di_plus[i] > di and adx_ok)
-        is_sell  = (c < sma20[i] and c < sma50[i] and c < sma100[i]
-                    and di_minus[i] > di and adx_ok)
+        # --- Entry: DI persistence + dominance + ADX ---
+        adx_ok        = adx_arr[i] >= adx_min
+        di_plus_pers  = all(di_plus[i - j]  > di for j in range(di_persist))
+        di_minus_pers = all(di_minus[i - j] > di for j in range(di_persist))
+
+        is_buy  = (c > sma20[i] and c > sma50[i] and c > sma100[i]
+                   and di_plus_pers and di_plus[i] > di_minus[i] and adx_ok)
+        is_sell = (c < sma20[i] and c < sma50[i] and c < sma100[i]
+                   and di_minus_pers and di_minus[i] > di_plus[i] and adx_ok)
 
         if not (is_buy or is_sell):
             continue
 
-        prev_low  = min(lows[i-2],  lows[i-1])
-        prev_high = max(highs[i-2], highs[i-1])
+        # --- Structural validity ---
+        prev_low  = min(lows[i - 2],  lows[i - 1])
+        prev_high = max(highs[i - 2], highs[i - 1])
+        if is_buy  and c < prev_low:  continue
+        if is_sell and c > prev_high: continue
 
+        # --- ATR floor for SL ---
+        atr_val = atr_arr[i]
         if is_buy:
-            sl_p = prev_low - spread;  risk = c - sl_p
+            stop_dist = max(c - prev_low, atr_val)
+            sl_p = c - stop_dist - spread
+            risk = c - sl_p
             if risk <= 0: continue
             direction = "BUY";  sl = sl_p;  tp = c + risk * rr
         else:
-            sl_p = prev_high + spread; risk = sl_p - c
+            stop_dist = max(prev_high - c, atr_val)
+            sl_p = c + stop_dist + spread
+            risk = sl_p - c
             if risk <= 0: continue
             direction = "SELL"; sl = sl_p;  tp = c - risk * rr
+
         in_trade = True
 
-    if len(trades) < 8:
+    if len(trades) < 5:
         return None
 
     df_t   = pd.DataFrame(trades)
@@ -129,35 +147,42 @@ def run_backtest(df, rr, di, adx_min, spread):
 
 def _close(balance, rr, win):
     pnl = balance * RISK_PCT * (rr if win else -1)
-    return {"result": "WIN" if win else "LOSS", "pnl": pnl, "balance": 0}
+    return {"result": "WIN" if win else "LOSS", "pnl": pnl, "balance": balance + pnl}
 
 
 if __name__ == "__main__":
+    print("SmaScalping — Deployed Pairs Backtest")
+    print("=" * 78)
+    print(f"  {'Symbol':<14} {'TF':<4} {'DI':>3} {'RR':>5} {'p':>2} {'Trades':>6} "
+          f"{'WR%':>6} {'ROI%':>8} {'Sharpe':>7} {'MaxDD%':>8}")
+    print("  " + "-" * 67)
+
     rows = []
     for symbol, p in DEPLOYED.items():
-        csv = DATA_DIR / f"{symbol}_5_Min.csv"
+        tf_suffix = TF_SUFFIX[p["tf"]]
+        csv = DATA_DIR / f"{symbol}_{tf_suffix}.csv"
         if not csv.exists():
-            print(f"  {symbol:<14} — no data file, skipping")
+            print(f"  {symbol:<14} — no {p['tf']} data file, skipping")
             continue
         try:
-            df = load_and_prep(symbol)
+            df = load_and_prep(symbol, p["tf"])
         except Exception as e:
             print(f"  {symbol:<14} — load error: {e}")
             continue
 
         period = f"{df.index[0].date()} → {df.index[-1].date()}"
-        r = run_backtest(df, p["rr"], p["di"], p["adx"], p["spread"])
+        r = run_backtest(df, p["rr"], p["di"], p["adx"], p["spread"], p["persist"])
         if r is None:
-            print(f"  {symbol:<14} — insufficient trades (<8)")
+            print(f"  {symbol:<14} — insufficient trades (<5)")
             continue
 
-        tag = "DEPLOYED" if symbol in ("WHEAT_USD","NAS100_USD","JP225_USD","AUD_USD","USD_CAD") else ""
-        print(f"  {symbol:<14} rr={p['rr']} di>{p['di']} adx>{p['adx']}  "
+        print(f"  {symbol:<14} {p['tf']:<4} DI>{p['di']:<4.0f} RR={p['rr']:<4.1f} p={p['persist']}  "
               f"n={r['trades']:>4}  wr={r['win_rate']:>5.1f}%  roi={r['roi']:>7.2f}%  "
-              f"sharpe={r['sharpe']:>5.2f}  dd={r['max_dd']:>7.2f}%  {tag}")
-        rows.append({"symbol": symbol, "rr": p["rr"], "di_threshold": p["di"],
-                     "adx_min": p["adx"], "spread": p["spread"], "period": period,
-                     **r})
+              f"sharpe={r['sharpe']:>5.2f}  dd={r['max_dd']:>7.2f}%")
+        rows.append({"symbol": symbol, "timeframe": p["tf"], "rr": p["rr"],
+                     "di_threshold": p["di"], "adx_min": p["adx"],
+                     "di_persist": p["persist"], "spread": p["spread"],
+                     "period": period, **r})
 
     pd.DataFrame(rows).to_csv(OUT_FILE, index=False)
-    print(f"\nSaved → {OUT_FILE}  ({len(rows)} rows)")
+    print(f"\nSaved → {OUT_FILE}  ({len(rows)} pairs)")
