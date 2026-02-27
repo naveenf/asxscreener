@@ -214,5 +214,23 @@
       "rsi_exit_long": 33,
       "rsi_exit_short": 67
     }
+  },
+  "USD_JPY": {
+    "strategy": "SmaScalping",
+    "timeframe": "5m",
+    "target_rr": 2.5,
+    "params": {
+      "di_threshold": 30.0,
+      "di_persist": 1
+    }
+  },
+  "GBP_JPY": {
+    "strategy": "SmaScalping",
+    "timeframe": "15m",
+    "target_rr": 5.0,
+    "params": {
+      "di_threshold": 25.0,
+      "di_persist": 1
+    }
   }
 }

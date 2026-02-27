@@ -62,6 +62,20 @@
       "type": "Forex",
       "oanda_symbol": "USD_CAD",
       "yf_symbol_legacy": "USD_CAD"
+    },
+    {
+      "symbol": "USD_JPY",
+      "name": "USD/JPY",
+      "type": "Forex",
+      "oanda_symbol": "USD_JPY",
+      "yf_symbol_legacy": "USD_JPY"
+    },
+    {
+      "symbol": "GBP_JPY",
+      "name": "GBP/JPY",
+      "type": "Forex",
+      "oanda_symbol": "GBP_JPY",
+      "yf_symbol_legacy": "GBP_JPY"
     }
   ]
 }

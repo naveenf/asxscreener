@@ -332,14 +332,38 @@ asx-screener/
     *   DI+ > DI- (dominant bullish momentum)
     *   DI+ > configurable threshold (default 35, JP225 uses 30) for `di_persist` consecutive candles
     *   ADX ≥ adx_min (default 0, JP225 uses 20)
-*   **DI Persistence (`di_persist`):** DI+ (BUY) or DI- (SELL) must have been above the threshold for the last N candles, not just the current one. Default is 1 (single-candle check). JP225 and AUD_USD use `di_persist: 2` — both pairs show DI spikes that don't sustain, leading to lower-quality entries. Requiring 2 consecutive candles improves Sharpe and WR at a small ROI cost. Do NOT apply to XAG/NAS100 — their DI spikes immediately follow through, and requiring persistence destroys their edge (XAG drops from +86% → +10% ROI).
+*   **DI Persistence (`di_persist`):** DI+ (BUY) or DI- (SELL) must have been above the threshold for the last N candles, not just the current one. Default is 1 (single-candle check). JP225 and AUD_USD use `di_persist: 2` — both pairs show DI spikes that don't sustain, leading to lower-quality entries. Requiring 2 consecutive candles improves Sharpe and WR at a small ROI cost. Do NOT apply to XAG/NAS100 — their DI spikes immediately follow through, and requiring persistence destroys their edge (XAG drops from +86% → +10% ROI). **GBP_JPY uses `di_persist: 1`** — despite being a JPY cross, at the deployed config (DI>25, RR=5.0, 15m) persist=2 reduces ROI from +36.51% to +26.51% with lower Sharpe (3.31 vs 3.52); backtest data favors persist=1.
 *   **Structural Validity:** Entry price must not be below the previous 2-candle lows (BUY) or above the previous 2-candle highs (SELL) — rejects signals where price has already broken through the structural SL level.
 *   **Stop Loss:** `max(structural_distance, 1×ATR)` — structural SL from previous 2-candle lows/highs, floored by ATR to avoid noise-triggered stops.
-*   **Take Profit:** Configurable per pair (XAG: 10.0R, XAU: 5.0R, JP225: 5.0R, AUD_USD: 2.5R, USD_CAD: 3.0R, NAS100: 4.5R).
-*   **Timeframe per pair:** XAU_USD uses **15m** (all others use 5m). Gold's structured swing moves are better captured on 15m — the longer candle filters out DI spikes that generate false 5m entries.
-*   **Best For:** XAU_USD (15m), XAG_USD, JP225_USD, AUD_USD, USD_CAD, NAS100_USD (all 5m).
+*   **Take Profit:** Configurable per pair (XAG: 10.0R, XAU: 5.0R, JP225: 5.0R, AUD_USD: 2.5R, USD_CAD: 3.0R, NAS100: 4.5R, USD_JPY: 2.5R, GBP_JPY: 5.0R).
+*   **Timeframe per pair:** XAU_USD and GBP_JPY use **15m** (all others use 5m). Gold's structured swing moves are better captured on 15m. GBP_JPY's wider pip range and slower swing structure suit the 15m timeframe (5m data was only 36 days at backtest time; 15m provided 86 days of coverage).
+*   **Best For:** XAU_USD (15m), XAG_USD, JP225_USD, AUD_USD, USD_CAD, NAS100_USD, USD_JPY (all 5m); GBP_JPY (15m).
+*   **AU200_AUD (NOT DEPLOYED):** Tested — best config (5m, DI>25, RR=3.5, persist=2) yields Sharpe 1.59 and MaxDD -21.01%. Below deployment threshold (Sharpe <2.0) and drawdown unacceptable. Research: `data/backtest_sma_au200.csv`.
 
-## Latest Update: XAU_USD SmaScalping moved to 15m (February 27, 2026)
+## Latest Update: USD_JPY and GBP_JPY SmaScalping Deployment (February 27, 2026)
+
+### New Pairs Added
+Two new forex pairs deployed with SmaScalping strategy, backed by Oanda data backtests.
+
+| Pair | TF | DI> | RR | persist | Trades | WR% | ROI | Sharpe | MaxDD | Status |
+|------|----|-----|----|---------|--------|-----|-----|--------|-------|--------|
+| **USD_JPY** | 5m | 30 | 2.5 | 1 | 131 | 36.6% | +42.06% | 2.55 | -9.15% | ⚠️ MONITORING |
+| **GBP_JPY** | 15m | 25 | 5.0 | 1 | 51 | 27.5% | +36.51% | 3.52 | -10.60% | ✅ ACTIVE |
+
+**USD_JPY:** ⚠️ MONITORING — 43-day data window (5m from Jan 15, 2026). 131 trades meets statistical threshold but short window. Treat as confirmed once 50+ live trades validate edge.
+
+**GBP_JPY:** `di_persist: 1` chosen over 2 — at DI>25 RR=5.0 on 15m, persist=2 reduces ROI to +26.51% and Sharpe to 3.31 (vs +36.51% / 3.52 with persist=1). 86-day backtest (Dec 3, 2025 – Feb 27, 2026).
+
+**AU200_AUD:** Evaluated and NOT deployed — Sharpe 1.59 and MaxDD -21% at best config. See `data/backtest_sma_au200.csv`.
+
+### Files changed
+- `data/metadata/best_strategies.json` — Added USD_JPY and GBP_JPY SmaScalping entries
+- `data/metadata/forex_pairs.json` — Added USD_JPY and GBP_JPY to asset list
+- `scripts/backtest_sma_jpy_pairs.py` — Backtest sweep script for both pairs
+
+---
+
+## Previous Update: XAU_USD SmaScalping moved to 15m (February 27, 2026)
 
 ### Change
 XAU_USD SmaScalping timeframe switched from 5m → 15m, with `di_persist: 2` added.
