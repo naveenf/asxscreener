@@ -130,25 +130,30 @@ def calculate_forex_metrics(item_data: dict, signals: List[dict], live_prices: O
         else: # SELL (Short)
             native_gain_loss = (buy_price - price_to_use) * quantity
 
-    # Conversion to AUD
-    quote_currency = symbol.split('_')[-1] if '_' in symbol else 'USD'
-
-    gain_loss_aud = 0.0
-    if quote_currency == 'AUD':
-        gain_loss_aud = native_gain_loss
-    elif quote_currency == 'USD':
-        gain_loss_aud = native_gain_loss / aud_usd_rate if aud_usd_rate > 0 else 0
-    elif quote_currency == 'JPY':
-        # Convert JPY → AUD: JPY * AUD_USD / USD_JPY
-        usd_jpy = live_prices.get('USD_JPY') if live_prices else None
-        if usd_jpy is None:
-            usd_jpy = get_latest_price_from_csv('USD_JPY')
-        if usd_jpy and usd_jpy > 0 and aud_usd_rate > 0:
-            gain_loss_aud = native_gain_loss * aud_usd_rate / usd_jpy
-        else:
-            gain_loss_aud = native_gain_loss / aud_usd_rate  # fallback
+    # For closed trades, use Oanda's authoritative AUD P&L (synced via realizedPL).
+    # Recalculating from price × units introduces currency conversion errors for
+    # non-USD quote pairs (e.g. GBP/JPY: JPY ÷ AUD/USD ≈ 150× inflation).
+    if status == 'CLOSED' and item_data.get('pnl') is not None:
+        gain_loss_aud = float(item_data['pnl'])
     else:
-        gain_loss_aud = native_gain_loss / aud_usd_rate if aud_usd_rate > 0 else 0
+        # Conversion to AUD (open trades — live recalculation)
+        quote_currency = symbol.split('_')[-1] if '_' in symbol else 'USD'
+        gain_loss_aud = 0.0
+        if quote_currency == 'AUD':
+            gain_loss_aud = native_gain_loss
+        elif quote_currency == 'USD':
+            gain_loss_aud = native_gain_loss / aud_usd_rate if aud_usd_rate > 0 else 0
+        elif quote_currency == 'JPY':
+            # Convert JPY → AUD: native_gain_loss (JPY) * AUD_USD / USD_JPY
+            usd_jpy = live_prices.get('USD_JPY') if live_prices else None
+            if usd_jpy is None:
+                usd_jpy = get_latest_price_from_csv('USD_JPY')
+            if usd_jpy and usd_jpy > 0 and aud_usd_rate > 0:
+                gain_loss_aud = native_gain_loss * aud_usd_rate / usd_jpy
+            else:
+                gain_loss_aud = native_gain_loss / aud_usd_rate  # fallback
+        else:
+            gain_loss_aud = native_gain_loss / aud_usd_rate if aud_usd_rate > 0 else 0
 
     cost_basis_native = (buy_price * quantity)
     gain_loss_percent = (native_gain_loss / cost_basis_native * 100) if cost_basis_native > 0 else 0
