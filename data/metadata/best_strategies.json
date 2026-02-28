@@ -13,7 +13,8 @@
         "target_rr": 5.0,
         "params": {
           "di_threshold": 35.0,
-          "di_persist": 2
+          "di_persist": 2,
+          "adx_rising": true
         }
       }
     ]
@@ -102,7 +103,9 @@
         "timeframe": "5m",
         "target_rr": 10.0,
         "params": {
-          "di_threshold": 35.0
+          "di_threshold": 35.0,
+          "atr_ratio_min": 1.2,
+          "di_slope": true
         }
       }
     ]
@@ -122,7 +125,8 @@
         "params": {
           "di_threshold": 30.0,
           "adx_min": 20.0,
-          "di_persist": 2
+          "di_persist": 2,
+          "di_slope": true
         }
       }
     ]
@@ -205,7 +209,9 @@
         "timeframe": "5m",
         "target_rr": 4.5,
         "params": {
-          "di_threshold": 35.0
+          "di_threshold": 35.0,
+          "atr_ratio_min": 1.0,
+          "di_slope": true
         }
       }
     ]

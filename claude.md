@@ -324,23 +324,87 @@ asx-screener/
     *   NOT viable on Asian indices (JP225) or Oil (BCO) - different market regimes
 *   **Deployment Status:** UK100_GBP live (Feb 23), NAS100_USD+Silver validation in progress.
 
-### 12. SMA Scalping (5m SMA Stack + DMI)
-*   **Logic:** SMA stack alignment + sustained DI threshold. DI must exceed the threshold for `di_persist` consecutive candles before entry, preventing single-candle spike entries.
-*   **Indicators:** SMA20, SMA50, SMA100, DI+, DI-, ADX.
-*   **Entry Conditions (LONG):**
+### 12. SMA Scalping (SMA Stack + DMI with Noise Filters)
+*   **Logic:** SMA stack alignment + sustained DI threshold + optional per-pair noise filters. Core idea: enter only when price is structurally aligned (above all 3 SMAs), DI momentum is dominant and sustained, and optional quality gates confirm the move is genuine (not a DI spike into compression).
+*   **Indicators:** SMA20, SMA50, SMA100, DI+, DI-, ADX, ATR, RSI (optional), Volume (optional).
+*   **Core Entry Conditions (LONG):**
     *   Price > SMA20, SMA50, SMA100 (full bullish stack)
     *   DI+ > DI- (dominant bullish momentum)
-    *   DI+ > configurable threshold (default 35, JP225 uses 30) for `di_persist` consecutive candles
-    *   ADX ≥ adx_min (default 0, JP225 uses 20)
-*   **DI Persistence (`di_persist`):** DI+ (BUY) or DI- (SELL) must have been above the threshold for the last N candles, not just the current one. Default is 1 (single-candle check). JP225 and AUD_USD use `di_persist: 2` — both pairs show DI spikes that don't sustain, leading to lower-quality entries. Requiring 2 consecutive candles improves Sharpe and WR at a small ROI cost. Do NOT apply to XAG/NAS100 — their DI spikes immediately follow through, and requiring persistence destroys their edge (XAG drops from +86% → +10% ROI). **GBP_JPY uses `di_persist: 1`** — despite being a JPY cross, at the deployed config (DI>25, RR=5.0, 15m) persist=2 reduces ROI from +36.51% to +26.51% with lower Sharpe (3.31 vs 3.52); backtest data favors persist=1.
-*   **Structural Validity:** Entry price must not be below the previous 2-candle lows (BUY) or above the previous 2-candle highs (SELL) — rejects signals where price has already broken through the structural SL level.
-*   **Stop Loss:** `max(structural_distance, 1×ATR)` — structural SL from previous 2-candle lows/highs, floored by ATR to avoid noise-triggered stops.
+    *   DI+ > `di_threshold` for `di_persist` consecutive candles
+    *   ADX ≥ `adx_min`
+    *   Entry price not below previous 2-candle lows (structural validity)
+*   **Stop Loss:** `max(structural_distance, 1×ATR)` — floored by ATR to avoid noise-triggered stops.
 *   **Take Profit:** Configurable per pair (XAG: 10.0R, XAU: 5.0R, JP225: 5.0R, AUD_USD: 2.5R, USD_CAD: 3.0R, NAS100: 4.5R, USD_JPY: 2.5R, GBP_JPY: 5.0R).
-*   **Timeframe per pair:** XAU_USD and GBP_JPY use **15m** (all others use 5m). Gold's structured swing moves are better captured on 15m. GBP_JPY's wider pip range and slower swing structure suit the 15m timeframe (5m data was only 36 days at backtest time; 15m provided 86 days of coverage).
-*   **Best For:** XAU_USD (15m), XAG_USD, JP225_USD, AUD_USD, USD_CAD, NAS100_USD, USD_JPY (all 5m); GBP_JPY (15m).
-*   **AU200_AUD (NOT DEPLOYED):** Tested — best config (5m, DI>25, RR=3.5, persist=2) yields Sharpe 1.59 and MaxDD -21.01%. Below deployment threshold (Sharpe <2.0) and drawdown unacceptable. Research: `data/backtest_sma_au200.csv`.
+*   **Timeframe per pair:** XAU_USD and GBP_JPY use **15m** (all others use 5m).
 
-## Latest Update: USD_JPY and GBP_JPY SmaScalping Deployment (February 27, 2026)
+#### Optional Noise Filters (all default OFF, enabled per-pair in best_strategies.json)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `di_persist` | int | DI must exceed threshold for N consecutive candles (default 1). JP225/AUD_USD use 2. |
+| `adx_min` | float | ADX floor (default 0). JP225 uses 20. |
+| `adx_rising` | bool | ADX must be rising vs previous candle — momentum building, not fading. **XAU uses this.** |
+| `di_spread_min` | float | Minimum DI+/DI- gap — rejects marginal crossings. |
+| `sma_ordered` | bool | Requires SMA20>SMA50>SMA100 (BUY). **Destructive for NAS100/XAG** — SMAs lag price on fast moves; do not use. |
+| `rsi_filter` | bool | RSI 50–75 zone (BUY). Noisy on 5m, generally harmful. |
+| `body_ratio_min` | float | Min candle body/range ratio — rejects doji/indecision candles. |
+| `atr_ratio_min` | float | ATR must be ≥ N × 20-bar ATR average — only enter during expanding volatility. **XAG uses 1.2, NAS100 uses 1.0.** |
+| `di_slope` | bool | DI must be rising over last 2 candles (not just sustained above threshold). Addresses fading-momentum entries. **JP225, XAG, NAS100, GBP_JPY use this.** |
+| `avoid_hours` | list | Block entry during specified UTC hours. **USD_JPY uses [15–21] to avoid US afternoon chop.** |
+
+#### Per-Pair Deployed Configs (February 28, 2026)
+
+| Pair | TF | DI> | RR | persist | Extra filters | Trades | WR% | ROI% | Sharpe | MaxDD |
+|------|----|-----|----|---------|--------------|--------|-----|------|--------|-------|
+| XAU_USD | 15m | 35 | 5.0 | 2 | `adx_rising` | 30 | 36.7% | 41.3% | 6.48 | -7.73% |
+| XAG_USD | 5m | 35 | 10.0 | 1 | `atr_ratio=1.2, di_slope` | 43 | 25.6% | 106.9% | 5.59 | -4.90% |
+| JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope` | 37 | 35.1% | 48.2% | 5.93 | -3.94% |
+| NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope` | 39 | 28.2% | 22.5% | 3.28 | -10.47% |
+| GBP_JPY | 15m | 25 | 5.0 | 1 | *(none added yet)* | 36 | 27.8% | 25.4% | 3.58 | -10.60% |
+| USD_JPY | 5m | 30 | 2.5 | 1 | *(none added yet)* | 134 | 37.3% | 47.8% | 2.78 | -7.38% |
+| AUD_USD | 5m | 35 | 2.5 | 2 | *(none added yet)* | 46 | 34.8% | 9.8% | 1.90 | -7.30% |
+| USD_CAD | 5m | 35 | 3.0 | 1 | *(none added yet)* | 46 | 23.9% | -2.6% | -0.49 | -17.38% |
+
+*NAS100/GBP_JPY/USD_JPY/AUD_USD/USD_CAD filter results validated on 44-day window; XAU/XAG/JP225 on 4+ months.*
+
+**Key rules:**
+- **Do NOT apply `sma_ordered`** to NAS100 or XAG — Sharpe collapses (NAS100: 2.67 → -1.04) because SMAs lag price during fast moves, causing late entries at move peaks.
+- **Do NOT apply `atr_ratio=1.2`** to GBP_JPY — destroys performance.
+- **`di_slope` is broadly safe** across most pairs except USD_JPY (harmful at -1.02 Sharpe).
+- **AU200_AUD NOT DEPLOYED:** Sharpe 1.59, MaxDD -21% at best config. See `data/backtest_sma_au200.csv`.
+
+## Latest Update: SmaScalping Noise Filter Optimization (February 28, 2026)
+
+### Overview
+9 optional entry quality filters added to `SmaScalpingDetector`. Two-round backtest sweep across all 8 deployed pairs identified filters that genuinely improve signal quality vs those that are harmful or pair-specific.
+
+### Filters Deployed
+
+| Pair | Filter added | Sharpe before → after | ROI before → after |
+|------|-------------|----------------------|-------------------|
+| **XAG_USD** | `atr_ratio_min=1.2, di_slope=True` | 2.05 → **5.59** | +56% → **+107%** |
+| **JP225_USD** | `di_slope=True` | 5.14 → **5.93** | +47.9% → **+48.2%** |
+| **NAS100_USD** | `atr_ratio_min=1.0, di_slope=True` | 2.67 → **3.28** | +18.8% → **+22.5%** |
+| **XAU_USD** | `adx_rising=True` | 6.17 → **6.48** | +39.9% → **+41.3%** |
+
+### Key Findings
+- **DI slope** is the most universally effective filter — requires DI+ to be rising over the last 2 candles, not just above the threshold. Directly targets fading-momentum entries (DI crossed threshold but already declining).
+- **ATR expansion** (`atr_ratio_min`) filters entries during compression regimes. At 1.0× average: helps NAS100/USD_CAD/GBP_JPY. At 1.2×: optimal for XAG (Silver needs volatile regimes to reach 10R targets).
+- **Volume filter** (`vol_ratio_min`) is harmful for GBP_JPY and neutral elsewhere — not deployed.
+- **`sma_ordered`** is destructive for NAS100 (Sharpe 2.67 → -1.04) and XAG — do not use on fast-moving instruments.
+- **`rsi_filter`** adds noise on 5m — not deployed on any pair.
+
+### XAG Data Fix
+XAG 5m file was truncated to Jan 14 (44 days). Re-downloaded from Nov 2, 2025 → 22,754 rows. All XAG sweep results prior to Feb 28 were invalid. Baseline with full data: 92 trades, 14.1% WR, +56.06% ROI, Sharpe 2.05.
+
+### Files Changed
+- `backend/app/services/sma_scalping_detector.py` — 9 optional filter params added
+- `data/metadata/best_strategies.json` — XAU, XAG, JP225, NAS100 SmaScalping params updated
+- `data/forex_raw/XAG_USD_5_Min.csv` — re-downloaded from Nov 2025
+
+---
+
+## Previous Update: USD_JPY and GBP_JPY SmaScalping Deployment (February 27, 2026)
 
 ### New Pairs Added
 Two new forex pairs deployed with SmaScalping strategy, backed by Oanda data backtests.
