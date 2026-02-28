@@ -22,7 +22,7 @@ class EnhancedSniperDetector(ForexStrategy):
         
         # Casket definitions
         self.caskets = {
-            "Momentum": ["USD_JPY", "GBP_JPY", "EUR_JPY"],
+            "Momentum": ["USD_JPY", "EUR_JPY"],
             "Steady": ["AUD_USD", "USD_CHF", "NZD_USD", "EUR_GBP"],
             "Cyclical": ["EUR_USD", "GBP_USD", "USD_CAD"]
         }

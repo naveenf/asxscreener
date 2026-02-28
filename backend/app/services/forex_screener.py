@@ -175,11 +175,12 @@ class ForexScreener:
 
             # Check if config has multiple strategies or single
             strategies_to_run = []
+            risk_pct = config.get('risk_pct', 0.01)
             if "strategies" in config:
-                # Multiple strategies for this asset
-                strategies_to_run = config["strategies"]
+                # Multiple strategies for this asset - inject top-level risk_pct
+                strategies_to_run = [{**s, 'risk_pct': risk_pct} for s in config["strategies"]]
             else:
-                # Legacy single strategy format
+                # Legacy single strategy format (risk_pct already at top level)
                 strategies_to_run = [config]
 
             # Load Data once for all strategies
@@ -265,6 +266,7 @@ class ForexScreener:
                         result['name'] = pair.get('name', symbol)
                         result['type'] = pair.get('type', 'Unknown')
                         result['timeframe_used'] = base_tf
+                        result['risk_pct'] = strategy_config.get('risk_pct', 0.01)
 
                         print(f"Processing {symbol}... ✓ {result['signal']} ({strategy_name})")
                         logger.info(f"SIGNAL FOUND | {symbol} | {strategy_name} | {result['signal']} | score={result.get('score')} | tf={result.get('timeframe_used')} | price={result.get('price')} | sl={result.get('stop_loss')} | tp={result.get('take_profit')} | ts={result.get('timestamp')}")

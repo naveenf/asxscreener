@@ -16,13 +16,12 @@ logger = logging.getLogger(__name__)
 
 class OandaTradeService:
     @staticmethod
-    def calculate_units(symbol: str, entry_price: float, stop_loss: float, balance_aud: float, margin_avail_aud: float) -> int:
+    def calculate_units(symbol: str, entry_price: float, stop_loss: float, balance_aud: float, margin_avail_aud: float, risk_pct: float = 0.01) -> float:
         """
-        Calculate position units based on 2% risk of AUD balance.
+        Calculate position units based on risk % of AUD balance.
         Formula: Units = (Risk_AUD) / (Risk_per_Unit_AUD)
         """
         try:
-            risk_pct = 0.02
             risk_amount_aud = balance_aud * risk_pct
             
             # Risk per unit in Quote currency
@@ -316,7 +315,8 @@ class OandaTradeService:
             take_profit = signal['take_profit']
             direction = signal['signal']
             
-            units = cls.calculate_units(symbol, entry_price, stop_loss, balance, margin_avail)
+            risk_pct = signal.get('risk_pct', 0.01)
+            units = cls.calculate_units(symbol, entry_price, stop_loss, balance, margin_avail, risk_pct)
             if units <= 0:
                 logger.warning(f"Calculated 0 units for {symbol}. Insufficient risk/margin.")
                 continue
@@ -324,7 +324,7 @@ class OandaTradeService:
             # Adjust units for direction
             oanda_units = units if direction == 'BUY' else -units
 
-            logger.info(f"EXECUTION: {direction} {symbol} ({units} units) | Risk 2% | Balance: {balance:.2f} AUD")
+            logger.info(f"EXECUTION: {direction} {symbol} ({units} units) | Risk {risk_pct*100:.0f}% | Balance: {balance:.2f} AUD")
             
             # Place Order
             response = OandaPriceService.place_market_order(symbol, oanda_units, stop_loss, take_profit)

@@ -69,8 +69,8 @@ def fetch_live_prices_for_open_trades(docs_data: List[dict]) -> dict:
     open_symbols = {d.get('symbol') for d in docs_data if d.get('status', 'OPEN') == 'OPEN' and d.get('symbol')}
     if not open_symbols:
         return {}
-    # Always include AUD_USD for P&L conversion
-    symbols_to_fetch = list(open_symbols | {'AUD_USD'})
+    # Always include AUD_USD and USD_JPY for P&L conversion (USD_JPY needed for JPY-quoted pairs)
+    symbols_to_fetch = list(open_symbols | {'AUD_USD', 'USD_JPY'})
     try:
         prices = OandaPriceService.get_multiple_prices(symbols_to_fetch)
         return prices or {}
@@ -138,12 +138,16 @@ def calculate_forex_metrics(item_data: dict, signals: List[dict], live_prices: O
         gain_loss_aud = native_gain_loss
     elif quote_currency == 'USD':
         gain_loss_aud = native_gain_loss / aud_usd_rate if aud_usd_rate > 0 else 0
+    elif quote_currency == 'JPY':
+        # Convert JPY → AUD: JPY * AUD_USD / USD_JPY
+        usd_jpy = live_prices.get('USD_JPY') if live_prices else None
+        if usd_jpy is None:
+            usd_jpy = get_latest_price_from_csv('USD_JPY')
+        if usd_jpy and usd_jpy > 0 and aud_usd_rate > 0:
+            gain_loss_aud = native_gain_loss * aud_usd_rate / usd_jpy
+        else:
+            gain_loss_aud = native_gain_loss / aud_usd_rate  # fallback
     else:
-        # For other quote currencies (JPY, GBP, etc.), ideally need cross-rate pairs
-        # JPY: Need AUD_JPY or JPY_AUD rate
-        # GBP: Need AUD_GBP or GBP_AUD rate
-        # For now, use AUD_USD as approximation (not accurate but prevents 0 values)
-        # TODO: Add support for more cross-rate pairs in signals
         gain_loss_aud = native_gain_loss / aud_usd_rate if aud_usd_rate > 0 else 0
 
     cost_basis_native = (buy_price * quantity)
@@ -238,10 +242,10 @@ async def get_trade_history(
                 current_price=metrics['current_price'],
                 gain_loss_aud=metrics['gain_loss_aud'] if data.get('status') == 'OPEN' else None,
                 gain_loss_percent=metrics['gain_loss_percent'],
-                realized_gain_aud=metrics['gain_loss_aud'] if data.get('status') == 'CLOSED' else None,
+                realized_gain_aud=(data.get('pnl') if data.get('pnl') is not None else metrics['gain_loss_aud']) if data.get('status') == 'CLOSED' else None,
                 actual_rr=data.get('actual_rr')
             ))
-            
+
         # Sorting
         reverse = True
         if sort_by.startswith('-'):
@@ -593,10 +597,10 @@ async def list_forex_portfolio(email: str = Depends(get_current_user_email)):
                 current_price=metrics['current_price'],
                 gain_loss_aud=metrics['gain_loss_aud'] if data.get('status') == 'OPEN' else None,
                 gain_loss_percent=metrics['gain_loss_percent'],
-                realized_gain_aud=metrics['gain_loss_aud'] if data.get('status') == 'CLOSED' else None,
+                realized_gain_aud=(data.get('pnl') if data.get('pnl') is not None else metrics['gain_loss_aud']) if data.get('status') == 'CLOSED' else None,
                 actual_rr=data.get('actual_rr')
             ))
-            
+
         return items
     except Exception as e:
         print(f"Forex Portfolio List Error: {e}")

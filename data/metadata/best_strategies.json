@@ -1,5 +1,6 @@
 {
   "XAU_USD": {
+    "risk_pct": 0.02,
     "strategies": [
       {
         "strategy": "HeikenAshi",
@@ -18,6 +19,7 @@
     ]
   },
   "BCO_USD": {
+    "risk_pct": 0.01,
     "strategy": "CommoditySniper",
     "timeframe": "5m",
     "target_rr": 3.0,
@@ -29,6 +31,7 @@
     }
   },
   "XAG_USD": {
+    "risk_pct": 0.02,
     "strategies": [
       {
         "strategy": "DailyORB",
@@ -105,6 +108,7 @@
     ]
   },
   "JP225_USD": {
+    "risk_pct": 0.02,
     "strategies": [
       {
         "strategy": "HeikenAshi",
@@ -124,6 +128,7 @@
     ]
   },
   "AUD_USD": {
+    "risk_pct": 0.01,
     "strategies": [
       {
         "strategy": "EnhancedSniper",
@@ -148,6 +153,7 @@
     ]
   },
   "USD_CAD": {
+    "risk_pct": 0.01,
     "strategy": "SmaScalping",
     "timeframe": "5m",
     "target_rr": 3.0,
@@ -156,6 +162,7 @@
     }
   },
   "USD_CHF": {
+    "risk_pct": 0.01,
     "strategy": "NewBreakout",
     "timeframe": "15m",
     "target_rr": 1.5,
@@ -167,6 +174,7 @@
     }
   },
   "NAS100_USD": {
+    "risk_pct": 0.01,
     "strategies": [
       {
         "strategy": "NewBreakout",
@@ -203,6 +211,7 @@
     ]
   },
   "UK100_GBP": {
+    "risk_pct": 0.01,
     "strategy": "PVTScalping",
     "timeframe": "1h",
     "target_rr": 2.5,
@@ -216,20 +225,12 @@
     }
   },
   "USD_JPY": {
+    "risk_pct": 0.01,
     "strategy": "SmaScalping",
     "timeframe": "5m",
     "target_rr": 2.5,
     "params": {
       "di_threshold": 30.0,
-      "di_persist": 1
-    }
-  },
-  "GBP_JPY": {
-    "strategy": "SmaScalping",
-    "timeframe": "15m",
-    "target_rr": 5.0,
-    "params": {
-      "di_threshold": 25.0,
       "di_persist": 1
     }
   }
