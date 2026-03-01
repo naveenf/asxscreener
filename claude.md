@@ -9,7 +9,9 @@ Full-stack app identifying trading opportunities on ASX and Global Forex/Commodi
 
 ## Git Workflow
 
-### ⚠️ NEVER auto-commit — always ask user first
+### ⚠️ NEVER commit without explicit user confirmation — no exceptions
+
+This applies to **all contexts**: direct edits, subagents, implementation plans, automated workflows, and skill-driven development. No commit may be created by any agent or subagent without the user first approving the exact commit message.
 
 **Conventional Commits format** (1-2 lines max):
 ```
@@ -23,6 +25,8 @@ fix: Correct DailyORB session_start parameter
 - ❌ NO verbose paragraphs, NO co-author lines, NO implementation details
 
 **Workflow:** Implement → ask "Ready to commit: `<msg>`?" → user approves → commit → push only if explicitly requested.
+
+**Subagent/plan execution rule:** When dispatching subagents or executing implementation plans, instruct every subagent NOT to commit. Collect all changes, then present a single commit summary to the user for approval before committing.
 
 ---
 
@@ -196,4 +200,32 @@ Backward compatible with legacy single-strategy format.
 
 **Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-**Last Updated:** February 28, 2026 — SmaScalping noise filter optimization across 8 pairs.
+**Last Updated:** March 2, 2026 — Strategy Toggle Settings feature added.
+
+---
+
+## Strategy Toggle Settings (March 2, 2026)
+
+Frontend Settings page (`/settings` nav tab) lets the admin user (`naveenf.opt@gmail.com`) enable/disable individual pair+strategy combos at runtime. Changes persist to Firestore and are picked up by the next cron run without restarting the server.
+
+**How it works:**
+- Firestore doc: `config/strategy_overrides` → `{ disabled: ["PAIR::Strategy", ...], updated_by, updated_at }`
+- `disabled` list approach — new strategies default ON (no config update needed when adding a pair)
+- Backend reads overrides at the start of every `run_forex_refresh_task()` and skips disabled combos
+- `is_admin` flag is derived server-side and returned in the GET response — frontend never makes privilege decisions locally
+
+**API:**
+- `GET /api/settings/strategy-overrides` — any logged-in user (read-only for non-admin)
+- `PUT /api/settings/strategy-overrides` — admin only (403 for others); validates keys against `best_strategies.json` before writing
+
+**Files:**
+- `backend/app/api/settings.py` — GET/PUT endpoints
+- `backend/app/services/tasks.py` — Firestore read at cron start
+- `backend/app/services/forex_screener.py` — `disabled_combos` param in `screen_all()` and `run_orchestrated_refresh()`
+- `frontend/src/components/Settings.jsx` + `Settings.module.css` — toggle UI
+
+**Known limitations / gotchas:**
+- `best_strategies.json` and `forex_pairs.json` must stay in sync — pairs in `forex_pairs.json` without a `best_strategies.json` entry run a silent `TrendFollowing` fallback that cannot be toggled via Settings
+- `db.collection(...).set(...)` is a full-replace (no `merge=True`) — intentional; do NOT add side fields to the `config/strategy_overrides` doc that you want preserved across saves
+- Expired Google token produces a toast error with no auto-recovery; user must log out and back in
+- `_build_combos` reads `best_strategies.json` from disk on every API call (fast enough at this scale)
