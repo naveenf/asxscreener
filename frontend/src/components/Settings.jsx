@@ -13,7 +13,7 @@ import styles from './Settings.module.css';
 const ADMIN_EMAIL = 'naveenf.opt@gmail.com';
 
 function Settings({ onShowToast }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [combos, setCombos] = useState([]);
   const [disabled, setDisabled] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -71,6 +71,14 @@ function Settings({ onShowToast }) {
     return acc;
   }, {});
 
+  if (authLoading) {
+    return (
+      <div className={styles.container}>
+        <p className={styles.loading}>Loading...</p>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className={styles.container}>
@@ -100,7 +108,7 @@ function Settings({ onShowToast }) {
       <div className={styles.groups}>
         {Object.entries(grouped).map(([pair, pairCombos]) => (
           <div key={pair} className={styles.group}>
-            <h3 className={styles.pairHeader}>{pair.replace('_', '/')}</h3>
+            <h3 className={styles.pairHeader}>{pair.replaceAll('_', '/')}</h3>
             {pairCombos.map(combo => {
               const isEnabled = !disabled.has(combo.key);
               return (

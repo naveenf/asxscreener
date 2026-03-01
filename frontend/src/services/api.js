@@ -243,5 +243,6 @@ export async function updateStrategyOverrides(disabled) {
     throw new Error(err.detail || `Failed to save: ${response.statusText}`);
   }
 
+  if (response.status === 204) return {};
   return response.json();
 }
