@@ -22,6 +22,7 @@ from . import stocks     # Import stocks router
 from . import insider_trades # Import insider trades router
 from . import forex          # Import forex router
 from . import forex_portfolio # Import forex portfolio router
+from . import settings as settings_api
 from ..services.insider_trades import InsiderTradesService
 from ..services.forex_screener import ForexScreener
 from ..services.refresh_manager import refresh_manager
@@ -38,6 +39,7 @@ router.include_router(stocks.router)
 router.include_router(insider_trades.router)
 router.include_router(forex.router)
 router.include_router(forex_portfolio.router)
+router.include_router(settings_api.router)
 
 @router.get("/api/status/refresh")
 async def get_refresh_status():
