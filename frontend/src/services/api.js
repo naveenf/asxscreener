@@ -205,3 +205,43 @@ export async function fetchOandaClosedTrades(params = {}) {
   return response.json();
 }
 
+/**
+ * Fetch all strategy combos with their enabled/disabled state
+ */
+export async function getStrategyOverrides() {
+  const token = localStorage.getItem('google_token');
+  const response = await fetch(`${API_BASE}/settings/strategy-overrides`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch strategy overrides: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Save updated disabled strategy list
+ * @param {string[]} disabled - Array of "PAIR::Strategy" combo keys to disable
+ */
+export async function updateStrategyOverrides(disabled) {
+  const token = localStorage.getItem('google_token');
+  const response = await fetch(`${API_BASE}/settings/strategy-overrides`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ disabled })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to save: ${response.statusText}`);
+  }
+
+  return response.json();
+}
