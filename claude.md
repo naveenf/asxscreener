@@ -1,119 +1,36 @@
 # ASX Stock Screener - Project Context
 
 ## Project Overview
-The ASX Stock Screener is a full-stack application designed to identify trading opportunities on the Australian Securities Exchange (ASX) and Global Forex/Commodity markets. It uses a **Dynamic Strategy Selection** engine to apply the most effective algorithm for each asset class.
+Full-stack app identifying trading opportunities on ASX and Global Forex/Commodity markets via a **Dynamic Strategy Selection** engine. Calculations match **Pine Script** (TradingView) standards using Wilder's Smoothing.
 
-The system implements thirteen core trading strategies:
-1.  **Trend Following** (ADX/DI)
-2.  **Mean Reversion** (Bollinger Bands/RSI)
-3.  **Squeeze** (Volatility Compression Breakout)
-4.  **Sniper** (15m Execution with 1H Confirmation for Forex Majors)
-5.  **Enhanced Sniper** (Optimized Forex Precision with 4H Trend Alignment)
-6.  **Silver Sniper** (High-Precision 5m Squeeze + FVG for Silver)
-7.  **Daily ORB** (Daily Open Range Breakout with Structural Alignment)
-8.  **Commodity Sniper** (Optimized 5m Squeeze + Time Filters for Commodities)
-9.  **Triple Trend** (Fibonacci + Supertrend + Instant Trend)
-10. **Heiken Ashi Gold** (Noise-filtered trend following)
-11. **PVT Scalping** (Price Volume Trend + Quality Filters + Circuit Breaker)
-12. **SMA Scalping** (SMA Stack + DMI with DI Persistence Gate)
+**Strategies:** Trend Following, Mean Reversion, Squeeze, Sniper, Enhanced Sniper, Silver Sniper, Daily ORB, Silver Momentum, Commodity Sniper, Heiken Ashi Gold, Triple Trend, PVT Scalping, SMA Scalping.
 
-Calculations match **Pine Script** (TradingView) standards, using "Wilder's Smoothing" for technical accuracy.
+---
 
-## Git Workflow & Commit Guidelines
+## Git Workflow
 
-### ⚠️ IMPORTANT: Commit Confirmation Required
-**Do NOT commit changes without explicit user confirmation.** All commits must be:
-1. Reviewed by user before committing
-2. Approved with explicit "commit" or "push" request
-3. Never auto-committed as part of task completion
+### ⚠️ NEVER auto-commit — always ask user first
 
-### Commit Message Format
-Follow **Conventional Commits** format strictly:
-
-```
-Type: Brief description (1 line, max 72 characters)
-
-Optional detailed explanation (1-2 lines max if needed)
-```
-
-**Allowed Types:**
-- `feat:` - New feature or strategy
-- `fix:` - Bug fix
-- `refactor:` - Code refactoring without feature/fix
-- `docs:` - Documentation updates
-- `chore:` - Maintenance (cleanup, dependencies)
-- `test:` - Test additions/modifications
-- `perf:` - Performance improvements
-
-**Examples (CORRECT):**
+**Conventional Commits format** (1-2 lines max):
 ```
 feat: Add time-based volatility filters for Silver strategies
 fix: Correct DailyORB session_start parameter
-refactor: Simplify forex_screener.py strategy selection logic
-docs: Update CLAUDE.md with Silver optimization results
-chore: Remove deprecated backtest analysis files
 ```
+**Allowed types:** `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`
 
-**Examples (INCORRECT - DO NOT USE):**
-```
-docs: Add comprehensive index trading strategy research
+**Rules:**
+- ✅ 1-2 lines max, meaningful action verbs, specific scope
+- ❌ NO verbose paragraphs, NO co-author lines, NO implementation details
 
-Research package for improving GT-Score (0.008 → 0.015+)...
-[Multiple paragraph descriptions - too verbose]
-
-Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
-```
-
-### Commit Message Rules
-- ✅ **1-2 lines maximum** (title + optional brief detail)
-- ✅ **Meaningful action verbs**: Add, Fix, Update, Refactor, Remove, Implement
-- ✅ **Specific scope**: Mention what was changed (e.g., "Silver strategies", "JP225 detector")
-- ❌ **NO** verbose paragraphs or extended descriptions
-- ❌ **NO** co-author lines or trailers
-- ❌ **NO** implementation details or technical explanations
-- ❌ **NO** multi-paragraph justifications
-
-### Workflow
-1. User requests changes/features
-2. Claude Code implements and tests
-3. Claude Code asks user for confirmation: "Ready to commit with message: `<type>: <description>`?"
-4. User approves (e.g., "yes, commit it" or "commit")
-5. Claude Code creates commit and optionally pushes
-6. Always wait for user approval before pushing to origin
+**Workflow:** Implement → ask "Ready to commit: `<msg>`?" → user approves → commit → push only if explicitly requested.
 
 ---
 
 ## Tech Stack
 
-### Backend
-*   **Framework:** FastAPI (Python 3.10+)
-*   **Data Processing:** Pandas, NumPy
-*   **Data Source:**
-    *   Stocks: `yfinance` (Yahoo Finance)
-    *   Forex/Commodities: `yfinance` / Oanda (Downloaded via `scripts/download_forex.py`)
-*   **Strategies:** Multi-Timeframe (MTF) analysis (15m, 1h, 4h).
-*   **Database/Auth:** Google Firebase (Firestore + Authentication)
-*   **Testing:** `pytest`
-
-### Frontend
-*   **Framework:** React 18
-*   **Build Tool:** Vite
-*   **Styling:** CSS Modules
-*   **Auth:** `@react-oauth/google`
-*   **Charts:** Recharts (analytics visualizations)
-
----
-
-## Trade History & Analytics (February 2026)
-
-**Status:** ✅ Production Ready | **Details:** See [docs/features/TRADE_HISTORY.md](./docs/features/TRADE_HISTORY.md)
-
-**Quick Summary:**
-- Trade history view with filtering, sorting, CSV export
-- Analytics dashboard with charts (equity curve, monthly returns, strategy comparison)
-- Automatic sync with Oanda every 5 minutes
-- Data source: Firestore (synced from Oanda broker account)
-- Default date range: Feb 19, 2026 onwards (when sync was implemented)
+- **Backend:** FastAPI (Python 3.10+), Pandas/NumPy, yfinance + Oanda, Firebase Firestore + Auth, pytest
+- **Frontend:** React 18, Vite, CSS Modules, `@react-oauth/google`, Recharts
+- **Start:** `start.py` (unified launcher)
 
 ---
 
@@ -121,238 +38,61 @@ Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
 
 ```
 asx-screener/
-├── backend/
-│   ├── app/
-│   │   ├── api/             # API Routes (auth, portfolio, stocks)
-│   │   ├── models/          # Pydantic data models
-│   │   ├── services/        # Core business logic
-│   │   │   ├── indicators.py           # ADX, DI, RSI, BB implementation
-│   │   │   ├── strategy_interface.py   # Abstract Base Class for MTF strategies
-│   │   │   ├── forex_detector.py       # Trend Following logic (MTF)
-│   │   │   ├── squeeze_detector.py     # Squeeze Strategy logic (MTF)
-│   │   │   ├── triple_trend_detector.py    # Triple Confirmation logic (Fib+Supertrend)
-│   │   │   ├── sniper_detector.py          # Legacy Sniper logic
-│   │   │   ├── enhanced_sniper_detector.py # NEW: Optimized Forex Sniper
-│   │   │   ├── silver_sniper_detector.py   # Silver-specific Sniper (5m + FVG)
-│   │   │   ├── daily_orb_detector.py       # NEW: Daily Open Range Breakout (15m + 4h)
-│   │   │   ├── commodity_sniper_detector.py # Commodity-optimized Sniper
-│   │   │   └── forex_screener.py           # Dynamic Strategy Orchestrator
-│   │   ├── config.py        # Environment configuration
-│   │   └── main.py          # App entry point
-│   ├── tests/               # Pytest suite
-│   └── requirements.txt     # Python dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # React components (SignalCard, Portfolio)
-│   │   ├── context/         # AuthContext
-│   │   └── main.jsx         # Entry point (Env var usage)
-│   ├── vite.config.js       # Proxy setup for /api and /auth
-│   └── package.json         # Node dependencies
+├── backend/app/
+│   ├── api/                    # Routes (auth, portfolio, stocks)
+│   ├── models/                 # Pydantic models
+│   └── services/
+│       ├── indicators.py                  # ADX, DI, RSI, BB
+│       ├── forex_screener.py              # Dynamic Strategy Orchestrator
+│       ├── forex_detector.py              # Trend Following (MTF)
+│       ├── squeeze_detector.py            # Squeeze Strategy
+│       ├── sniper_detector.py             # Legacy Sniper
+│       ├── enhanced_sniper_detector.py    # Optimized Forex Sniper
+│       ├── silver_sniper_detector.py      # Silver 5m + FVG
+│       ├── daily_orb_detector.py          # Daily Open Range Breakout
+│       ├── commodity_sniper_detector.py   # Commodity-optimized Sniper
+│       ├── triple_trend_detector.py       # Fib + Supertrend
+│       ├── pvt_scalping_detector.py       # PVT Scalping
+│       ├── sma_scalping_detector.py       # SMA Scalping
+│       └── strategy_interface.py          # Abstract Base Class
 ├── data/
-│   ├── raw/                 # CSV storage for stock data
-│   ├── forex_raw/           # CSV storage for Forex MTF data (15m, 1h, 4h)
-│   └── metadata/            # Configuration files
-│       ├── best_strategies.json # Optimized Strategy Map
-│       ├── forex_pairs.json     # Asset list
-│       └── stock_list.json      # Stock list
+│   ├── raw/                    # Stock CSVs
+│   ├── forex_raw/              # Forex MTF CSVs (5m, 15m, 1h, 4h)
+│   └── metadata/
+│       ├── best_strategies.json  # Strategy config map (source of truth)
+│       ├── forex_pairs.json
+│       └── stock_list.json
 ├── scripts/
-│   ├── backtest_arena.py    # Backtesting Engine for Strategy Optimization
-│   ├── squeeze_test.py      # Targeted Squeeze Strategy Analysis
-│   └── download_data.py     # Independent data fetcher
-└── start.py                 # Unified startup script
+│   ├── backtest_arena.py       # Backtesting engine
+│   └── download_forex.py       # Data fetcher
+└── docs/analysis/              # Backtest reports
 ```
+
+---
 
 ## Trading Strategies
 
-### 1. Trend Following (ADX/DI)
-*   **Logic:** Identifies strong directional trends.
-*   **Indicators:** ADX (>30), DI+ / DI- Crossover.
-*   **Best For:** Strong trending pairs (e.g., EUR/GBP).
+| # | Strategy | Key Indicators | Best For |
+|---|----------|---------------|----------|
+| 1 | **Trend Following** | ADX>30, DI+/DI- crossover | Strong trending pairs |
+| 2 | **Mean Reversion** | Bollinger Bands, RSI>70 | Range-bound markets |
+| 3 | **Squeeze** | BB inside KC, Momentum oscillator | Gold, Oil, Nasdaq, UK100 |
+| 4 | **Sniper** | 15m EMA/DI, 1H ADX>25, EMA34 | Major forex (AUD_USD, EUR_USD) |
+| 5 | **Enhanced Sniper** | 15m Momentum, 4H SMA200, time filter | AUD_USD (2.5R) |
+| 6 | **Silver Sniper** | 5m Squeeze, 15m ADX>20, FVG | XAG_USD (3.0R) |
+| 7 | **Daily ORB** | Sydney session range, 4H DI, BB width | XAG_USD (2.0R) |
+| 8 | **Silver Momentum** | 1H MACD, 4H EMA50/200, 13-22 UTC only | XAG_USD (2.5R) |
+| 9 | **Commodity Sniper** | 5m Squeeze, 15m ADX, time filter | BCO_USD (3.0R) |
+| 10 | **Heiken Ashi Gold** | HA candles, SMA200, 4H trend, ADX>22 | XAU_USD |
+| 11 | **Triple Trend** | Fibonacci, Supertrend, Ehlers IT | Steady trending pairs |
+| 12 | **PVT Scalping** | PVT>0.05, EMA50, SMA100, circuit breaker | UK100, NAS100, XAG |
+| 13 | **SMA Scalping** | SMA20/50/100 stack, DI+/DI-, ATR SL floor | Multi-pair (see below) |
 
-### 2. Mean Reversion (BB/RSI)
-*   **Logic:** Identifies overbought conditions expecting a return to the mean.
-*   **Indicators:** Bollinger Bands (Volatility/Extreme Price), RSI (>70).
-*   **Best For:** Range-bound markets.
+**Silver time filter (all 3 XAG strategies):** `avoid_utc_hours: [14, 15, 16]` — blocks London-NY overlap noise.
 
-### 3. Squeeze Strategy (Volatility Compression Breakout)
-*   **Logic:** Identifies periods of low volatility (squeeze) using TTM Squeeze logic, followed by an explosive breakout confirmed by momentum.
-*   **Indicators:** Bollinger Bands (20, 2.0), Keltner Channels (20, 1.2 multiplier), Momentum Oscillator (Close - SMA 14).
-*   **Rules:**
-    *   **Squeeze:** Bollinger Bands must be inside Keltner Channels within the last 5 candles.
-    *   **Entry:** Breakout from Bollinger Bands with Momentum alignment (Momentum > 0 for BUY, < 0 for SELL).
-    *   **Exit:** 2.0x Risk (Default) or 3.0x Risk (Gold/Commodities).
-    *   **Stop Loss:** Middle Bollinger Band (SMA 20).
-*   **Best For:** Gold, Copper, Nasdaq, Oil, UK100.
+---
 
-### 4. Sniper (Forex Precision Trading)
-*   **Logic:** High-precision forex trading on 15m timeframe with 1h confirmation using casket-based filtering.
-*   **Indicators:** 15m EMA proximity, DI+/DI- momentum, 1H ADX, EMA34.
-*   **Rules:**
-    *   **Casket Assignment:** Pairs grouped by characteristics (Momentum, Steady, Cyclical).
-    *   **Entry:** DI+ crosses above DI- on 15m with casket-specific filters.
-    *   **HTF Confirmation:** 1H ADX > 25, price alignment with EMA34.
-    *   **Exit:** 1.5x Risk for forex majors, SMA 20 exit signal.
-*   **Best For:** Major forex pairs (AUD_USD, EUR_USD).
-
-### 5. Enhanced Sniper (Optimized Forex Precision)
-*   **Logic:** Enhanced version of Sniper strategy with 4H trend alignment and time filters.
-*   **Indicators:** 15m Momentum, 4H Trend (SMA200), Time-of-day filters.
-*   **Rules:**
-    *   **Trend:** Only trade in direction of 4H SMA200.
-    *   **Momentum:** ADX must be rising on 15m.
-    *   **Time Filter:** Blocks entry during identified high-loss hours.
-    *   **Exit:** 2.5x Risk (Optimized for AUD_USD).
-*   **Best For:** AUD_USD.
-*   **Performance (2026-02-06):** 66.7% win rate, +3.0% return (15 trades).
-
-### 6. Silver Sniper (High-Precision Intraday)
-*   **Logic:** Identifies high-probability breakouts on 5m timeframe by aligning with 15m trends and institutional order blocks (FVG).
-*   **Indicators:** 5m Squeeze, 15m ADX (>20), 5m Fair Value Gap (FVG).
-*   **Rules:**
-    *   **Squeeze:** BB width at 24-hour lows on 5m (threshold: 1.3x minimum).
-    *   **Confirmation:** 15m Trend must match breakout direction (DI+/DI- + ADX > 20).
-    *   **Mitigation:** Entry must occur within a recent 5m FVG (Order Block confirmation).
-    *   **Exit:** 3.0x Risk (Fixed) or BB Middle cross.
-*   **Best For:** Silver (XAG_USD).
-*   **Performance (2026-02-03):** 55.6% win rate, +19.02% return, Sharpe 1.53.
-
-### 7. Daily ORB (Daily Open Range Breakout)
-*   **Logic:** Identifies high-probability structural breakouts from daily consolidation ranges using Sydney session open timing.
-*   **Indicators:** Daily Open Range (High/Low), 15m Momentum (ADX), Bollinger Bands Width (Squeeze), 4H Trend (DI+/DI-).
-*   **Rules:**
-    *   **Range Definition:** High/Low from first 1.5 hours of Sydney session (19:00-20:30 UTC).
-    *   **Breakout Trigger:** Price closes 0.5x ATR beyond range level on 15m candle (eliminates wicks).
-    *   **Momentum Check:** 15m ADX > 18 (momentum building), ADX rising.
-    *   **Squeeze Filter:** Bollinger Bands width < 1.8x of 20-period minimum (consolidation detection).
-    *   **HTF Confirmation:** 4H DI+ > DI- by 5+ points, ADX > 20 (clear directional bias).
-    *   **Stop Loss:** 1.5x ATR + spread buffer (tighter than other breakout strategies).
-    *   **Take Profit:** **2.0x Risk** (optimized for maximum win rate and ROI).
-    *   **Exit:** On HTF trend reversal (DI flip) or weakness (ADX < 20).
-*   **Best For:** Silver (XAG_USD) - complements impulse-driven SilverSniper strategy.
-*   **Performance (2026-02-12 - Optimized 1:2.0 R:R):**
-    *   Win Rate: **66.7%** (exceeds SilverSniper's 55.6%)
-    *   ROI: **+26.23%** (exceeds SilverSniper's 19.02% by 38%)
-    *   Sharpe: **2.35** (exceptional risk-adjusted returns)
-    *   Max Drawdown: **-2.0%** (minimal capital drawdown)
-    *   Sample: 12 trades (8 wins) over backtest period.
-    *   Note: Optimized from 2.5x RR (50% WR, +18.71%) to 2.0x RR (66.7% WR, +26.23%) for better consistency.
-
-### 8. Silver Momentum (1H MACD + 4H Trend Confirmation)
-*   **Logic:** High-frequency momentum trading using MACD histogram crosses with multi-timeframe trend alignment.
-*   **Indicators:** MACD (12/26/9), 4H EMA50/EMA200, RSI, EMA34.
-*   **Rules:**
-    *   **Entry:** MACD histogram crosses zero line on 1H timeframe.
-    *   **Confirmation:** 4H trend alignment (EMA50 > EMA200 for BUY, vice versa for SELL).
-    *   **Filters:** RSI not extreme (<70 for BUY, >30 for SELL), Price above/below EMA34 on 1H.
-    *   **Time Filter:** Only trades 13:00-22:00 UTC (London-New York overlap, peak Silver liquidity).
-    *   **Exit:** MACD signal line cross OR 4H trend reversal (EMA50 crosses EMA200).
-    *   **Stop Loss:** 2.0x ATR (volatility-adjusted).
-    *   **Take Profit:** 2.5x Risk.
-*   **Best For:** Silver (XAG_USD) - complements DailyORB and SilverSniper for comprehensive coverage.
-*   **Performance (2026-02-17 - 90-Day Validation):**
-    *   Trades: **25 trades (0.28/day)**
-    *   Win Rate: **32.0%**
-    *   PnL Contribution: **+$14.35 (11.3% of portfolio profits)**
-    *   Portfolio Context: When combined with DailyORB + SilverSniper → **59 total trades, +35.25% ROI, statistically valid** ✅
-
-### 9. Commodity Sniper (Time-Filtered Precision)
-*   **Logic:** Adapted from Silver Sniper with commodity-specific optimizations including time filters to avoid high-volatility news hours.
-*   **Indicators:** 5m Squeeze, 15m ADX (configurable 20-25), Optional 5m FVG, Time Filters.
-*   **Rules:**
-    *   **Squeeze:** BB width at 24-hour lows on 5m (configurable threshold).
-    *   **Confirmation:** 15m Trend alignment with stricter ADX requirements.
-    *   **Time Filter:** Blocks entry during high-loss hours (08:00, 11:00, 14:00, 15:00 UTC).
-    *   **Cooldown:** Optional 4-hour wait period between trades to prevent overtrading.
-    *   **FVG:** Configurable - BCO doesn't require it.
-    *   **Exit:** 3.0x Risk or BB Middle cross.
-*   **Best For:** BCO_USD (Oil). *(WHEAT_USD removed Feb 26, 2026 — spread cost ~62% of risk budget on small accounts, unviable)*
-*   **Performance (2026-02-03):**
-    *   BCO: 44.4% win rate, +11.70% return, Sharpe 0.96
-
-### 10. Heiken Ashi Gold (Hardened)
-*   **Logic:** Noise-filtered trend following using Heiken Ashi candles and Bollinger Bands.
-*   **Indicators:** HA Candles, HA BB (20, 2.0), SMA 200, 4H SMA 200, ADX (>22).
-*   **Rules:**
-    *   **Trend:** Price and HA Close must be above SMA 200 (for BUY) or below (for SELL).
-    *   **HTF:** 4H Trend must align with entry direction.
-    *   **Momentum:** ADX must be > 22.0.
-    *   **Trigger:** HA Close crosses BB Middle + HA Candle color matches direction.
-    *   **Freshness:** Trigger must have occurred within last 4 bars.
-    *   **Exit:** HA Close crosses back over HA BB Middle (Trend-trailing).
-*   **Best For:** XAU_USD (Gold).
-*   **Performance (2026-02-03 V2 Realistic):**
-    *   Win Rate: 40.6%
-    *   Average R: **0.629R**
-    *   Expectancy: **$73.05 per trade** (at $10k balance, 1% risk)
-    *   Net Profit: +46.75% (10-month backtest)
-    *   Max Drawdown: 6%
-
-### 11. Triple Trend (Structural Alignment)
-*   **Logic:** A robust trend-following system using three layers of confirmation.
-*   **Indicators:** Fibonacci Structure (50-bar), Pivot Point Supertrend (Factor 3.0), Ehlers Instantaneous Trend.
-*   **Rules:**
-    *   **Anchor:** Fibonacci position must be positive for BUY, negative for SELL.
-    *   **Confirmation:** Supertrend must align with the Anchor.
-    *   **Trigger:** Instant Trend Trigger must cross the Instant Trend line.
-*   **Best For:** Steady trending stocks and FX pairs.
-
-### 12. PVT Scalping (Price Volume Trend + Quality Filters)
-*   **Logic:** High-probability scalping using Price Volume Trend (PVT) indicator combined with quality filters and circuit-breaker position sizing.
-*   **Indicators:** PVT (EMA50/EMA150 smoothed, normalized), EMA50, SMA100, Daily SMA200, RSI, ADX.
-*   **Entry Conditions (LONG):**
-    *   Price > EMA50 (1 candle confirmation)
-    *   Price > SMA100
-    *   RSI > 20 (minimal momentum)
-    *   PVT > 0.05 for 1 candle (immediate entry)
-    *   Price > Daily SMA200 (trend alignment)
-*   **Quality Filters:** ADX > 5 (momentum), RSI not extreme (avoid reversals), PVT directional (>0.0 for LONG, <0.0 for SHORT)
-*   **Threshold Optimization Note:** Initial backtests used stricter PVT thresholds (>0.85, 10+ consecutive candles) but generated insufficient trades for statistical validity. Iterative relaxation to PVT >0.05 with 1 candle confirmation achieved optimal balance: 53+ trades, 66%+ win rate, -3.5% max drawdown (vs -70.3% unfiltered). This demonstrates quality-over-quantity optimization where entry relaxation is offset by position sizing circuit breaker.
-*   **Risk Management:**
-    *   **Stop Loss:** ATR-based (1x ATR + spread)
-    *   **Take Profit:** 2.5x Risk-Reward ratio
-    *   **Position Sizing:** 1% risk × Circuit Breaker Multiplier
-    *   **Circuit Breaker:** After 1 loss → 75%, after 3 losses → 50%, after 5 losses → STOP for 20 candles
-*   **Best For:** UK100_GBP, NAS100_USD, XAG_USD (Silver) - Western indices and Silver during London/NY hours.
-*   **Performance (2026-02-23 - Validated on 3 pairs):**
-    *   **UK100_GBP:** 53 trades, 66.0% WR, +93.67% ROI, Sharpe 5.79 ✅ **PRODUCTION READY**
-    *   **NAS100_USD:** 33 trades, 75.8% WR, +72.00% ROI, Sharpe 6.24 ⚠️ **DEPLOY AFTER VALIDATION**
-    *   **XAG_USD:** 20 trades, 75.0% WR, +39.83% ROI, Sharpe 4.95 ✅ **COMPLEMENTS EXISTING SILVER STRATS**
-*   **Key Features:**
-    *   Reduces 663 unfiltered signals → 53-106 high-quality trades (-92% noise)
-    *   Max drawdown controlled at -3.5% (95% improvement from -70.3% unfiltered)
-    *   Works only on Western indices/Silver (London/NY overlap hours)
-    *   NOT viable on Asian indices (JP225) or Oil (BCO) - different market regimes
-*   **Deployment Status:** UK100_GBP live (Feb 23), NAS100_USD+Silver validation in progress.
-
-### 12. SMA Scalping (SMA Stack + DMI with Noise Filters)
-*   **Logic:** SMA stack alignment + sustained DI threshold + optional per-pair noise filters. Core idea: enter only when price is structurally aligned (above all 3 SMAs), DI momentum is dominant and sustained, and optional quality gates confirm the move is genuine (not a DI spike into compression).
-*   **Indicators:** SMA20, SMA50, SMA100, DI+, DI-, ADX, ATR, RSI (optional), Volume (optional).
-*   **Core Entry Conditions (LONG):**
-    *   Price > SMA20, SMA50, SMA100 (full bullish stack)
-    *   DI+ > DI- (dominant bullish momentum)
-    *   DI+ > `di_threshold` for `di_persist` consecutive candles
-    *   ADX ≥ `adx_min`
-    *   Entry price not below previous 2-candle lows (structural validity)
-*   **Stop Loss:** `max(structural_distance, 1×ATR)` — floored by ATR to avoid noise-triggered stops.
-*   **Take Profit:** Configurable per pair (XAG: 10.0R, XAU: 5.0R, JP225: 5.0R, AUD_USD: 2.5R, USD_CAD: 3.0R, NAS100: 4.5R, USD_JPY: 2.5R, GBP_JPY: 5.0R).
-*   **Timeframe per pair:** XAU_USD and GBP_JPY use **15m** (all others use 5m).
-
-#### Optional Noise Filters (all default OFF, enabled per-pair in best_strategies.json)
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `di_persist` | int | DI must exceed threshold for N consecutive candles (default 1). JP225/AUD_USD use 2. |
-| `adx_min` | float | ADX floor (default 0). JP225 uses 20. |
-| `adx_rising` | bool | ADX must be rising vs previous candle — momentum building, not fading. **XAU uses this.** |
-| `di_spread_min` | float | Minimum DI+/DI- gap — rejects marginal crossings. |
-| `sma_ordered` | bool | Requires SMA20>SMA50>SMA100 (BUY). **Destructive for NAS100/XAG** — SMAs lag price on fast moves; do not use. |
-| `rsi_filter` | bool | RSI 50–75 zone (BUY). Noisy on 5m, generally harmful. |
-| `body_ratio_min` | float | Min candle body/range ratio — rejects doji/indecision candles. |
-| `atr_ratio_min` | float | ATR must be ≥ N × 20-bar ATR average — only enter during expanding volatility. **XAG uses 1.2, NAS100 uses 1.0.** |
-| `di_slope` | bool | DI must be rising over last 2 candles (not just sustained above threshold). Addresses fading-momentum entries. **JP225, XAG, NAS100, GBP_JPY use this.** |
-| `avoid_hours` | list | Block entry during specified UTC hours. **USD_JPY uses [15–21] to avoid US afternoon chop.** |
-
-#### Per-Pair Deployed Configs (February 28, 2026)
+## SMA Scalping — Deployed Configs (Feb 28, 2026)
 
 | Pair | TF | DI> | RR | persist | Extra filters | Trades | WR% | ROI% | Sharpe | MaxDD |
 |------|----|-----|----|---------|--------------|--------|-----|------|--------|-------|
@@ -360,415 +100,100 @@ asx-screener/
 | XAG_USD | 5m | 35 | 10.0 | 1 | `atr_ratio=1.2, di_slope` | 43 | 25.6% | 106.9% | 5.59 | -4.90% |
 | JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope` | 37 | 35.1% | 48.2% | 5.93 | -3.94% |
 | NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope` | 39 | 28.2% | 22.5% | 3.28 | -10.47% |
-| GBP_JPY | 15m | 25 | 5.0 | 1 | *(none added yet)* | 36 | 27.8% | 25.4% | 3.58 | -10.60% |
-| USD_JPY | 5m | 30 | 2.5 | 1 | *(none added yet)* | 134 | 37.3% | 47.8% | 2.78 | -7.38% |
-| AUD_USD | 5m | 35 | 2.5 | 2 | *(none added yet)* | 46 | 34.8% | 9.8% | 1.90 | -7.30% |
-| USD_CAD | 5m | 35 | 3.0 | 1 | *(none added yet)* | 46 | 23.9% | -2.6% | -0.49 | -17.38% |
+| GBP_JPY | 15m | 25 | 5.0 | 1 | — | 36 | 27.8% | 25.4% | 3.58 | -10.60% |
+| USD_JPY | 5m | 30 | 2.5 | 1 | `avoid_hours=[15-21]` | 134 | 37.3% | 47.8% | 2.78 | -7.38% |
+| AUD_USD | 5m | 35 | 2.5 | 2 | — | 46 | 34.8% | 9.8% | 1.90 | -7.30% |
+| USD_CAD | 5m | 35 | 3.0 | 1 | — | 46 | 23.9% | -2.6% | -0.49 | -17.38% |
 
-*NAS100/GBP_JPY/USD_JPY/AUD_USD/USD_CAD filter results validated on 44-day window; XAU/XAG/JP225 on 4+ months.*
+**NOT deployed:** AU200_AUD (Sharpe 1.59, MaxDD -21%). See `data/backtest_sma_au200.csv`.
 
-**Key rules:**
-- **Do NOT apply `sma_ordered`** to NAS100 or XAG — Sharpe collapses (NAS100: 2.67 → -1.04) because SMAs lag price during fast moves, causing late entries at move peaks.
-- **Do NOT apply `atr_ratio=1.2`** to GBP_JPY — destroys performance.
-- **`di_slope` is broadly safe** across most pairs except USD_JPY (harmful at -1.02 Sharpe).
-- **AU200_AUD NOT DEPLOYED:** Sharpe 1.59, MaxDD -21% at best config. See `data/backtest_sma_au200.csv`.
+### SMA Scalping Rules & Gotchas
 
-## Latest Update: SmaScalping Noise Filter Optimization (February 28, 2026)
+**Core entry (LONG):** Price > SMA20/50/100 · DI+ > DI- · DI+ > threshold for N candles · ADX ≥ adx_min · entry not below 2-candle lows
+**Stop Loss:** `max(structural_distance, 1×ATR)` — ATR floor prevents noise-triggered stops.
 
-### Overview
-9 optional entry quality filters added to `SmaScalpingDetector`. Two-round backtest sweep across all 8 deployed pairs identified filters that genuinely improve signal quality vs those that are harmful or pair-specific.
+**Optional noise filters** (configured per-pair in `best_strategies.json`):
 
-### Filters Deployed
+| Filter | Description |
+|--------|-------------|
+| `di_persist` | DI must exceed threshold for N consecutive candles. Use 2 for choppy pairs (JP225, AUD_USD); keep 1 for fast-moving (XAG, NAS100). |
+| `adx_min` | ADX floor. JP225 uses 20. |
+| `adx_rising` | ADX must be rising vs previous candle. XAU uses this. |
+| `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 10R), NAS100=1.0. |
+| `di_slope` | DI+ must be rising over last 2 candles — targets fading-momentum entries. Safe for most pairs. |
+| `avoid_hours` | Block entry during specified UTC hours. USD_JPY uses [15–21]. |
+| `di_spread_min` | Min DI+/DI- gap — rejects marginal crossings. |
+| `body_ratio_min` | Min candle body/range ratio — rejects doji candles. |
 
-| Pair | Filter added | Sharpe before → after | ROI before → after |
-|------|-------------|----------------------|-------------------|
-| **XAG_USD** | `atr_ratio_min=1.2, di_slope=True` | 2.05 → **5.59** | +56% → **+107%** |
-| **JP225_USD** | `di_slope=True` | 5.14 → **5.93** | +47.9% → **+48.2%** |
-| **NAS100_USD** | `atr_ratio_min=1.0, di_slope=True` | 2.67 → **3.28** | +18.8% → **+22.5%** |
-| **XAU_USD** | `adx_rising=True` | 6.17 → **6.48** | +39.9% → **+41.3%** |
-
-### Key Findings
-- **DI slope** is the most universally effective filter — requires DI+ to be rising over the last 2 candles, not just above the threshold. Directly targets fading-momentum entries (DI crossed threshold but already declining).
-- **ATR expansion** (`atr_ratio_min`) filters entries during compression regimes. At 1.0× average: helps NAS100/USD_CAD/GBP_JPY. At 1.2×: optimal for XAG (Silver needs volatile regimes to reach 10R targets).
-- **Volume filter** (`vol_ratio_min`) is harmful for GBP_JPY and neutral elsewhere — not deployed.
-- **`sma_ordered`** is destructive for NAS100 (Sharpe 2.67 → -1.04) and XAG — do not use on fast-moving instruments.
-- **`rsi_filter`** adds noise on 5m — not deployed on any pair.
-
-### XAG Data Fix
-XAG 5m file was truncated to Jan 14 (44 days). Re-downloaded from Nov 2, 2025 → 22,754 rows. All XAG sweep results prior to Feb 28 were invalid. Baseline with full data: 92 trades, 14.1% WR, +56.06% ROI, Sharpe 2.05.
-
-### Files Changed
-- `backend/app/services/sma_scalping_detector.py` — 9 optional filter params added
-- `data/metadata/best_strategies.json` — XAU, XAG, JP225, NAS100 SmaScalping params updated
-- `data/forex_raw/XAG_USD_5_Min.csv` — re-downloaded from Nov 2025
+**⚠️ Do NOT apply:**
+- `sma_ordered` to NAS100 or XAG — destroys Sharpe (NAS100: 2.67→-1.04). SMAs lag on fast moves.
+- `atr_ratio=1.2` to GBP_JPY — harmful.
+- `di_slope` to USD_JPY — harmful (-1.02 Sharpe).
+- `rsi_filter` on any 5m pair — adds noise.
+- `di_persist=2` to XAG or NAS100 — kills edge (XAG: +86%→+10%).
 
 ---
 
-## Previous Update: USD_JPY and GBP_JPY SmaScalping Deployment (February 27, 2026)
+## Portfolio Deployment Status
 
-### New Pairs Added
-Two new forex pairs deployed with SmaScalping strategy, backed by Oanda data backtests.
+| Asset | Strategy | ROI | WR% | Status |
+|-------|----------|-----|-----|--------|
+| UK100_GBP | PVT Scalping | +93.67% | 66.0% | ✅ ACTIVE |
+| XAU_USD | HeikenAshi + SmaScalping | +46.75% / +41.3% | 40.6% / 36.7% | ✅ ACTIVE |
+| XAG_USD | DailyORB + SilverSniper + SilverMomentum + SmaScalping | combined | ~38% | ✅ ACTIVE |
+| USD_CHF | NewBreakout | +60.96% | 40.74% | ✅ ACTIVE |
+| JP225_USD | HeikenAshi + SmaScalping | +32.3% / +48.2% | 31.1% / 35.1% | ✅ ACTIVE |
+| GBP_JPY | SmaScalping | +25.4% | 27.8% | ✅ ACTIVE |
+| USD_JPY | SmaScalping | +47.8% | 37.3% | ⚠️ MONITORING |
+| NAS100_USD | NewBreakout + PVT + SmaScalping | +11.6% / +72% / +22.5% | 38.5% / 75.8% / 28.2% | ⚠️ VALIDATING |
+| AUD_USD | EnhancedSniper + SmaScalping | +3.0% / +9.8% | 66.7% / 34.8% | ⚠️ MONITORING |
+| BCO_USD | CommoditySniper | +11.70% | 44.4% | ⚠️ MONITORING |
+| USD_CAD | SmaScalping | -2.6% | 23.9% | ⚠️ MONITORING |
 
-| Pair | TF | DI> | RR | persist | Trades | WR% | ROI | Sharpe | MaxDD | Status |
-|------|----|-----|----|---------|--------|-----|-----|--------|-------|--------|
-| **USD_JPY** | 5m | 30 | 2.5 | 1 | 131 | 36.6% | +42.06% | 2.55 | -9.15% | ⚠️ MONITORING |
-| **GBP_JPY** | 15m | 25 | 5.0 | 1 | 51 | 27.5% | +36.51% | 3.52 | -10.60% | ✅ ACTIVE |
-
-**USD_JPY:** ⚠️ MONITORING — 43-day data window (5m from Jan 15, 2026). 131 trades meets statistical threshold but short window. Treat as confirmed once 50+ live trades validate edge.
-
-**GBP_JPY:** `di_persist: 1` chosen over 2 — at DI>25 RR=5.0 on 15m, persist=2 reduces ROI to +26.51% and Sharpe to 3.31 (vs +36.51% / 3.52 with persist=1). 86-day backtest (Dec 3, 2025 – Feb 27, 2026).
-
-**AU200_AUD:** Evaluated and NOT deployed — Sharpe 1.59 and MaxDD -21% at best config. See `data/backtest_sma_au200.csv`.
-
-### Files changed
-- `data/metadata/best_strategies.json` — Added USD_JPY and GBP_JPY SmaScalping entries
-- `data/metadata/forex_pairs.json` — Added USD_JPY and GBP_JPY to asset list
-- `scripts/backtest_sma_jpy_pairs.py` — Backtest sweep script for both pairs
+**USD_CAD warning:** Break-even WR at 3.0R is 25%; suspend if live WR falls below 25%.
 
 ---
 
-## Previous Update: XAU_USD SmaScalping moved to 15m (February 27, 2026)
+## Multi-Strategy Framework
 
-### Change
-XAU_USD SmaScalping timeframe switched from 5m → 15m, with `di_persist: 2` added.
-
-### Backtest Results — XAU SmaScalping 5m vs 15m
-
-| | 5m (old) | **15m (deployed)** | Delta |
-|--|--|--|--|
-| Config | DI>35 RR=5.0 p=1 | **DI>35 RR=5.0 p=2** | |
-| Period | 6 weeks | 4 months | longer |
-| Trades | 42 | 31 | -11 |
-| Win Rate | 23.8% | **35.5%** | +11.7% ✓ |
-| ROI | +18.09% | **+39.89%** | +21.8% ✓ |
-| Sharpe | 2.39 | **6.17** | +3.78 ✓ |
-| MaxDD | -6.79% | -7.73% | -0.94% |
-
-Gold moves in large structured swings that are well-defined on 15m. The 5m timeframe fires on DI spikes that reverse within the same 15m candle — the 15m candle naturally absorbs that noise.
-
-### Why Silver stays on 5m
-XAG tested on 15m shows Sharpe 3.07 vs 2.74 (marginal gain) but ROI drops from +86% to +47% and MaxDD worsens. Silver's fast impulse moves are better caught on 5m.
-
-### Scheduler — no changes needed
-- `dynamic` cron (`:01,:16,:31,:46`) fires 1 minute after each 15m candle close — this is the correct trigger for XAU 15m SmaScalping
-- `sniper` cron (`:06,:11,:21,:26,:36,:41,:51,:56`) still runs SmaScalping (needed for the 5 other pairs on 5m); XAU 15m will also be checked but reads the same 15m data between closes → dedup eviction prevents repeat signals
-- The screener automatically maps `timeframe: "15m"` → `data['base'] = 15_Min.csv`; no code change required
-
-### Files changed
-- `data/metadata/best_strategies.json` — XAU_USD SmaScalping: `5m` → `15m`, added `di_persist: 2`
-
----
-
-## Previous Update: SmaScalping JP225 DI Persistence Filter (February 26, 2026)
-
-### Problem
-JP225 produced false signals where DI+ briefly spiked above 30 for a single candle then immediately retreated, causing same-candle SL hits. Root cause: JP225 (Asian index) has a choppier DI regime than commodities/forex — threshold crossings are less reliable on a single candle.
-
-### Fix: `di_persist: 2` for JP225 and AUD_USD
-- **Parameter:** `di_persist` in `sma_scalping_detector.py` — requires DI+ (BUY) or DI- (SELL) to be above threshold for the last N consecutive candles before entry.
-- **JP225:** `di_persist: 2` — must sustain DI+ > 30 for 2 candles (10 minutes). Eliminates same-candle SL hits from single-candle DI spikes.
-- **AUD_USD:** `di_persist: 2` — improves Sharpe (+39%) and WR (+2.4%) at minor ROI cost (-1.9%). Validated separately.
-- **All other pairs:** `di_persist: 1` (default) — unchanged behavior.
-
-### Backtest Results — JP225 with di_persist=2 vs baseline
-
-| Filter | Trades | WR% | ROI | Sharpe | MaxDD |
-|--------|--------|-----|-----|--------|-------|
-| persist=1 (baseline) | 39 | 30.8% | +36.9% | 4.65 | -5.85% |
-| **persist=2 (deployed)** | **40** | **35.0%** | **+52.46%** | **5.89** | **-5.85%** |
-| persist=3 | 42 | 28.6% | +32.8% | 4.01 | -6.79% |
-
-### Backtest Results — AUD_USD with di_persist=2 vs baseline
-
-| Filter | Trades | WR% | ROI | Sharpe | MaxDD |
-|--------|--------|-----|-----|--------|-------|
-| persist=1 (baseline) | 69 | 34.8% | +15.07% | 1.91 | -7.30% |
-| **persist=2 (deployed)** | **43** | **37.2%** | **+13.17%** | **2.66** | **-6.36%** |
-
-Note: AUD_USD backtest covers 41 days (Jan 16 – Feb 26, 2026) — below the 50-trade statistical validity threshold. ⚠️ **MONITORING** — deployment is provisional, heavily influenced by a single BUY trend (Jan 19 – Feb 12). Treat as validated once 50+ live trades confirm edge.
-
-**USD_CAD monitoring note:** USD_CAD SmaScalping (Sharpe 1.02, 49 trades, +6.4% ROI, MaxDD -14.85%) is the weakest pair in the portfolio. Break-even WR at 3.0R is 25%; 95% CI lower bound on 28.6% WR overlaps break-even. ⚠️ **MONITORING** — suspend or pair with a complementary strategy if live WR falls below 25%.
-
-### Why NOT to apply this globally
-Tested di_persist=2 on all pairs — only JP225 and AUD_USD benefit. For XAG and NAS100, the DI spike immediately follows through and requiring 2-candle persistence destroys the edge:
-- XAG: +86% ROI → +10% ROI (persist=2)
-- NAS100: +20% ROI → +2.5% ROI (persist=2)
-
-**Rule:** Use `di_persist: 2` for pairs with choppy or slow DI regimes (Asian indices, slower forex). Keep `di_persist: 1` for fast-moving commodities and US indices.
-
-### Files changed
-- `backend/app/services/sma_scalping_detector.py` — added `di_persist` parameter
-- `data/metadata/best_strategies.json` — set `di_persist: 2` on JP225_USD and AUD_USD SmaScalping
-
----
-
-## Previous Update: SmaScalping Signal Quality Hardening (February 26, 2026)
-
-### SmaScalping Entry Guards (all 6 pairs: XAU, XAG, JP225, AUD_USD, USD_CAD, NAS100)
-1. **DI dominance check** — BUY requires `DI+ > DI-`, SELL requires `DI- > DI+`. Fixes counter-trend entries (e.g., JP225 BUY firing while DI- was dominant).
-2. **Structural validity** — Rejects BUY if entry price is already below previous 2-candle lows (broken support), and SELL if above previous 2-candle highs (broken resistance).
-
-### Dedup Fix (forex_screener.py)
-- Stale signal eviction moved to **before** `analyze()` — old card is now cleared whether or not a new signal fires, not only when a new one does.
-- Removed dead `_is_duplicate_signal` method (replaced by the eviction pattern).
-
-### Config Fixes (best_strategies.json)
-- **XAG_USD SmaScalping:** `target_rr` kept at 10.0 — backed by backtest; Silver is highly volatile and trends 5-10R in strong moves. SMA20 exit acts as fallback when TP is not reached.
-
----
-
-## Previous Update: WHEAT Removal + SmaScalping ATR SL Fix (February 26, 2026)
-
-### WHEAT_USD Removed
-- **Reason:** Spread cost (~$10/trade) consumed 62.5% of risk budget on an $800 account at 2% risk ($16), making the edge unviable. Spread-to-risk ratio should be <15% for scalping strategies.
-- **Files changed:** `best_strategies.json`, `forex_pairs.json`, `commodity_sniper_detector.py`
-
-### SmaScalping ATR Floor for Stop Loss
-- **Problem:** When the 2-candle structural swing (previous high/low) was tighter than current market noise, stops were hit immediately by normal price movement.
-- **Fix:** `stop_distance = max(structural_distance, 1 × ATR(14))` — SL is always at least 1 ATR from entry, giving the trade room past noise.
-- **File:** `backend/app/services/sma_scalping_detector.py`
-
-### SmaScalping Expanded Deployment
-- **JP225_USD:** Added SmaScalping (5m, 5.0 RR, DI>30, ADX>20) alongside HeikenAshi
-- **AUD_USD:** Added SmaScalping (5m, 2.5 RR, DI>35) alongside EnhancedSniper
-- **USD_CAD:** SmaScalping as primary strategy (5m, 3.0 RR, DI>35)
-- **NAS100_USD:** Added SmaScalping (5m, 4.5 RR, DI>35) alongside NewBreakout + PVTScalping
-
----
-
-## Previous Update: Silver Strategy Optimization (February 18, 2026)
-
-### Implementation Changes
-Applied time-based volatility filters to Silver strategies to eliminate false signals during peak London-NY overlap (14:00-16:00 UTC / 1:00-3:00 AM Sydney):
-
-1. **DailyORB** - Added `avoid_utc_hours: [14, 15, 16]`
-2. **SilverSniper** - Added `avoid_utc_hours: [14, 15, 16]`
-3. **SilverMomentum** - Fixed `session_start: 13 → 16` (start at 4:00 AM Sydney post-spike recovery)
-
-### New Performance Results (90-day backtest)
-| Metric | Previous | New | Change |
-|--------|----------|-----|-----------|
-| **Total Trades** | 59 | 45 | -24% (higher quality) |
-| **Win Rate** | 37.3% | 37.8% | +0.5pp |
-| **ROI** | 35.25% | 18.75% | -47% (⚠️ IMPORTANT: account sizing explains this—see below) |
-| **Sharpe Ratio** | 2.44 | 1.72 | -29% (acceptable tradeoff) |
-| **Max Drawdown** | -24.5% | -16.5% | -32% improvement |
-| **GT-Score** | 0.0283 | 0.047 | GOOD category |
-
-### Key Insight: Quality Over Quantity
-The optimization prioritizes **fewer, higher-quality trades** over raw signal count. While absolute ROI decreased from 35.25% to 18.75%, this reflects:
-- **Different account sizing:** Previous backtest used $10k+ account; new test calibrated to realistic $369 starter account
-- **Risk reduction:** Max drawdown improved by 32% (-24.5% → -16.5%)
-- **Trade quality:** 24% fewer trades eliminates false breakouts during peak volatility period
-- **Volatility filter effectiveness:** Blocks entries during London-NY overlap (peak noise for commodities)
-
-**Bottom Line:** Volatility filters successfully eliminate false signals without degrading win rate (37.3% → 37.8%), resulting in more consistent, drawdown-controlled trading.
-
-### Individual Strategy Performance (with time filters)
-- **DailyORB:** 19 trades, 52.6% WR (best-in-class), +8.15% ROI
-- **SilverSniper:** 18 trades, 38.9% WR, +8.45% ROI (protected from volatility)
-- **SilverMomentum:** 8 trades, 37.5% WR, +2.15% ROI
-
-### Data Source
-- Backtest file: `data/backtest_silver_strategies_final.csv` (45 trades, 90-day period)
-- Covers: March 2025 - February 2026
-
----
-
-## Latest Test Results (2026-02-17)
-
-### Silver Strategy Evolution: Comparison
-
-| Metric | Original (22) | Previous (34) | Pre-Filter (59) | Best |
-| :--- | :--- | :--- | :--- | :--- |
-| **Total Trades** | 22 | 34 | **59** ✅ | Pre-Filter |
-| **Win Rate** | 31.8% | **41.2%** | 37.3% | Previous |
-| **ROI (90d)** | 6.5% | 31.46% | **35.25%** ✅ | Pre-Filter |
-| **PnL** | $23 | $113 | **$127** ✅ | Pre-Filter |
-| **Valid?** | ❌ | ❌ | **✅** | Pre-Filter |
-| **Sharpe** | 1.32 | **3.59** | 2.44 | Previous |
-| **Max DD** | -18% | -22% | **-24.5%** | Pre-Filter |
-
-**Key Trade-Off:** Pre-filter version achieved statistical validity (59 trades > 50 minimum). Post-filter version prioritizes **risk reduction** (-16.5% max DD) and **drawdown control** at cost of fewer signals. **Worth it:** YES ✅
-
----
-
-## Historical Test Results (2026-02-06)
-
-### Verified Profitable Portfolio (Top 6 Performers)
-The following assets and strategies have been verified with consistent positive ROI across multiple backtest runs.
-
-| Rank | Asset | Strategy | ROI (Verified) | Trades | Win Rate | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 🥇 | **UK100_GBP** | PVT Scalping | **+93.67%** | 53 | 66.0% | ✅ **PROD READY** (Feb 23) |
-| 🥈 | **NAS100_USD** | PVT Scalping | **+72.00%** | 33 | 75.8% | ⚠️ **VALIDATING** |
-| 🥉 | **Gold (XAU_USD)** | HeikenAshi | **+46.75%** | 64 | 40.6% | ✅ ACTIVE |
-| 4 | **JP225 (Nikkei)** | HeikenAshi | **+32.3%** | 209 | 31.1% | ✅ ACTIVE |
-| 5 | **Silver (XAG_USD)** | DailyORB + SilverSniper + SilverMomentum + PVT | **+35.25%+** | 59+ | 37.3%+ | ✅ **ENHANCED** |
-| 4 | **USD_CHF** | NewBreakout | **+60.96%** | 216 | 40.74% | ✅ **NEWLY ADDED** |
-| 5 | **NAS100_USD** | NewBreakout | **+24.07%** | 156 | 38.46% | ✅ **NEWLY ADDED** |
-| 6 | **AUD_USD** | EnhancedSniper + SmaScalping | **+3.0%** | — | 66.7% | ✅ **ACTIVE** |
-| 8 | **BCO (Oil)** | CommoditySniper | **+2.03%** | 13 | 30.8% | ⚠️ MONITORING |
-
-**Average Portfolio ROI (Top 5):** **+21.8%** ✅
-
-**Deployment Note:** As of Feb 18, 2026, the live screener includes:
-- **Silver (XAG_USD):** THREE complementary strategies with **time-based volatility filters** (14:00-16:00 UTC blocked):
-  - **DailyORB** (15m + 4h breakout): 19 trades, 52.6% WR, +8.15% ROI ⭐⭐⭐
-  - **SilverSniper** (5m squeeze): 18 trades, 38.9% WR, +8.45% ROI ⭐
-  - **SilverMomentum** (1H MACD): 8 trades, 37.5% WR, +2.15% ROI ⭐
-  - **Combined:** 45 trades, 37.8% WR, +18.75% ROI (time-filtered), **Max DD -16.5% (32% improvement)**
-  - **Quality Filter:** Volatility filters eliminated 24% of low-quality trades while maintaining win rate
-- **AUD_USD:** EnhancedSniper with 2.5R target.
-- **Multi-Strategy Framework:** `best_strategies.json` and `forex_screener.py` support multiple strategies per asset for complementary approaches and comprehensive coverage.
-
-## Multi-Strategy Framework (NEW - Feb 11, 2026)
-
-The screener now supports **multiple strategies per asset** via the `best_strategies.json` configuration:
+`best_strategies.json` supports multiple strategies per asset. `forex_screener.py` loads data once, runs all strategies, ranks by score.
 
 ```json
-{
-  "XAG_USD": {
-    "strategies": [
-      {
-        "strategy": "DailyORB",
-        "timeframe": "15m",
-        "target_rr": 2.5,
-        "params": { "orb_hours": 1.5, "htf": "4h", ... }
-      },
-      {
-        "strategy": "SilverSniper",
-        "timeframe": "5m",
-        "target_rr": 3.0
-      }
-    ]
-  }
+"XAG_USD": {
+  "strategies": [
+    { "strategy": "DailyORB", "timeframe": "15m", "target_rr": 2.0, "params": { ... } },
+    { "strategy": "SilverSniper", "timeframe": "5m", "target_rr": 3.0 },
+    { "strategy": "SmaScalping", "timeframe": "5m", "target_rr": 10.0, "params": { ... } }
+  ]
 }
 ```
 
-**Benefits:**
-- ✅ **Increased Signal Frequency:** Multiple entry points for the same asset
-- ✅ **Complementary Approaches:** DailyORB (structural) + SilverSniper (impulse) = better coverage
-- ✅ **Different Timeframes:** 5m (faster) and 15m (intermediate) capture different market phases
-- ✅ **Risk Diversification:** Not dependent on single strategy
-- ✅ **Backward Compatible:** Legacy single-strategy format still supported
-
-**Implementation:**
-- Modified `forex_screener.py` to iterate over multiple strategies per symbol
-- Loads data once, runs all strategies sequentially
-- All signals ranked by score in final output
-- Reduces redundant data loading
-
-Detailed evidence and data sources can be found in:
-- **Silver Strategy Backtest Data:** `data/backtest_silver_strategies_final.csv` ← **Latest: 45 trades, time-filtered results**
-- [PROFITABLE_STRATEGIES_VERIFICATION.md](./docs/analysis/PROFITABLE_STRATEGIES_VERIFICATION.md)
-- [BACKTEST_RESULTS_ANALYSIS.md](./docs/analysis/BACKTEST_RESULTS_ANALYSIS.md)
-- [V2_REALISTIC_RESULTS_EXPLAINED.md](./docs/analysis/V2_REALISTIC_RESULTS_EXPLAINED.md)
-- [GT_SCORE_RESULTS_SUMMARY.md](./docs/analysis/GT_SCORE_RESULTS_SUMMARY.md)
-- [AUD_USD_PERFORMANCE_REPORT.md](./docs/analysis/AUD_USD_PERFORMANCE_REPORT.md)
-- [COMMODITY_SNIPER_RESULTS.md](./docs/analysis/COMMODITY_SNIPER_RESULTS.md)
-- [DAILY_ORB_FINAL_RESULTS.md](./docs/analysis/DAILY_ORB_FINAL_RESULTS.md)
-- [HEIKEN_ASHI_RESULTS_SUMMARY.md](./docs/analysis/HEIKEN_ASHI_RESULTS_SUMMARY.md)
-- [HEIKEN_ASHI_V2_CRITICAL_REVIEW.md](./docs/analysis/HEIKEN_ASHI_V2_CRITICAL_REVIEW.md)
-- [SQUEEZE_OPTIMIZATIONS_IMPLEMENTED.md](./docs/analysis/SQUEEZE_OPTIMIZATIONS_IMPLEMENTED.md)
-
-## NewBreakout Strategy Results (2026-02-12)
-
-### Backtest Results for Blacklisted Pairs
-The NewBreakout strategy has been tested on previously underperforming pairs with excellent results:
-
-| Pair | ROI | Net P&L | Trades | Win Rate | Sharpe | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **USD_CHF** | **+60.96%** | $219.47 | 216 | 40.74% | 1.94 | ✅ DEPLOYED |
-| **NAS100_USD** | **+11.60%** (1:2.0 R:R) | $1,160.16 | 156 | 38.50% | N/A | ✅ **OPTIMIZED** |
-
-**Backtest Data Location:** `data/backtest_results_USD_CHF_new_breakout.csv`
-
-**Strategy Parameters:**
-- Timeframe: 15-minute (HTF: 4-hour for trend filtering)
-- Entry: HTF S/R breakout with trend confirmation (ADX > 25)
-- Exit: EMA9 crossover (active signal required for optimal Sharpe maintenance)
-- Target R:R (Live): USD_CHF 1.5, **NAS100_USD 2.0** (optimized from 1.5 on Feb 20, 2026)
-
-**Deployment Note:**
-- As of Feb 12, 2026, both USD_CHF and NAS100_USD were added to `best_strategies.json` with NewBreakout strategy.
-- **UPDATED Feb 20, 2026:** NAS100_USD R:R increased from 1:1.5 to 1:2.0. Backtest analysis showed 1:1.5 was unprofitable (-3.6% ROI) while 1:2.0 yields +11.6% ROI (+15.2pp improvement). This fix converts a losing strategy into a profitable one without changing exit signals (EMA9 crossover remains constant).
+Backward compatible with legacy single-strategy format.
 
 ---
 
-## Documentation Organization (Standard Practice)
+## Trade History & Analytics
 
-### Analysis & Backtest Reports
+**Status:** ✅ Production Ready — See [docs/features/TRADE_HISTORY.md](./docs/features/TRADE_HISTORY.md)
+- Filtering, sorting, CSV export; equity curve, monthly returns, strategy comparison charts
+- Auto-sync with Oanda every 5 minutes; default date range: Feb 19, 2026+
 
-All analysis, backtest results, and comparative performance reports should be stored in:
+---
 
-```
-docs/analysis/
-├── BACKTEST_RESULTS_ANALYSIS.md           # Initial backtest overview
-├── V2_REALISTIC_RESULTS_EXPLAINED.md      # Refined backtest methodology
-├── GT_SCORE_RESULTS_SUMMARY.md            # GT-Score validation results
-├── PROFITABLE_STRATEGIES_VERIFICATION.md  # Strategy profitability confirmation
-├── [ASSET]_PERFORMANCE_REPORT.md          # Asset-specific performance
-├── [STRATEGY]_RESULTS.md                  # Strategy-specific results
-└── [STRATEGY]_COMPARISON.md               # Comparative analysis (e.g., Silver comparison)
-```
+## NewBreakout Strategy
 
-### Naming Convention
+- **Timeframe:** 15m (HTF: 4h trend filter, ADX>25)
+- **Exit:** EMA9 crossover
+- **USD_CHF:** 1.5R target · **NAS100_USD:** 2.0R target (1.5R was unprofitable: -3.6% ROI)
 
-- **Backtest Results:** `[ASSET]_PERFORMANCE_REPORT.md` or `[STRATEGY]_RESULTS.md`
-  - Example: `DAILY_ORB_FINAL_RESULTS.md`, `AUD_USD_PERFORMANCE_REPORT.md`
+---
 
-- **Comparative Analysis:** `[STRATEGY]_COMPARISON.md` or `[ASSET]_STRATEGY_COMPARISON.md`
-  - Example: `SILVER_STRATEGY_COMPARISON.md`, `SQUEEZE_OPTIMIZATIONS_IMPLEMENTED.md`
+## Documentation Organization
 
-- **Final Summaries:** `[ASSET]_STRATEGY_FINAL_SUMMARY.md`
-  - Example: `SILVER_STRATEGY_FINAL_SUMMARY.md`
+- Analysis reports → `docs/analysis/[ASSET]_PERFORMANCE_REPORT.md` or `[STRATEGY]_RESULTS.md`
+- Backtest CSVs → `data/backtest_results_[ASSET]_[STRATEGY].csv`
+- When adding strategies: create CSV in `data/`, create doc in `docs/analysis/`, update CLAUDE.md
 
-- **GT-Score Validation:** `GT_SCORE_RESULTS_SUMMARY.md`
-  - Used when validating strategy statistical significance
+**Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-### Content Guidance
-
-Each analysis document should include:
-
-1. **Executive Summary** - Key metrics and findings
-2. **Performance Metrics** - Win rate, ROI, Sharpe ratio, trades, drawdown
-3. **Strategy Details** - Entry/exit logic, parameters, timeframes
-4. **Backtesting Period** - Date range and sample size
-5. **Comparisons** - Against benchmarks or previous versions
-6. **Recommendations** - Deployment status and safeguards
-7. **Trade-offs** - If applicable, what was sacrificed and why
-
-### Examples in Codebase
-
-Current analysis documents (as of Feb 17, 2026):
-- `docs/analysis/SILVER_STRATEGY_COMPARISON.md` - 2-strat vs 3-strat analysis
-- `docs/analysis/SILVER_STRATEGY_FINAL_SUMMARY.md` - TL;DR comparison table
-- `docs/analysis/DAILY_ORB_FINAL_RESULTS.md` - ORB strategy validation
-- `docs/analysis/HEIKEN_ASHI_V2_CRITICAL_REVIEW.md` - Gold strategy deep-dive
-- `docs/analysis/GT_SCORE_RESULTS_SUMMARY.md` - Statistical validation framework
-
-### Data Files Organization
-
-Backtest CSV files (validation data) should be stored in:
-
-```
-data/
-├── backtest_silver_all_three.csv          # Combined strategy backtest
-├── backtest_results_[ASSET]_[STRATEGY].csv # Single strategy backtest
-└── optimization_results_[ASSET].csv       # Parameter optimization results
-```
-
-All analysis documents should **reference** the corresponding CSV files in `data/` folder.
-
-### Future Additions
-
-When adding new strategies or optimizations:
-
-1. Create backtest CSV in `data/`
-2. Create analysis document in `docs/analysis/`
-3. Update CLAUDE.md with links to new analysis
-4. Follow naming conventions above
-5. Include comparison tables for major changes
-
-**Last Updated:** February 26, 2026 (WHEAT removal, SmaScalping ATR SL floor, multi-pair SmaScalping expansion)
+**Last Updated:** February 28, 2026 — SmaScalping noise filter optimization across 8 pairs.
