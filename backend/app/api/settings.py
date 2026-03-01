@@ -6,7 +6,6 @@ Global screener configuration managed by the admin user.
 
 import json
 import logging
-from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from typing import List
@@ -20,7 +19,7 @@ from ..config import settings
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/settings")
 
-BEST_STRATEGIES_PATH = Path(__file__).parent.parent.parent.parent / "data" / "metadata" / "best_strategies.json"
+BEST_STRATEGIES_PATH = settings.METADATA_DIR / "best_strategies.json"
 
 
 async def get_current_user_email(authorization: str = Header(...)) -> str:
@@ -85,7 +84,11 @@ async def get_strategy_overrides(email: str = Depends(get_current_user_email)):
         logger.warning(f"Could not read strategy_overrides from Firestore: {e}")
 
     combos = _build_combos(disabled)
-    return {"combos": combos, "disabled": list(disabled)}
+    return {
+        "combos": combos,
+        "disabled": list(disabled),
+        "is_admin": email == settings.AUTHORIZED_AUTO_TRADER_EMAIL
+    }
 
 
 class StrategyOverridesUpdate(BaseModel):

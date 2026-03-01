@@ -10,16 +10,13 @@ import { useAuth } from '../context/AuthContext';
 import { getStrategyOverrides, updateStrategyOverrides } from '../services/api';
 import styles from './Settings.module.css';
 
-const ADMIN_EMAIL = 'naveenf.opt@gmail.com';
-
 function Settings({ onShowToast }) {
   const { user, loading: authLoading } = useAuth();
   const [combos, setCombos] = useState([]);
   const [disabled, setDisabled] = useState(new Set());
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
     if (!user) return;
@@ -32,6 +29,7 @@ function Settings({ onShowToast }) {
       const data = await getStrategyOverrides();
       setCombos(data.combos || []);
       setDisabled(new Set(data.disabled || []));
+      setIsAdmin(data.is_admin || false);
     } catch (err) {
       onShowToast({ message: 'Failed to load strategy settings', type: 'error' });
     } finally {
