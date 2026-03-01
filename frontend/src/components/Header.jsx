@@ -54,6 +54,11 @@ function Header({ status, onRefresh, refreshing, onSearch }) {
             <NavLink to="/insider-trades" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
               Insider Trades
             </NavLink>
+            {user && (
+              <NavLink to="/settings" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                Settings
+              </NavLink>
+            )}
           </nav>
 
           {user ? (

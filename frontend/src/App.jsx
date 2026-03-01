@@ -13,6 +13,7 @@ import SignalList from './components/SignalList';
 import ForexList from './components/ForexList';
 import Portfolio from './components/Portfolio';
 import InsiderTrades from './components/InsiderTrades';
+import Settings from './components/Settings';
 import AddStockModal from './components/AddStockModal';
 import AddForexModal from './components/AddForexModal';
 import StockSearchModal from './components/StockSearchModal';
@@ -200,13 +201,14 @@ function App() {
             />
           } />
           <Route path="/insider-trades" element={
-            <InsiderTrades 
+            <InsiderTrades
               onAnalyze={(ticker) => {
                 setSearchModalTicker(ticker);
                 setShowSearchModal(true);
               }}
             />
           } />
+          <Route path="/settings" element={<Settings onShowToast={setToast} />} />
         </Routes>
       </main>
 
