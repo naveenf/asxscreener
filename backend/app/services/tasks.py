@@ -82,14 +82,25 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
 
     try:
         refresh_manager.start_forex_refresh()
-        
+
+        # Fetch user override config from Firestore
+        disabled_combos = set()
+        try:
+            doc = db.collection("config").document("strategy_overrides").get()
+            if doc.exists:
+                disabled_combos = set(doc.to_dict().get("disabled", []))
+                logger.info(f"[{task_id}] Loaded {len(disabled_combos)} disabled combos from Firestore")
+        except Exception as e:
+            logger.warning(f"[{task_id}] Could not load strategy overrides, running all: {e}")
+
         logger.info(f"[{task_id}] Running orchestrator...")
         results = ForexScreener.run_orchestrated_refresh(
             project_root=settings.PROJECT_ROOT,
             data_dir=settings.DATA_DIR / "forex_raw",
             config_path=settings.METADATA_DIR / "forex_pairs.json",
             output_path=settings.PROCESSED_DATA_DIR / "forex_signals.json",
-            mode=mode
+            mode=mode,
+            disabled_combos=disabled_combos
         )
         logger.info(f"[{task_id}] Orchestrator finished.")
         

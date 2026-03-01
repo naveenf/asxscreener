@@ -111,7 +111,8 @@ class ForexScreener:
         data_dir: Path,
         config_path: Path,
         output_path: Path,
-        mode: str = 'dynamic'
+        mode: str = 'dynamic',
+        disabled_combos: set = None
     ):
         """Orchestrate full download and screening cycle."""
         # 1. Download fresh data
@@ -135,13 +136,13 @@ class ForexScreener:
             config_path=config_path,
             output_path=output_path
         )
-        return screener.screen_all(mode=mode)
+        return screener.screen_all(mode=mode, disabled_combos=disabled_combos)
 
     def load_pairs(self) -> List[Dict]:
         with open(self.config_path, 'r') as f:
             return json.load(f)['pairs']
 
-    def screen_all(self, mode: str = 'dynamic') -> Dict:
+    def screen_all(self, mode: str = 'dynamic', disabled_combos: set = None) -> Dict:
         """
         Screen assets. 
         If mode='sniper', only screen assets that use Sniper or SilverSniper strategy.
@@ -197,6 +198,13 @@ class ForexScreener:
             # Run all strategies for this symbol
             for strategy_config in strategies_to_run:
                 strategy_name = strategy_config.get("strategy", "TrendFollowing")
+
+                # FILTER: Skip user-disabled combos
+                combo_key = f"{symbol}::{strategy_name}"
+                if disabled_combos and combo_key in disabled_combos:
+                    logger.info(f"Skipping {combo_key} (user-disabled via Settings)")
+                    continue
+
                 base_tf = strategy_config.get("timeframe", "15m")
                 target_rr = strategy_config.get("target_rr", 2.0)
                 params_dict = strategy_config.get("params", {})
