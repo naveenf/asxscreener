@@ -275,6 +275,7 @@ class ForexScreener:
                         result['type'] = pair.get('type', 'Unknown')
                         result['timeframe_used'] = base_tf
                         result['risk_pct'] = strategy_config.get('risk_pct', 0.01)
+                        result['sharpe_ratio'] = strategy_config.get('sharpe', 0.0)
 
                         print(f"Processing {symbol}... ✓ {result['signal']} ({strategy_name})")
                         logger.info(f"SIGNAL FOUND | {symbol} | {strategy_name} | {result['signal']} | score={result.get('score')} | tf={result.get('timeframe_used')} | price={result.get('price')} | sl={result.get('stop_loss')} | tp={result.get('take_profit')} | ts={result.get('timestamp')}")
@@ -286,8 +287,16 @@ class ForexScreener:
                     print(f"Processing {symbol}... ✗ Error in {strategy_name}: {e}")
                     logger.error(f"SIGNAL ERROR | {symbol} | {strategy_name} | {e}")
 
-        # Rank all signals by score
-        all_signals.sort(key=lambda x: x['score'], reverse=True)
+        # Per-pair deduplication: keep only the highest-Sharpe signal per symbol
+        best_per_pair: Dict[str, Dict] = {}
+        for sig in all_signals:
+            sym = sig['symbol']
+            if sym not in best_per_pair or sig['sharpe_ratio'] > best_per_pair[sym]['sharpe_ratio']:
+                best_per_pair[sym] = sig
+        all_signals = list(best_per_pair.values())
+
+        # Rank all signals by Sharpe ratio (highest = best risk-adjusted strategy)
+        all_signals.sort(key=lambda x: x['sharpe_ratio'], reverse=True)
 
         results = {
             "generated_at": datetime.now().isoformat(),

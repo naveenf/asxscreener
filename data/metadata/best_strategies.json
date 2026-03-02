@@ -4,11 +4,13 @@
     "strategies": [
       {
         "strategy": "HeikenAshi",
+        "sharpe": 2.35,
         "timeframe": "1h",
         "target_rr": 5.0
       },
       {
         "strategy": "SmaScalping",
+        "sharpe": 6.48,
         "timeframe": "15m",
         "target_rr": 5.0,
         "params": {
@@ -22,6 +24,7 @@
   "BCO_USD": {
     "risk_pct": 0.01,
     "strategy": "CommoditySniper",
+    "sharpe": 0.96,
     "timeframe": "5m",
     "target_rr": 3.0,
     "params": {
@@ -36,6 +39,7 @@
     "strategies": [
       {
         "strategy": "DailyORB",
+        "sharpe": 1.99,
         "timeframe": "15m",
         "target_rr": 2.0,
         "time_blocks": {
@@ -56,6 +60,7 @@
       },
       {
         "strategy": "SilverSniper",
+        "sharpe": 1.53,
         "timeframe": "5m",
         "target_rr": 3.0,
         "time_blocks": {
@@ -72,21 +77,8 @@
         }
       },
       {
-        "strategy": "SilverMomentum",
-        "timeframe": "1h",
-        "target_rr": 2.5,
-        "params": {
-          "macd_fast": 12,
-          "macd_slow": 26,
-          "macd_signal": 9,
-          "atr_sl_multiplier": 2.0,
-          "rsi_threshold": 80,
-          "session_start": 16,
-          "session_end": 22
-        }
-      },
-      {
         "strategy": "PVTScalping",
+        "sharpe": 4.95,
         "timeframe": "1h",
         "target_rr": 2.5,
         "params": {
@@ -100,6 +92,7 @@
       },
       {
         "strategy": "SmaScalping",
+        "sharpe": 5.59,
         "timeframe": "5m",
         "target_rr": 10.0,
         "params": {
@@ -115,11 +108,13 @@
     "strategies": [
       {
         "strategy": "HeikenAshi",
+        "sharpe": 0.10,
         "timeframe": "1h",
         "target_rr": 5.0
       },
       {
         "strategy": "SmaScalping",
+        "sharpe": 5.93,
         "timeframe": "5m",
         "target_rr": 5.0,
         "params": {
@@ -136,6 +131,7 @@
     "strategies": [
       {
         "strategy": "EnhancedSniper",
+        "sharpe": 1.79,
         "timeframe": "15m",
         "target_rr": 2.5,
         "params": {
@@ -147,6 +143,7 @@
       },
       {
         "strategy": "SmaScalping",
+        "sharpe": 1.90,
         "timeframe": "5m",
         "target_rr": 2.5,
         "params": {
@@ -159,6 +156,7 @@
   "USD_CAD": {
     "risk_pct": 0.01,
     "strategy": "SmaScalping",
+    "sharpe": -0.49,
     "timeframe": "5m",
     "target_rr": 3.0,
     "params": {
@@ -168,6 +166,7 @@
   "USD_CHF": {
     "risk_pct": 0.01,
     "strategy": "NewBreakout",
+    "sharpe": 1.94,
     "timeframe": "15m",
     "target_rr": 1.5,
     "params": {
@@ -182,6 +181,7 @@
     "strategies": [
       {
         "strategy": "NewBreakout",
+        "sharpe": 8.48,
         "timeframe": "15m",
         "target_rr": 2.0,
         "params": {
@@ -193,6 +193,7 @@
       },
       {
         "strategy": "PVTScalping",
+        "sharpe": 6.24,
         "timeframe": "1h",
         "target_rr": 2.5,
         "params": {
@@ -206,6 +207,7 @@
       },
       {
         "strategy": "SmaScalping",
+        "sharpe": 3.28,
         "timeframe": "5m",
         "target_rr": 4.5,
         "params": {
@@ -219,6 +221,7 @@
   "UK100_GBP": {
     "risk_pct": 0.01,
     "strategy": "PVTScalping",
+    "sharpe": 5.79,
     "timeframe": "1h",
     "target_rr": 2.5,
     "params": {
@@ -233,6 +236,7 @@
   "USD_JPY": {
     "risk_pct": 0.01,
     "strategy": "SmaScalping",
+    "sharpe": 2.78,
     "timeframe": "5m",
     "target_rr": 2.5,
     "params": {
