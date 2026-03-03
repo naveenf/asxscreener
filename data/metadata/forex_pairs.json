@@ -15,13 +15,6 @@
       "yf_symbol_legacy": "XAU_USD"
     },
     {
-      "symbol": "BCO_USD",
-      "name": "Brent Crude Oil",
-      "type": "Commodity",
-      "oanda_symbol": "BCO_USD",
-      "yf_symbol_legacy": "BCO_USD"
-    },
-    {
       "symbol": "NAS100_USD",
       "name": "Nasdaq 100",
       "type": "Index",
@@ -36,13 +29,6 @@
       "yf_symbol_legacy": "JP225_USD"
     },
     {
-      "symbol": "AUD_USD",
-      "name": "AUD/USD",
-      "type": "Forex",
-      "oanda_symbol": "AUD_USD",
-      "yf_symbol_legacy": "AUD_USD"
-    },
-    {
       "symbol": "USD_CHF",
       "name": "USD/CHF",
       "type": "Forex",
@@ -55,13 +41,6 @@
       "type": "Index",
       "oanda_symbol": "UK100_GBP",
       "yf_symbol_legacy": "UK100_GBP"
-    },
-    {
-      "symbol": "USD_CAD",
-      "name": "USD/CAD",
-      "type": "Forex",
-      "oanda_symbol": "USD_CAD",
-      "yf_symbol_legacy": "USD_CAD"
     },
     {
       "symbol": "USD_JPY",

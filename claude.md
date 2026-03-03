@@ -3,7 +3,7 @@
 ## Project Overview
 Full-stack app identifying trading opportunities on ASX and Global Forex/Commodity markets via a **Dynamic Strategy Selection** engine. Calculations match **Pine Script** (TradingView) standards using Wilder's Smoothing.
 
-**Strategies:** Trend Following, Mean Reversion, Squeeze, Sniper, Enhanced Sniper, Silver Sniper, Daily ORB, Silver Momentum, Commodity Sniper, Heiken Ashi Gold, Triple Trend, PVT Scalping, SMA Scalping.
+**Strategies (active):** Silver Sniper, Daily ORB, Heiken Ashi, PVT Scalping, SMA Scalping, NewBreakout.
 
 ---
 
@@ -74,29 +74,22 @@ asx-screener/
 
 ---
 
-## Trading Strategies
+## Trading Strategies (Active)
 
-| # | Strategy | Key Indicators | Best For |
-|---|----------|---------------|----------|
-| 1 | **Trend Following** | ADX>30, DI+/DI- crossover | Strong trending pairs |
-| 2 | **Mean Reversion** | Bollinger Bands, RSI>70 | Range-bound markets |
-| 3 | **Squeeze** | BB inside KC, Momentum oscillator | Gold, Oil, Nasdaq, UK100 |
-| 4 | **Sniper** | 15m EMA/DI, 1H ADX>25, EMA34 | Major forex (AUD_USD, EUR_USD) |
-| 5 | **Enhanced Sniper** | 15m Momentum, 4H SMA200, time filter | AUD_USD (2.5R) |
-| 6 | **Silver Sniper** | 5m Squeeze, 15m ADX>20, FVG | XAG_USD (3.0R) |
-| 7 | **Daily ORB** | Sydney session range, 4H DI, BB width | XAG_USD (2.0R) |
-| 8 | **Silver Momentum** | 1H MACD, 4H EMA50/200, 13-22 UTC only | XAG_USD (2.5R) |
-| 9 | **Commodity Sniper** | 5m Squeeze, 15m ADX, time filter | BCO_USD (3.0R) |
-| 10 | **Heiken Ashi Gold** | HA candles, SMA200, 4H trend, ADX>22 | XAU_USD |
-| 11 | **Triple Trend** | Fibonacci, Supertrend, Ehlers IT | Steady trending pairs |
-| 12 | **PVT Scalping** | PVT>0.05, EMA50, SMA100, circuit breaker | UK100, NAS100, XAG |
-| 13 | **SMA Scalping** | SMA20/50/100 stack, DI+/DI-, ATR SL floor | Multi-pair (see below) |
+| # | Strategy | Key Indicators | Pairs |
+|---|----------|---------------|-------|
+| 1 | **SMA Scalping** | SMA20/50/100 stack, DI+/DI-, ATR SL floor | XAU, XAG, JP225, NAS100, USD_JPY |
+| 2 | **PVT Scalping** | PVT>0.05, EMA50, SMA100, circuit breaker | UK100, NAS100, XAG |
+| 3 | **NewBreakout** | 15m S/R breakout, EMA34, ADX>25, HTF 4h | NAS100, USD_CHF |
+| 4 | **Heiken Ashi** | HA candles, SMA200, 4H trend, ADX>22 | XAU |
+| 5 | **Daily ORB** | Sydney session range, 4H DI, BB width | XAG (2.0R) |
+| 6 | **Silver Sniper** | 5m Squeeze, 15m ADX>20, FVG | XAG (3.0R) |
 
-**Silver time filter (all 3 XAG strategies):** `avoid_utc_hours: [14, 15, 16]` — blocks London-NY overlap noise.
+**Silver time filter (all XAG strategies):** `avoid_utc_hours: [14, 15, 16]` — blocks London-NY overlap noise.
 
 ---
 
-## SMA Scalping — Deployed Configs (Feb 28, 2026)
+## SMA Scalping — Deployed Configs (Mar 3, 2026)
 
 | Pair | TF | DI> | RR | persist | Extra filters | Trades | WR% | ROI% | Sharpe | MaxDD |
 |------|----|-----|----|---------|--------------|--------|-----|------|--------|-------|
@@ -104,11 +97,9 @@ asx-screener/
 | XAG_USD | 5m | 35 | 10.0 | 1 | `atr_ratio=1.2, di_slope` | 43 | 25.6% | 106.9% | 5.59 | -4.90% |
 | JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope` | 37 | 35.1% | 48.2% | 5.93 | -3.94% |
 | NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope` | 39 | 28.2% | 22.5% | 3.28 | -10.47% |
-| GBP_JPY | 15m | 25 | 5.0 | 1 | — | 36 | 27.8% | 25.4% | 3.58 | -10.60% |
 | USD_JPY | 5m | 30 | 2.5 | 1 | `avoid_hours=[15-21]` | 134 | 37.3% | 47.8% | 2.78 | -7.38% |
-| AUD_USD | 5m | 35 | 2.5 | 2 | — | 46 | 34.8% | 9.8% | 1.90 | -7.30% |
-| USD_CAD | 5m | 35 | 3.0 | 1 | — | 46 | 23.9% | -2.6% | -0.49 | -17.38% |
 
+**Suspended (live underperformance):** AUD_USD (live WR 20% vs 34.8% BT), USD_CAD (0% WR, Sharpe -0.49), GBP_JPY (live WR 12.5% vs 27.8% BT).
 **NOT deployed:** AU200_AUD (Sharpe 1.59, MaxDD -21%). See `data/backtest_sma_au200.csv`.
 
 ### SMA Scalping Rules & Gotchas
@@ -120,7 +111,7 @@ asx-screener/
 
 | Filter | Description |
 |--------|-------------|
-| `di_persist` | DI must exceed threshold for N consecutive candles. Use 2 for choppy pairs (JP225, AUD_USD); keep 1 for fast-moving (XAG, NAS100). |
+| `di_persist` | DI must exceed threshold for N consecutive candles. Use 2 for choppy pairs (JP225); keep 1 for fast-moving (XAG, NAS100). |
 | `adx_min` | ADX floor. JP225 uses 20. |
 | `adx_rising` | ADX must be rising vs previous candle. XAU uses this. |
 | `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 10R), NAS100=1.0. |
@@ -131,30 +122,25 @@ asx-screener/
 
 **⚠️ Do NOT apply:**
 - `sma_ordered` to NAS100 or XAG — destroys Sharpe (NAS100: 2.67→-1.04). SMAs lag on fast moves.
-- `atr_ratio=1.2` to GBP_JPY — harmful.
 - `di_slope` to USD_JPY — harmful (-1.02 Sharpe).
 - `rsi_filter` on any 5m pair — adds noise.
 - `di_persist=2` to XAG or NAS100 — kills edge (XAG: +86%→+10%).
 
 ---
 
-## Portfolio Deployment Status
+## Portfolio Deployment Status (Mar 3, 2026)
 
-| Asset | Strategy | ROI | WR% | Status |
-|-------|----------|-----|-----|--------|
-| UK100_GBP | PVT Scalping | +93.67% | 66.0% | ✅ ACTIVE |
-| XAU_USD | HeikenAshi + SmaScalping | +46.75% / +41.3% | 40.6% / 36.7% | ✅ ACTIVE |
-| XAG_USD | DailyORB + SilverSniper + SilverMomentum + SmaScalping | combined | ~38% | ✅ ACTIVE |
-| USD_CHF | NewBreakout | +60.96% | 40.74% | ✅ ACTIVE |
-| JP225_USD | HeikenAshi + SmaScalping | +32.3% / +48.2% | 31.1% / 35.1% | ✅ ACTIVE |
-| GBP_JPY | SmaScalping | +25.4% | 27.8% | ✅ ACTIVE |
-| USD_JPY | SmaScalping | +47.8% | 37.3% | ⚠️ MONITORING |
-| NAS100_USD | NewBreakout + PVT + SmaScalping | +11.6% / +72% / +22.5% | 38.5% / 75.8% / 28.2% | ⚠️ VALIDATING |
-| AUD_USD | EnhancedSniper + SmaScalping | +3.0% / +9.8% | 66.7% / 34.8% | ⚠️ MONITORING |
-| BCO_USD | CommoditySniper | +11.70% | 44.4% | ⚠️ MONITORING |
-| USD_CAD | SmaScalping | -2.6% | 23.9% | ⚠️ MONITORING |
+| Asset | Strategy | Sharpe | BT WR% | Status |
+|-------|----------|--------|--------|--------|
+| NAS100_USD | NewBreakout + PVTScalping + SmaScalping | 8.48 / 6.24 / 3.28 | 38.5% / 75.8% / 28.2% | ✅ ACTIVE |
+| XAU_USD | SmaScalping + HeikenAshi | 6.48 / 2.35 | 36.7% / 40.6% | ✅ ACTIVE |
+| UK100_GBP | PVTScalping | 5.79 | 66.0% | ✅ ACTIVE |
+| JP225_USD | SmaScalping | 5.93 | 35.1% | ✅ ACTIVE |
+| XAG_USD | SmaScalping + PVTScalping + DailyORB + SilverSniper | 5.59 / 4.95 / 1.99 / 1.53 | 25.6% / — / — / — | ✅ ACTIVE |
+| USD_JPY | SmaScalping | 2.78 | 37.3% | ⚠️ MONITORING (live WR 15.4% vs BT 37.3%) |
+| USD_CHF | NewBreakout | 1.94 | 40.7% | ⚠️ MONITORING (insufficient live data) |
 
-**USD_CAD warning:** Break-even WR at 3.0R is 25%; suspend if live WR falls below 25%.
+**Suspended (Mar 3, 2026):** AUD_USD, USD_CAD, BCO_USD, JP225 HeikenAshi — removed due to live underperformance or insufficient Sharpe.
 
 ---
 
@@ -200,7 +186,7 @@ Backward compatible with legacy single-strategy format.
 
 **Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-**Last Updated:** March 2, 2026 — Strategy Toggle Settings feature added.
+**Last Updated:** March 3, 2026 — Portfolio pruned to 7 pairs; suspended AUD_USD, USD_CAD, BCO_USD, JP225 HeikenAshi based on live underperformance.
 
 ---
 

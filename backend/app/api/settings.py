@@ -107,20 +107,24 @@ async def update_strategy_overrides(
     if email != settings.AUTHORIZED_AUTO_TRADER_EMAIL:
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    # Validate submitted keys against known combos
+    # Validate submitted keys against known combos.
+    # Keys for pairs/strategies that have since been removed from best_strategies.json are
+    # silently dropped — they cannot re-disable anything and would otherwise cause a 422
+    # every time the admin saves after a pair is pruned from the active config.
     known_keys = {c["key"] for c in _build_combos(set())}
-    invalid = [k for k in body.disabled if k not in known_keys]
-    if invalid:
-        raise HTTPException(status_code=422, detail=f"Unknown strategy keys: {invalid}")
+    stale = [k for k in body.disabled if k not in known_keys]
+    valid_disabled = [k for k in body.disabled if k in known_keys]
+    if stale:
+        logger.info(f"Dropping {len(stale)} stale strategy keys no longer in config: {stale}")
 
     try:
         db.collection("config").document("strategy_overrides").set({
-            "disabled": body.disabled,
+            "disabled": valid_disabled,
             "updated_by": email,
             "updated_at": firestore.SERVER_TIMESTAMP
         })
-        logger.info(f"Strategy overrides updated by {email}: {len(body.disabled)} disabled")
-        return {"success": True, "disabled": body.disabled}
+        logger.info(f"Strategy overrides updated by {email}: {len(valid_disabled)} disabled")
+        return {"success": True, "disabled": valid_disabled}
     except Exception as e:
         logger.error(f"Failed to update strategy_overrides: {e}")
         raise HTTPException(status_code=500, detail="Failed to save overrides")
