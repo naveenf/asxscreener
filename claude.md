@@ -93,10 +93,10 @@ asx-screener/
 
 | Pair | TF | DI> | RR | persist | Extra filters | Trades | WR% | ROI% | Sharpe | MaxDD |
 |------|----|-----|----|---------|--------------|--------|-----|------|--------|-------|
-| XAU_USD | 15m | 35 | 5.0 | 2 | `adx_rising` | 30 | 36.7% | 41.3% | 6.48 | -7.73% |
-| XAG_USD | 5m | 35 | 10.0 | 1 | `atr_ratio=1.2, di_slope` | 43 | 25.6% | 106.9% | 5.59 | -4.90% |
+| XAU_USD | 15m | 35 | 5.0 | 2 | `adx_rising, avoid_hours=[8,9]` | 26 | 42.3% | 47.1% | 7.97 | -5.85% |
+| XAG_USD | 5m | 35 | 10.0 | 1 | `atr_ratio=1.2, di_slope, avoid_hours=[14,15,16]` | 45 | 20.0% | 64.2% | 4.17 | -7.73% |
 | JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope` | 37 | 35.1% | 48.2% | 5.93 | -3.94% |
-| NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope` | 39 | 28.2% | 22.5% | 3.28 | -10.47% |
+| NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope, avoid_hours=[7,21,22,23]` | 34 | 32.4% | 28.8% | 4.42 | -10.47% |
 | USD_JPY | 5m | 30 | 2.5 | 1 | `avoid_hours=[15-21]` | 134 | 37.3% | 47.8% | 2.78 | -7.38% |
 
 **Suspended (live underperformance):** AUD_USD (live WR 20% vs 34.8% BT), USD_CAD (0% WR, Sharpe -0.49), GBP_JPY (live WR 12.5% vs 27.8% BT).
@@ -116,7 +116,7 @@ asx-screener/
 | `adx_rising` | ADX must be rising vs previous candle. XAU uses this. |
 | `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 10R), NAS100=1.0. |
 | `di_slope` | DI+ must be rising over last 2 candles — targets fading-momentum entries. Safe for most pairs. |
-| `avoid_hours` | Block entry during specified UTC hours. USD_JPY uses [15–21]. |
+| `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,21,22,23] (pre-London + post-NYSE), USD_JPY=[15–21]. |
 | `di_spread_min` | Min DI+/DI- gap — rejects marginal crossings. |
 | `body_ratio_min` | Min candle body/range ratio — rejects doji candles. |
 
@@ -132,11 +132,11 @@ asx-screener/
 
 | Asset | Strategy | Sharpe | BT WR% | Status |
 |-------|----------|--------|--------|--------|
-| NAS100_USD | NewBreakout + PVTScalping + SmaScalping | 8.48 / 6.24 / 3.28 | 38.5% / 75.8% / 28.2% | ✅ ACTIVE |
-| XAU_USD | SmaScalping + HeikenAshi | 6.48 / 2.35 | 36.7% / 40.6% | ✅ ACTIVE |
+| NAS100_USD | NewBreakout + PVTScalping + SmaScalping | 8.48 / 6.24 / 4.42 | 38.5% / 75.8% / 32.4% | ✅ ACTIVE |
+| XAU_USD | SmaScalping + HeikenAshi | 7.97 / 2.35 | 42.3% / 40.6% | ✅ ACTIVE |
 | UK100_GBP | PVTScalping | 5.79 | 66.0% | ✅ ACTIVE |
 | JP225_USD | SmaScalping | 5.93 | 35.1% | ✅ ACTIVE |
-| XAG_USD | SmaScalping + PVTScalping + DailyORB + SilverSniper | 5.59 / 4.95 / 1.99 / 1.53 | 25.6% / — / — / — | ✅ ACTIVE |
+| XAG_USD | SmaScalping + PVTScalping + DailyORB + SilverSniper | 4.17 / 4.95 / 1.99 / 1.53 | 20.0% / — / — / — | ✅ ACTIVE |
 | USD_JPY | SmaScalping | 2.78 | 37.3% | ⚠️ MONITORING (live WR 15.4% vs BT 37.3%) |
 | USD_CHF | NewBreakout | 1.94 | 40.7% | ⚠️ MONITORING (insufficient live data) |
 

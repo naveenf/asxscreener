@@ -149,6 +149,11 @@ class DailyORBDetector(ForexStrategy):
         if not session_found:
             return None
 
+        # 1b. Session hour block — avoid_hours from params (same UTC-hour filter as SmaScalping)
+        avoid_hours = params.get('avoid_hours', []) if params else []
+        if avoid_hours and hasattr(current_time, 'hour') and current_time.hour in avoid_hours:
+            return None
+
         # 2. Daily Open Range Calculation
         dor = self.calculate_dor(df_15m, session_start)
         if not dor:

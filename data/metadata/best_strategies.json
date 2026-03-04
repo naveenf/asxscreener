@@ -16,7 +16,8 @@
         "params": {
           "di_threshold": 35.0,
           "di_persist": 2,
-          "adx_rising": true
+          "adx_rising": true,
+          "avoid_hours": [8, 9]
         }
       }
     ]
@@ -42,7 +43,8 @@
           "sessions": ["sydney", "london", "new_york"],
           "di_diff_min": 6.0,
           "squeeze_threshold": 1.9,
-          "strength_threshold": 0.5
+          "strength_threshold": 0.5,
+          "avoid_hours": [14, 15, 16]
         }
       },
       {
@@ -60,7 +62,8 @@
           "adx_min": 20.0,
           "require_fvg": true,
           "fvg_score_boost": 0.0,
-          "lookback_hours": 24
+          "lookback_hours": 24,
+          "avoid_hours": [14, 15, 16]
         }
       },
       {
@@ -85,7 +88,8 @@
         "params": {
           "di_threshold": 35.0,
           "atr_ratio_min": 1.2,
-          "di_slope": true
+          "di_slope": true,
+          "avoid_hours": [14, 15, 16]
         }
       }
     ]
@@ -157,7 +161,8 @@
         "params": {
           "di_threshold": 35.0,
           "atr_ratio_min": 1.0,
-          "di_slope": true
+          "di_slope": true,
+          "avoid_hours": [7, 21, 22, 23]
         }
       }
     ]

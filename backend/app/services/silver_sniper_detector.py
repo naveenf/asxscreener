@@ -48,13 +48,13 @@ class SilverSniperDetector(ForexStrategy):
         
         latest_5m = df_5m.iloc[-1]
         prev_5m = df_5m.iloc[-2]
+        current_time = latest_5m.name
 
         # === CRITICAL: Candle Freshness Check ===
         # Don't generate signals from stale candles (prevents trading on old data)
         # For 5m strategy, candle must be very fresh (just closed)
         from datetime import datetime, timedelta
         try:
-            current_time = latest_5m.name
             if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
                 now = datetime.now(current_time.tzinfo)
             else:
@@ -69,6 +69,11 @@ class SilverSniperDetector(ForexStrategy):
         except Exception:
             # If timestamp parsing fails, continue (don't block on this check)
             pass
+
+        # Session hour block — avoid_hours from params (UTC-hour filter, matches SmaScalping)
+        avoid_hours = params.get('avoid_hours', []) if params else []
+        if avoid_hours and hasattr(current_time, 'hour') and current_time.hour in avoid_hours:
+            return None
 
         # 1. 5m Squeeze Detection
         # Calculate recent min width (excluding current candle)
