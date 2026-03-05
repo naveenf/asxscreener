@@ -89,12 +89,12 @@ asx-screener/
 
 ---
 
-## SMA Scalping — Deployed Configs (Mar 3, 2026)
+## SMA Scalping — Deployed Configs (Mar 6, 2026)
 
 | Pair | TF | DI> | RR | persist | Extra filters | Trades | WR% | ROI% | Sharpe | MaxDD |
 |------|----|-----|----|---------|--------------|--------|-----|------|--------|-------|
 | XAU_USD | 15m | 35 | 5.0 | 2 | `adx_rising, avoid_hours=[8,9]` | 26 | 42.3% | 47.1% | 7.97 | -5.85% |
-| XAG_USD | 5m | 35 | 10.0 | 1 | `atr_ratio=1.2, di_slope, avoid_hours=[14,15,16]` | 45 | 20.0% | 64.2% | 4.17 | -7.73% |
+| XAG_USD | 5m | 35 | 12.0 | 1 | `atr_ratio=1.2, di_slope, avoid_hours=[14,15,16]` | 34 | 26.5% | 115.7% | 6.30 | -6.79% |
 | JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope` | 37 | 35.1% | 48.2% | 5.93 | -3.94% |
 | NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope, avoid_hours=[7,21,22,23]` | 34 | 32.4% | 28.8% | 4.42 | -10.47% |
 | USD_JPY | 5m | 30 | 2.5 | 1 | `avoid_hours=[15-21]` | 134 | 37.3% | 47.8% | 2.78 | -7.38% |
@@ -114,7 +114,7 @@ asx-screener/
 | `di_persist` | DI must exceed threshold for N consecutive candles. Use 2 for choppy pairs (JP225); keep 1 for fast-moving (XAG, NAS100). |
 | `adx_min` | ADX floor. JP225 uses 20. |
 | `adx_rising` | ADX must be rising vs previous candle. XAU uses this. |
-| `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 10R), NAS100=1.0. |
+| `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 12R), NAS100=1.0. |
 | `di_slope` | DI+ must be rising over last 2 candles — targets fading-momentum entries. Safe for most pairs. |
 | `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,21,22,23] (pre-London + post-NYSE), USD_JPY=[15–21]. |
 | `di_spread_min` | Min DI+/DI- gap — rejects marginal crossings. |
@@ -136,7 +136,7 @@ asx-screener/
 | XAU_USD | SmaScalping + HeikenAshi | 7.97 / 2.35 | 42.3% / 40.6% | ✅ ACTIVE |
 | UK100_GBP | PVTScalping | 5.79 | 66.0% | ✅ ACTIVE |
 | JP225_USD | SmaScalping | 5.93 | 35.1% | ✅ ACTIVE |
-| XAG_USD | SmaScalping + PVTScalping + DailyORB + SilverSniper | 4.17 / 4.95 / 1.99 / 1.53 | 20.0% / — / — / — | ✅ ACTIVE |
+| XAG_USD | SmaScalping + PVTScalping + DailyORB + SilverSniper | 6.30 / 4.95 / 1.99 / 1.53 | 26.5% / — / — / — | ✅ ACTIVE |
 | USD_JPY | SmaScalping | 2.78 | 37.3% | ⚠️ MONITORING (live WR 15.4% vs BT 37.3%) |
 | USD_CHF | NewBreakout | 1.94 | 40.7% | ⚠️ MONITORING (insufficient live data) |
 
@@ -153,7 +153,7 @@ asx-screener/
   "strategies": [
     { "strategy": "DailyORB", "timeframe": "15m", "target_rr": 2.0, "params": { ... } },
     { "strategy": "SilverSniper", "timeframe": "5m", "target_rr": 3.0 },
-    { "strategy": "SmaScalping", "timeframe": "5m", "target_rr": 10.0, "params": { ... } }
+    { "strategy": "SmaScalping", "timeframe": "5m", "target_rr": 12.0, "params": { ... } }
   ]
 }
 ```
@@ -186,7 +186,7 @@ Backward compatible with legacy single-strategy format.
 
 **Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-**Last Updated:** March 3, 2026 — Portfolio pruned to 7 pairs; suspended AUD_USD, USD_CAD, BCO_USD, JP225 HeikenAshi based on live underperformance.
+**Last Updated:** March 6, 2026 — XAG SmaScalping R:R increased 10→12 (Sharpe 4.17→6.30, BT ROI 64.2%→115.7%) after R:R sweep analysis.
 
 ---
 
