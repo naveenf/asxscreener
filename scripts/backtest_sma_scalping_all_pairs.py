@@ -36,7 +36,7 @@ RISK_PCT        = 0.01
 DEPLOYED = {
     #          tf      di     adx    rr     persist  spread
     "XAU_USD":    dict(tf="15m", di=35.0, adx=0.0,  rr=5.0,  persist=2, spread=0.50),
-    "XAG_USD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=10.0, persist=1, spread=0.03),
+    "XAG_USD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=12.0, persist=1, spread=0.03),
     "JP225_USD":  dict(tf="5m",  di=30.0, adx=20.0, rr=5.0,  persist=2, spread=17.0),
     "AUD_USD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=2.5,  persist=2, spread=0.0002),
     "USD_CAD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=3.0,  persist=1, spread=0.0002),
