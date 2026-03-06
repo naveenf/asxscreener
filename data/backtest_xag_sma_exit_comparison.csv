@@ -1,0 +1,4 @@
+symbol,timeframe,period,exit_mode,trades,wins,win_rate,roi,sharpe,max_dd,avg_r
+XAG_USD,5m,2025-11-21 → 2026-03-06,fixed,34,9,26.5,115.7,6.3,-6.79,2.441
+XAG_USD,5m,2025-11-21 → 2026-03-06,sma20,119,50,42.0,21.18,2.11,-4.28,0.169
+XAG_USD,5m,2025-11-21 → 2026-03-06,sma50,114,42,36.8,19.11,1.7,-6.27,0.165

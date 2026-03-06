@@ -145,7 +145,12 @@ class PortfolioMonitor:
                 
             if data.get('base') is None:
                 continue
-                
+
+            # SmaScalping uses fixed SL/TP only — Oanda broker handles all exits
+            # SMA20 trailing exit was validated to cut winners short on every pair
+            if strategy_name == "SmaScalping":
+                continue
+
             # Check Exit
             result = strategy.check_exit(data, direction, buy_price)
             

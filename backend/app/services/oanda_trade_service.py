@@ -256,6 +256,9 @@ class OandaTradeService:
                 }
 
                 strategy_obj = strategy_map.get(strategy_name)
+                # SmaScalping uses fixed SL/TP — skip SMA20 pre-entry exit check for all pairs
+                if strategy_name == "SmaScalping":
+                    strategy_obj = None
                 if strategy_obj and hasattr(strategy_obj, 'check_exit'):
                     # Fetch LIVE market data from Oanda to check exit conditions
                     try:
