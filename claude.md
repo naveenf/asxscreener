@@ -106,6 +106,7 @@ asx-screener/
 
 **Core entry (LONG):** Price > SMA20/50/100 · DI+ > DI- · DI+ > threshold for N candles · ADX ≥ adx_min · entry not below 2-candle lows
 **Stop Loss:** `max(structural_distance, 1×ATR)` — ATR floor prevents noise-triggered stops.
+**Exit mechanism:** Broker-level SL and TP orders placed on Oanda at entry — trade closes **only** when SL or TP is hit. SMA20 trailing exit is disabled for all SmaScalping pairs. Backtesting showed SMA20 exit cut 60–89% of trades short before TP, reducing Sharpe by 2–5 points per pair across all 5 deployed configs (validated Mar 6, 2026 — see `data/backtest_sma_all_pairs_exit_mode.csv`).
 
 **Optional noise filters** (configured per-pair in `best_strategies.json`):
 
@@ -125,6 +126,7 @@ asx-screener/
 - `di_slope` to USD_JPY — harmful (-1.02 Sharpe).
 - `rsi_filter` on any 5m pair — adds noise.
 - `di_persist=2` to XAG or NAS100 — kills edge (XAG: +86%→+10%).
+- SMA20 trailing exit — validated harmful on all 5 pairs; 60–89% of trades exit early, avg-R collapses to <0.25R vs 0.96–2.44R with fixed TP. Do not re-enable `check_exit` for SmaScalping in `portfolio_monitor.py` or `oanda_trade_service.py`.
 
 ---
 
@@ -186,7 +188,7 @@ Backward compatible with legacy single-strategy format.
 
 **Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-**Last Updated:** March 6, 2026 — XAG SmaScalping R:R increased 10→12 (Sharpe 4.17→6.30, BT ROI 64.2%→115.7%) after R:R sweep analysis.
+**Last Updated:** March 6, 2026 — XAG SmaScalping R:R increased 10→12; SMA20 trailing exit disabled for all SmaScalping pairs (Oanda broker SL/TP handles all exits).
 
 ---
 
