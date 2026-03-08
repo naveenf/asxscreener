@@ -97,7 +97,7 @@ asx-screener/
 | XAG_USD | 5m | 35 | 12.0 | 1 | `atr_ratio=1.2, di_slope, avoid_hours=[14,15,16]` | 34 | 26.5% | 115.7% | 6.30 | -6.79% |
 | JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope` | 37 | 35.1% | 48.2% | 5.93 | -3.94% |
 | NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope, avoid_hours=[7,21,22,23]` | 34 | 32.4% | 28.8% | 4.42 | -10.47% |
-| USD_JPY | 5m | 30 | 2.5 | 1 | `avoid_hours=[15-21]` | 134 | 37.3% | 47.8% | 2.78 | -7.38% |
+| USD_JPY | 5m | 30 | 2.5 | 1 | `adx_min=15, avoid_hours=[15-21]` | 158 | 36.1% | 48.1% | 2.20 | -15.00% |
 
 **Suspended (live underperformance):** AUD_USD (live WR 20% vs 34.8% BT), USD_CAD (0% WR, Sharpe -0.49), GBP_JPY (live WR 12.5% vs 27.8% BT).
 **NOT deployed:** AU200_AUD (Sharpe 1.59, MaxDD -21%). See `data/backtest_sma_au200.csv`.
@@ -124,6 +124,9 @@ asx-screener/
 **⚠️ Do NOT apply:**
 - `sma_ordered` to NAS100 or XAG — destroys Sharpe (NAS100: 2.67→-1.04). SMAs lag on fast moves.
 - `di_slope` to USD_JPY — harmful (-1.02 Sharpe).
+- `di_persist=2` to USD_JPY — harmful (Sharpe 1.69→0.89, MaxDD balloons to -18.4%).
+- `di_threshold` above 30 for USD_JPY — DI spread too tight on JPY; di=35 produces negative ROI.
+- `adx_min` above 15 for USD_JPY — adx_min=20+ over-filters (Sharpe 1.69→1.15); sweet spot is 15.
 - `rsi_filter` on any 5m pair — adds noise.
 - `di_persist=2` to XAG or NAS100 — kills edge (XAG: +86%→+10%).
 - SMA20 trailing exit — validated harmful on all 5 pairs; 60–89% of trades exit early, avg-R collapses to <0.25R vs 0.96–2.44R with fixed TP. Do not re-enable `check_exit` for SmaScalping in `portfolio_monitor.py` or `oanda_trade_service.py`.
@@ -188,7 +191,7 @@ Backward compatible with legacy single-strategy format.
 
 **Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-**Last Updated:** March 6, 2026 — XAG SmaScalping R:R increased 10→12; SMA20 trailing exit disabled for all SmaScalping pairs (Oanda broker SL/TP handles all exits).
+**Last Updated:** March 8, 2026 — Added `adx_min=15` to USD/JPY SmaScalping (Sharpe 1.69→2.20, ROI 34.8%→48.1%, validated via 7-week filter sweep). XAG SmaScalping R:R increased 10→12; SMA20 trailing exit disabled for all SmaScalping pairs (Oanda broker SL/TP handles all exits).
 
 ---
 

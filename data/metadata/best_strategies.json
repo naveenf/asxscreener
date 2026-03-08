@@ -191,6 +191,7 @@
     "params": {
       "di_threshold": 30.0,
       "di_persist": 1,
+      "adx_min": 15.0,
       "avoid_hours": [15, 16, 17, 18, 19, 20, 21]
     }
   }
