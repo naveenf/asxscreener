@@ -285,66 +285,86 @@ async def get_trade_analytics(
     """
     try:
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
-        
+
         # We only want CLOSED trades for analytics
         query = portfolio_ref.where('status', '==', 'CLOSED')
         docs = query.stream()
-        
+
         forex_data = get_forex_data()
         signals = forex_data.get('signals', [])
-        
+
         trades = []
         for doc in docs:
             data = doc.to_dict()
-            
-            # Date filter
+
             sell_date_str = data.get('sell_date')
             if not sell_date_str:
                 continue
-            
+
             sell_date = datetime.strptime(sell_date_str, "%Y-%m-%d").date()
             if start_date and sell_date < start_date:
                 continue
             if end_date and sell_date > end_date:
                 continue
-                
+
             metrics = calculate_forex_metrics(data, signals)
             data['pnl_aud'] = metrics['gain_loss_aud']
             data['sell_date_dt'] = sell_date
             trades.append(data)
-            
+
         if not trades:
             return {
                 "summary": {
                     "total_trades": 0, "total_profit_aud": 0, "total_loss_aud": 0,
                     "net_pnl_aud": 0, "net_pnl_percent": 0, "win_rate": 0,
                     "loss_rate": 0, "avg_winning_trade": 0, "avg_losing_trade": 0,
-                    "best_trade": 0, "worst_trade": 0, "profit_factor": 0
+                    "best_trade": 0, "worst_trade": 0, "profit_factor": 0,
+                    "current_balance_aud": 0, "starting_balance_aud": 0
                 },
                 "by_strategy": {}, "by_month": {}, "daily_breakdown": {}, "equity_curve": []
             }
-            
+
         # 1. Summary Metrics
         winning_trades = [t for t in trades if t['pnl_aud'] > 0]
         losing_trades = [t for t in trades if t['pnl_aud'] <= 0]
-        
+
         total_profit = sum(t['pnl_aud'] for t in winning_trades)
         total_loss = abs(sum(t['pnl_aud'] for t in losing_trades))
         net_pnl = total_profit - total_loss
-        
+
         total_trades_count = len(trades)
         win_rate = (len(winning_trades) / total_trades_count * 100) if total_trades_count > 0 else 0
-        
-        # Calculate net_pnl_percent (using sum of costs)
-        total_cost = sum(t['buy_price'] * t['quantity'] for t in trades)
-        net_pnl_percent = (net_pnl / total_cost * 100) if total_cost > 0 else 0
-        
+
+        # ROI = net_pnl / balance_at_start_date * 100
+        # Look up the closest balance snapshot stored in Firestore on or before start_date.
+        # Snapshots are written to account_balance_history/{YYYY-MM-DD} on every forex refresh.
+        roi_start = start_date.isoformat() if start_date else '2026-02-19'
+        starting_balance_aud = 0
+        try:
+            snap = (
+                db.collection('account_balance_history')
+                .where('__name__', '<=', db.collection('account_balance_history').document(roi_start))
+                .order_by('__name__', direction='DESCENDING')
+                .limit(1)
+                .get()
+            )
+            if snap:
+                starting_balance_aud = float(snap[0].to_dict().get('balance_aud', 0))
+        except Exception as e:
+            logger.warning(f"Could not fetch balance snapshot for {roi_start}: {e}")
+
+        oanda_summary = OandaPriceService.get_account_summary()
+        current_balance_aud = float(oanda_summary.get('balance', 0)) if oanda_summary else 0
+        net_pnl_percent = (net_pnl / starting_balance_aud * 100) if starting_balance_aud > 0 else 0
+
         summary = {
             "total_trades": total_trades_count,
             "total_profit_aud": total_profit,
             "total_loss_aud": -total_loss,
             "net_pnl_aud": net_pnl,
             "net_pnl_percent": net_pnl_percent,
+            "current_balance_aud": current_balance_aud,
+            "starting_balance_aud": starting_balance_aud,
             "win_rate": win_rate,
             "loss_rate": 100 - win_rate,
             "avg_winning_trade": total_profit / len(winning_trades) if winning_trades else 0,

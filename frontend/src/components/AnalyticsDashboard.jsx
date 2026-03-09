@@ -68,7 +68,11 @@ const AnalyticsDashboard = () => {
         <SummaryCard
           title="Net P&L (AUD)"
           value={`$${summary.net_pnl_aud.toFixed(2)}`}
-          subtext={`${summary.net_pnl_percent.toFixed(1)}% ROI`}
+          subtext={
+            summary.starting_balance_aud
+              ? `${summary.net_pnl_percent.toFixed(1)}% ROI on $${summary.starting_balance_aud.toFixed(0)}`
+              : 'ROI N/A'
+          }
           className={summary.net_pnl_aud >= 0 ? 'positive' : 'negative'}
         />
         <SummaryCard

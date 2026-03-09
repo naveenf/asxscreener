@@ -6,6 +6,7 @@ Fetches real-time price data and handles trade execution via OANDA API.
 
 import logging
 import time
+from datetime import datetime
 from functools import wraps
 from oandapyV20 import API
 import oandapyV20.endpoints.instruments as instruments
@@ -218,10 +219,41 @@ class OandaPriceService:
         account_id = settings.OANDA_ACCOUNT_ID
         if not api or not account_id:
             return None
-            
+
         r = accounts.AccountSummary(accountID=account_id)
         api.request(r)
         return r.response.get('account')
+
+    @classmethod
+    def snapshot_balance_to_firestore(cls) -> Optional[float]:
+        """
+        Fetch current Oanda account balance and NAV, then write a daily snapshot
+        to Firestore at account_balance_history/{YYYY-MM-DD}.
+        Called on every forex refresh cycle so we build a historical record.
+        Returns the balance written, or None on failure.
+        """
+        from ..firebase_setup import db
+
+        summary = cls.get_account_summary()
+        if not summary:
+            logger.warning("snapshot_balance_to_firestore: could not fetch Oanda account summary")
+            return None
+
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        balance_aud = float(summary.get('balance', 0))
+        nav_aud = float(summary.get('NAV', balance_aud))
+
+        try:
+            db.collection('account_balance_history').document(today).set({
+                'balance_aud': balance_aud,
+                'nav_aud': nav_aud,
+                'updated_at': datetime.utcnow().isoformat()
+            })
+            logger.info(f"Balance snapshot saved: {today} = ${balance_aud:.2f} AUD (NAV ${nav_aud:.2f})")
+            return balance_aud
+        except Exception as e:
+            logger.error(f"Failed to write balance snapshot to Firestore: {e}")
+            return None
 
     @classmethod
     @retry_oanda(retries=3, delay=1)

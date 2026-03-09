@@ -15,6 +15,7 @@ from .market_data import update_all_stocks_data
 from .insider_trades import InsiderTradesService
 from .forex_screener import ForexScreener
 from .oanda_trade_service import OandaTradeService
+from .oanda_price import OandaPriceService
 from .portfolio_monitor import PortfolioMonitor
 from .notification import EmailService
 from .refresh_manager import refresh_manager
@@ -92,6 +93,12 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
                 logger.info(f"[{task_id}] Loaded {len(disabled_combos)} disabled combos from Firestore")
         except Exception as e:
             logger.warning(f"[{task_id}] Could not load strategy overrides, running all: {e}")
+
+        # Snapshot current Oanda balance to Firestore for historical ROI tracking
+        try:
+            OandaPriceService.snapshot_balance_to_firestore()
+        except Exception as be:
+            logger.warning(f"[{task_id}] Balance snapshot failed (non-critical): {be}")
 
         logger.info(f"[{task_id}] Running orchestrator...")
         results = ForexScreener.run_orchestrated_refresh(
