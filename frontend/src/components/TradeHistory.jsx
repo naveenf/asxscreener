@@ -7,8 +7,8 @@ const TradeHistory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Feature was implemented on 2026-02-19; only show synced trades from that date onwards
-  const SYNC_START_DATE = '2026-02-19';
+  // Default to recent date; trades are synced from Oanda since Feb 2026
+  const SYNC_START_DATE = '2026-03-10';
   const getTodayDate = () => new Date().toISOString().split('T')[0];
 
   // Filters

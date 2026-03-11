@@ -11,8 +11,8 @@ const AnalyticsDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Feature was implemented on 2026-02-19; default analytics to that date onwards
-  const SYNC_START_DATE = '2026-02-19';
+  // Default to recent date; trades are synced from Oanda since Feb 2026
+  const SYNC_START_DATE = '2026-03-10';
   const getTodayDate = () => new Date().toISOString().split('T')[0];
 
   const [startDate, setStartDate] = useState(SYNC_START_DATE);
@@ -90,6 +90,13 @@ const AnalyticsDashboard = () => {
           value={`$${summary.best_trade.toFixed(2)}`}
           className="positive"
         />
+        {summary.current_balance_aud > 0 && (
+          <SummaryCard
+            title="Account Balance"
+            value={`$${summary.current_balance_aud.toFixed(0)}`}
+            subtext="Current Oanda balance (AUD)"
+          />
+        )}
       </div>
 
       <div className="charts-grid">

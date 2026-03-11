@@ -355,6 +355,14 @@ async def get_trade_analytics(
 
         oanda_summary = OandaPriceService.get_account_summary()
         current_balance_aud = float(oanda_summary.get('balance', 0)) if oanda_summary else 0
+
+        # If no Firestore snapshot found, estimate starting balance from current balance
+        if starting_balance_aud == 0 and current_balance_aud > 0:
+            estimated = current_balance_aud - net_pnl
+            if estimated > 0:
+                starting_balance_aud = estimated
+                logger.info(f"No balance snapshot for {roi_start}; using estimated starting balance ${estimated:.2f}")
+
         net_pnl_percent = (net_pnl / starting_balance_aud * 100) if starting_balance_aud > 0 else 0
 
         summary = {
