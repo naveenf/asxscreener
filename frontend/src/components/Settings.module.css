@@ -173,3 +173,56 @@
   font-size: 0.8rem;
   color: var(--color-text-muted, #888);
 }
+
+/* Direction selector */
+.directionGroup {
+  display: flex;
+  gap: 2px;
+}
+
+.directionGroup.readOnly {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.directionBtn {
+  width: 28px;
+  height: 24px;
+  border: 1px solid #444;
+  background: #222;
+  color: #888;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.directionBtn:disabled {
+  cursor: not-allowed;
+}
+
+.directionBtn:hover:not(:disabled) {
+  border-color: #666;
+  color: #ccc;
+}
+
+.directionBtnActive {
+  border-color: transparent;
+  color: #fff;
+}
+
+.directionBtn_both.directionBtnActive {
+  background: #3b82f6;
+}
+
+.directionBtn_buy.directionBtnActive {
+  background: #22c55e;
+}
+
+.directionBtn_sell.directionBtnActive {
+  background: #ef4444;
+}

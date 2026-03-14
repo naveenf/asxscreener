@@ -86,11 +86,14 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
 
         # Fetch user override config from Firestore
         disabled_combos = set()
+        direction_overrides = {}
         try:
             doc = db.collection("config").document("strategy_overrides").get()
             if doc.exists:
-                disabled_combos = set(doc.to_dict().get("disabled", []))
-                logger.info(f"[{task_id}] Loaded {len(disabled_combos)} disabled combos from Firestore")
+                overrides_data = doc.to_dict()
+                disabled_combos = set(overrides_data.get("disabled", []))
+                direction_overrides = overrides_data.get("direction_overrides", {})
+                logger.info(f"[{task_id}] Loaded {len(disabled_combos)} disabled combos, {len(direction_overrides)} direction overrides from Firestore")
         except Exception as e:
             logger.warning(f"[{task_id}] Could not load strategy overrides, running all: {e}")
 
@@ -107,7 +110,8 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
             config_path=settings.METADATA_DIR / "forex_pairs.json",
             output_path=settings.PROCESSED_DATA_DIR / "forex_signals.json",
             mode=mode,
-            disabled_combos=disabled_combos
+            disabled_combos=disabled_combos,
+            direction_overrides=direction_overrides
         )
         logger.info(f"[{task_id}] Orchestrator finished.")
         

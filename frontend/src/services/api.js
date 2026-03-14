@@ -224,10 +224,11 @@ export async function getStrategyOverrides() {
 }
 
 /**
- * Save updated disabled strategy list
+ * Save updated disabled strategy list and direction overrides
  * @param {string[]} disabled - Array of "PAIR::Strategy" combo keys to disable
+ * @param {Object} direction_overrides - Map of "PAIR::Strategy" → "both"|"buy"|"sell"
  */
-export async function updateStrategyOverrides(disabled) {
+export async function updateStrategyOverrides(disabled, direction_overrides = {}) {
   const token = localStorage.getItem('google_token');
   const response = await fetch(`${API_BASE}/settings/strategy-overrides`, {
     method: 'PUT',
@@ -235,7 +236,7 @@ export async function updateStrategyOverrides(disabled) {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ disabled })
+    body: JSON.stringify({ disabled, direction_overrides })
   });
 
   if (!response.ok) {

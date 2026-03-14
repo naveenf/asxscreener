@@ -112,7 +112,8 @@ class ForexScreener:
         config_path: Path,
         output_path: Path,
         mode: str = 'dynamic',
-        disabled_combos: set = None
+        disabled_combos: set = None,
+        direction_overrides: dict = None
     ):
         """Orchestrate full download and screening cycle."""
         # 1. Download fresh data
@@ -136,13 +137,13 @@ class ForexScreener:
             config_path=config_path,
             output_path=output_path
         )
-        return screener.screen_all(mode=mode, disabled_combos=disabled_combos)
+        return screener.screen_all(mode=mode, disabled_combos=disabled_combos, direction_overrides=direction_overrides)
 
     def load_pairs(self) -> List[Dict]:
         with open(self.config_path, 'r') as f:
             return json.load(f)['pairs']
 
-    def screen_all(self, mode: str = 'dynamic', disabled_combos: set = None) -> Dict:
+    def screen_all(self, mode: str = 'dynamic', disabled_combos: set = None, direction_overrides: dict = None) -> Dict:
         """
         Screen assets. 
         If mode='sniper', only screen assets that use Sniper or SilverSniper strategy.
@@ -270,6 +271,17 @@ class ForexScreener:
                     total_analyzed += 1
 
                     if result and result.get('signal'):
+                        # FILTER: Direction override (buy/sell/both)
+                        if direction_overrides:
+                            allowed = direction_overrides.get(combo_key, "both")
+                            signal_dir = result['signal'].upper()  # "BUY" or "SELL"
+                            if allowed == "buy" and signal_dir != "BUY":
+                                logger.info(f"Skipping {combo_key} {signal_dir} signal (direction locked to buy)")
+                                continue
+                            if allowed == "sell" and signal_dir != "SELL":
+                                logger.info(f"Skipping {combo_key} {signal_dir} signal (direction locked to sell)")
+                                continue
+
                         # Add pair metadata
                         result['name'] = pair.get('name', symbol)
                         result['type'] = pair.get('type', 'Unknown')

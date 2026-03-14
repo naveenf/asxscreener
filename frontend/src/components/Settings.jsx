@@ -14,6 +14,7 @@ function Settings({ onShowToast }) {
   const { user, loading: authLoading } = useAuth();
   const [combos, setCombos] = useState([]);
   const [disabled, setDisabled] = useState(new Set());
+  const [directionOverrides, setDirectionOverrides] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,6 +30,7 @@ function Settings({ onShowToast }) {
       const data = await getStrategyOverrides();
       setCombos(data.combos || []);
       setDisabled(new Set(data.disabled || []));
+      setDirectionOverrides(data.direction_overrides || {});
       setIsAdmin(data.is_admin || false);
     } catch (err) {
       onShowToast({ message: 'Failed to load strategy settings', type: 'error' });
@@ -50,10 +52,23 @@ function Settings({ onShowToast }) {
     });
   };
 
+  const handleDirectionChange = (key, value) => {
+    if (!isAdmin) return;
+    setDirectionOverrides(prev => {
+      const next = { ...prev };
+      if (value === 'both') {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return next;
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateStrategyOverrides([...disabled]);
+      await updateStrategyOverrides([...disabled], directionOverrides);
       onShowToast({ message: 'Strategy settings saved. Takes effect on next screener run.', type: 'success' });
     } catch (err) {
       onShowToast({ message: err.message || 'Failed to save', type: 'error' });
@@ -109,10 +124,24 @@ function Settings({ onShowToast }) {
             <h3 className={styles.pairHeader}>{pair.replaceAll('_', '/')}</h3>
             {pairCombos.map(combo => {
               const isEnabled = !disabled.has(combo.key);
+              const direction = directionOverrides[combo.key] || 'both';
               return (
                 <div key={combo.key} className={styles.row}>
                   <span className={styles.strategyName}>{combo.strategy}</span>
                   <span className={styles.timeframe}>{combo.timeframe}</span>
+                  <div className={`${styles.directionGroup} ${!isAdmin || !isEnabled ? styles.readOnly : ''}`}>
+                    {['both', 'buy', 'sell'].map(opt => (
+                      <button
+                        key={opt}
+                        className={`${styles.directionBtn} ${direction === opt ? styles.directionBtnActive : ''} ${styles[`directionBtn_${opt}`]}`}
+                        onClick={() => handleDirectionChange(combo.key, opt)}
+                        disabled={!isAdmin || !isEnabled}
+                        title={opt === 'both' ? 'Both directions' : opt === 'buy' ? 'Buy only' : 'Sell only'}
+                      >
+                        {opt === 'both' ? '⇅' : opt === 'buy' ? '↑' : '↓'}
+                      </button>
+                    ))}
+                  </div>
                   <label className={`${styles.toggle} ${!isAdmin ? styles.readOnly : ''}`}>
                     <input
                       type="checkbox"
@@ -140,7 +169,7 @@ function Settings({ onShowToast }) {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
           <span className={styles.disabledCount}>
-            {disabled.size} combo{disabled.size !== 1 ? 's' : ''} disabled
+            {disabled.size} disabled · {Object.keys(directionOverrides).length} direction{Object.keys(directionOverrides).length !== 1 ? 's' : ''} locked
           </span>
         </div>
       )}

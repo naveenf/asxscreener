@@ -39,11 +39,14 @@ async def get_current_user_email(authorization: str = Header(...)) -> str:
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
 
-def _build_combos(disabled: set) -> List[dict]:
+def _build_combos(disabled: set, direction_overrides: dict = None) -> List[dict]:
     """
-    Parse best_strategies.json and return full combo list with enabled/disabled status.
+    Parse best_strategies.json and return full combo list with enabled/disabled status
+    and direction preference (both/buy/sell).
     Each combo is identified by 'PAIR::StrategyName'.
     """
+    if direction_overrides is None:
+        direction_overrides = {}
     combos = []
     try:
         with open(BEST_STRATEGIES_PATH, "r") as f:
@@ -63,7 +66,8 @@ def _build_combos(disabled: set) -> List[dict]:
                 "pair": pair,
                 "strategy": strategy_name,
                 "timeframe": timeframe,
-                "enabled": key not in disabled
+                "enabled": key not in disabled,
+                "direction": direction_overrides.get(key, "both")
             })
 
     return combos
@@ -76,23 +80,28 @@ async def get_strategy_overrides(email: str = Depends(get_current_user_email)):
     Any logged-in user can read this.
     """
     disabled = set()
+    direction_overrides = {}
     try:
         doc = db.collection("config").document("strategy_overrides").get()
         if doc.exists:
-            disabled = set(doc.to_dict().get("disabled", []))
+            data = doc.to_dict()
+            disabled = set(data.get("disabled", []))
+            direction_overrides = data.get("direction_overrides", {})
     except Exception as e:
         logger.warning(f"Could not read strategy_overrides from Firestore: {e}")
 
-    combos = _build_combos(disabled)
+    combos = _build_combos(disabled, direction_overrides)
     return {
         "combos": combos,
         "disabled": list(disabled),
+        "direction_overrides": direction_overrides,
         "is_admin": email == settings.AUTHORIZED_AUTO_TRADER_EMAIL
     }
 
 
 class StrategyOverridesUpdate(BaseModel):
     disabled: List[str]
+    direction_overrides: dict = {}
 
 
 @router.put("/strategy-overrides")
@@ -117,14 +126,22 @@ async def update_strategy_overrides(
     if stale:
         logger.info(f"Dropping {len(stale)} stale strategy keys no longer in config: {stale}")
 
+    # Validate direction_overrides: keep only known keys with valid values
+    valid_directions = {"both", "buy", "sell"}
+    valid_direction_overrides = {
+        k: v for k, v in body.direction_overrides.items()
+        if k in known_keys and v in valid_directions and v != "both"
+    }
+
     try:
         db.collection("config").document("strategy_overrides").set({
             "disabled": valid_disabled,
+            "direction_overrides": valid_direction_overrides,
             "updated_by": email,
             "updated_at": firestore.SERVER_TIMESTAMP
         })
-        logger.info(f"Strategy overrides updated by {email}: {len(valid_disabled)} disabled")
-        return {"success": True, "disabled": valid_disabled}
+        logger.info(f"Strategy overrides updated by {email}: {len(valid_disabled)} disabled, {len(valid_direction_overrides)} direction overrides")
+        return {"success": True, "disabled": valid_disabled, "direction_overrides": valid_direction_overrides}
     except Exception as e:
         logger.error(f"Failed to update strategy_overrides: {e}")
         raise HTTPException(status_code=500, detail="Failed to save overrides")
