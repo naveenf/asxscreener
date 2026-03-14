@@ -1,13 +1,7 @@
 {
   "XAU_USD": {
-    "risk_pct": 0.02,
+    "risk_pct": 0.015,
     "strategies": [
-      {
-        "strategy": "HeikenAshi",
-        "sharpe": 2.35,
-        "timeframe": "1h",
-        "target_rr": 5.0
-      },
       {
         "strategy": "SmaScalping",
         "sharpe": 6.48,
@@ -23,63 +17,8 @@
     ]
   },
   "XAG_USD": {
-    "risk_pct": 0.02,
+    "risk_pct": 0.01,
     "strategies": [
-      {
-        "strategy": "DailyORB",
-        "sharpe": 1.99,
-        "timeframe": "15m",
-        "target_rr": 2.0,
-        "time_blocks": {
-          "avoid_utc_hours": [14, 15, 16],
-          "sydney_time": "1:00 AM - 3:00 AM (no trades)",
-          "reason": "Avoid London-NY overlap peak volatility"
-        },
-        "params": {
-          "orb_hours": 1.5,
-          "htf": "4h",
-          "adx_min_15m": 18,
-          "adx_min_htf": 20,
-          "sessions": ["sydney", "london", "new_york"],
-          "di_diff_min": 6.0,
-          "squeeze_threshold": 1.9,
-          "strength_threshold": 0.5,
-          "avoid_hours": [14, 15, 16]
-        }
-      },
-      {
-        "strategy": "SilverSniper",
-        "sharpe": 1.53,
-        "timeframe": "5m",
-        "target_rr": 3.0,
-        "time_blocks": {
-          "avoid_utc_hours": [14, 15, 16],
-          "sydney_time": "1:00 AM - 3:00 AM (no trades)",
-          "reason": "Avoid London-NY overlap peak volatility (5m ultra-sensitive)"
-        },
-        "params": {
-          "squeeze_threshold": 1.4,
-          "adx_min": 20.0,
-          "require_fvg": true,
-          "fvg_score_boost": 0.0,
-          "lookback_hours": 24,
-          "avoid_hours": [14, 15, 16]
-        }
-      },
-      {
-        "strategy": "PVTScalping",
-        "sharpe": 4.95,
-        "timeframe": "1h",
-        "target_rr": 2.5,
-        "params": {
-          "pvt_threshold": 0.05,
-          "consecutive_pvt_candles": 1,
-          "rsi_entry_long": 20,
-          "rsi_entry_short": 30,
-          "rsi_exit_long": 33,
-          "rsi_exit_short": 67
-        }
-      },
       {
         "strategy": "SmaScalping",
         "sharpe": 6.30,
@@ -95,7 +34,7 @@
     ]
   },
   "JP225_USD": {
-    "risk_pct": 0.02,
+    "risk_pct": 0.015,
     "strategies": [
       {
         "strategy": "SmaScalping",
@@ -111,25 +50,12 @@
       }
     ]
   },
-  "USD_CHF": {
-    "risk_pct": 0.01,
-    "strategy": "NewBreakout",
-    "sharpe": 1.94,
-    "timeframe": "15m",
-    "target_rr": 1.5,
-    "params": {
-      "adx_threshold": 25.0,
-      "ema_period": 34,
-      "sr_lookback_candles": 40,
-      "atr_multiplier": 2.0
-    }
-  },
   "NAS100_USD": {
     "risk_pct": 0.01,
     "strategies": [
       {
         "strategy": "NewBreakout",
-        "sharpe": 8.48,
+        "sharpe": 3.36,
         "timeframe": "15m",
         "target_rr": 2.0,
         "params": {
@@ -138,61 +64,41 @@
           "sr_lookback_candles": 40,
           "atr_multiplier": 2.0
         }
-      },
-      {
-        "strategy": "PVTScalping",
-        "sharpe": 6.24,
-        "timeframe": "1h",
-        "target_rr": 2.5,
-        "params": {
-          "pvt_threshold": 0.05,
-          "consecutive_pvt_candles": 1,
-          "rsi_entry_long": 20,
-          "rsi_entry_short": 30,
-          "rsi_exit_long": 33,
-          "rsi_exit_short": 67
-        }
-      },
-      {
-        "strategy": "SmaScalping",
-        "sharpe": 3.28,
-        "timeframe": "5m",
-        "target_rr": 4.5,
-        "params": {
-          "di_threshold": 35.0,
-          "atr_ratio_min": 1.0,
-          "di_slope": true,
-          "avoid_hours": [7, 21, 22, 23]
-        }
       }
     ]
   },
   "UK100_GBP": {
     "risk_pct": 0.01,
-    "strategy": "PVTScalping",
-    "sharpe": 5.79,
-    "timeframe": "1h",
-    "target_rr": 2.5,
-    "params": {
-      "pvt_threshold": 0.05,
-      "consecutive_pvt_candles": 1,
-      "rsi_entry_long": 20,
-      "rsi_entry_short": 30,
-      "rsi_exit_long": 33,
-      "rsi_exit_short": 67
-    }
+    "strategies": [
+      {
+        "strategy": "PVTScalping",
+        "sharpe": 5.79,
+        "timeframe": "1h",
+        "target_rr": 2.5,
+        "params": {
+          "pvt_threshold": 0.05,
+          "consecutive_pvt": 1,
+          "rsi_entry_long": 20,
+          "rsi_entry_short": 30
+        }
+      }
+    ]
   },
   "USD_JPY": {
     "risk_pct": 0.01,
-    "strategy": "SmaScalping",
-    "sharpe": 2.78,
-    "timeframe": "5m",
-    "target_rr": 2.5,
-    "params": {
-      "di_threshold": 30.0,
-      "di_persist": 1,
-      "adx_min": 15.0,
-      "avoid_hours": [15, 16, 17, 18, 19, 20, 21]
-    }
+    "strategies": [
+      {
+        "strategy": "SmaScalping",
+        "sharpe": 2.78,
+        "timeframe": "5m",
+        "target_rr": 2.5,
+        "params": {
+          "di_threshold": 30.0,
+          "di_persist": 1,
+          "adx_min": 15.0,
+          "avoid_hours": [15, 16, 17, 18, 19, 20, 21]
+        }
+      }
+    ]
   }
 }

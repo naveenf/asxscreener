@@ -133,17 +133,37 @@ asx-screener/
 
 ---
 
-## Portfolio Deployment Status (Mar 3, 2026)
+## Active Strategy Configuration (Mar 14, 2026)
 
-| Asset | Strategy | Sharpe | BT WR% | Status |
-|-------|----------|--------|--------|--------|
-| NAS100_USD | NewBreakout + PVTScalping + SmaScalping | 8.48 / 6.24 / 4.42 | 38.5% / 75.8% / 32.4% | ✅ ACTIVE |
-| XAU_USD | SmaScalping + HeikenAshi | 7.97 / 2.35 | 42.3% / 40.6% | ✅ ACTIVE |
-| UK100_GBP | PVTScalping | 5.79 | 66.0% | ✅ ACTIVE |
-| JP225_USD | SmaScalping | 5.93 | 35.1% | ✅ ACTIVE |
-| XAG_USD | SmaScalping + PVTScalping + DailyORB + SilverSniper | 6.30 / 4.95 / 1.99 / 1.53 | 26.5% / — / — / — | ✅ ACTIVE |
-| USD_JPY | SmaScalping | 2.78 | 37.3% | ⚠️ MONITORING (live WR 15.4% vs BT 37.3%) |
-| USD_CHF | NewBreakout | 1.94 | 40.7% | ⚠️ MONITORING (insufficient live data) |
+Streamlined to 6 pairs across 3 strategies. NAS100 uses NewBreakout (not SmaScalping) to avoid simultaneous signals with JP225 which is also on SmaScalping. UK100 re-enabled with PVTScalping. Other strategies archived in `data/metadata/best_strategies_archived.json`.
+
+**Active pairs** (`best_strategies.json` + `forex_pairs.json`):
+
+| Asset | Strategy | TF | Sharpe | ROI% | WR% | MaxDD% | risk_pct |
+|-------|----------|----|--------|------|-----|--------|----------|
+| XAU_USD | SmaScalping | 15m | 7.97 | 47.1% | 42.3% | -5.85% | 1.5% |
+| XAG_USD | SmaScalping | 5m | 6.30 | 115.7% | 26.5% | -6.79% | 1.0% |
+| JP225_USD | SmaScalping | 5m | 5.93 | 48.2% | 35.1% | -3.94% | 1.5% |
+| UK100_GBP | PVTScalping | 1h | 2.99 | 14.3% | 38.1% | -4.02% | 1.0% |
+| NAS100_USD | NewBreakout | 15m | 3.36 | 17.8% | 44.2% | -5.88% | 1.0% |
+| USD_JPY | SmaScalping | 5m | 2.20 | 48.1% | 36.1% | -15.00% | 1.0% |
+
+**Archived (configs preserved in `best_strategies_archived.json`, not running):**
+
+| Asset | Strategy | Sharpe | Reason archived |
+|-------|----------|--------|-----------------|
+| XAG_USD | PVTScalping | 4.95 | Reducing strategy clutter |
+| XAG_USD | DailyORB | 1.99 | Reducing strategy clutter |
+| XAG_USD | SilverSniper | 1.53 | Reducing strategy clutter |
+| NAS100_USD | PVTScalping | 6.24 | Replaced by NewBreakout |
+| NAS100_USD | SmaScalping | 3.28 | Replaced by NewBreakout (avoids JP225 correlation) |
+| XAU_USD | HeikenAshi | 2.35 | Reducing strategy clutter |
+| USD_CHF | NewBreakout | 1.94 | Low Sharpe; insufficient live data |
+| AUD_USD | SmaScalping | — | Suspended: live WR 20% vs BT 34.8% |
+| USD_CAD | SmaScalping | — | Suspended: 0% live WR, Sharpe -0.49 |
+| GBP_JPY | SmaScalping | — | Suspended: live WR 12.5% vs BT 27.8% |
+
+**Note on UK100_GBP (PVTScalping, Sharpe 5.79):** This is competitive with JP225 (5.93) and higher than NAS100 (4.42) and USD_JPY (2.20). Worth re-enabling when expanding beyond SmaScalping.
 
 **Suspended (Mar 3, 2026):** AUD_USD, USD_CAD, BCO_USD, JP225 HeikenAshi — removed due to live underperformance or insufficient Sharpe.
 
@@ -191,7 +211,7 @@ Backward compatible with legacy single-strategy format.
 
 **Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-**Last Updated:** March 8, 2026 — Added `adx_min=15` to USD/JPY SmaScalping (Sharpe 1.69→2.20, ROI 34.8%→48.1%, validated via 7-week filter sweep). XAG SmaScalping R:R increased 10→12; SMA20 trailing exit disabled for all SmaScalping pairs (Oanda broker SL/TP handles all exits).
+**Last Updated:** March 14, 2026 — Focused active deployment on SmaScalping only (5 pairs: XAU, XAG, JP225, NAS100, USD_JPY). All other strategies archived in `best_strategies_archived.json`. Risk adjusted: XAU + JP225 → 1.5%, others → 1.0%.
 
 ---
 

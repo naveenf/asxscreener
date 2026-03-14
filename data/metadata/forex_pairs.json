@@ -29,11 +29,11 @@
       "yf_symbol_legacy": "JP225_USD"
     },
     {
-      "symbol": "USD_CHF",
-      "name": "USD/CHF",
+      "symbol": "USD_JPY",
+      "name": "USD/JPY",
       "type": "Forex",
-      "oanda_symbol": "USD_CHF",
-      "yf_symbol_legacy": "USD_CHF"
+      "oanda_symbol": "USD_JPY",
+      "yf_symbol_legacy": "USD_JPY"
     },
     {
       "symbol": "UK100_GBP",
@@ -41,13 +41,15 @@
       "type": "Index",
       "oanda_symbol": "UK100_GBP",
       "yf_symbol_legacy": "UK100_GBP"
-    },
+    }
+  ],
+  "_archived_pairs": [
     {
-      "symbol": "USD_JPY",
-      "name": "USD/JPY",
+      "symbol": "USD_CHF",
+      "name": "USD/CHF",
       "type": "Forex",
-      "oanda_symbol": "USD_JPY",
-      "yf_symbol_legacy": "USD_JPY"
+      "oanda_symbol": "USD_CHF",
+      "yf_symbol_legacy": "USD_CHF"
     }
   ]
 }
