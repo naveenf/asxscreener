@@ -16,16 +16,17 @@ const EquityCurve = ({ data, title }) => {
                 <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis 
-              dataKey="date" 
-              tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 12}}
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
+            <XAxis
+              dataKey="date"
+              tick={{fill: '#A89B9B', fontSize: 12}}
               tickFormatter={(str) => str.split('-').slice(1).join('/')}
             />
-            <YAxis tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 12}} />
-            <Tooltip 
-              contentStyle={{backgroundColor: '#1a1a1a', border: '1px solid #333'}}
-              labelStyle={{color: '#999'}}
+            <YAxis tick={{fill: '#A89B9B', fontSize: 12}} />
+            <Tooltip
+              contentStyle={{backgroundColor: '#2D2424', border: '1px solid #5C3D2E'}}
+              labelStyle={{color: '#E0C097'}}
+              itemStyle={{color: '#E0C097'}}
             />
             <Area 
               type="monotone" 

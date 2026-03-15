@@ -1,114 +1,494 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/* ═══════════════════════════════════════════════
+   ANALYTICS DASHBOARD — Professional Trading UI
+   Warm dark theme · IBM Plex Mono for numbers
+═══════════════════════════════════════════════ */
+
 .analytics-dashboard {
-  padding: 20px;
-  color: var(--text-primary);
+  padding: 24px 28px;
+  color: var(--text-primary, #E8D5B0);
+  max-width: 1400px;
 }
 
-.analytics-filters {
+/* ── Controls Bar ──────────────────────────── */
+
+.analytics-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
   flex-wrap: wrap;
 }
 
-.analytics-filters .filter-group {
+.date-range {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6B6055;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.date-input {
+  background: #2D2424;
+  border: 1px solid #4A3428;
+  border-radius: 4px;
+  color: #C8A87A;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-family: 'IBM Plex Mono', monospace;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.date-input:focus {
+  border-color: #E0C097;
+}
+
+.date-sep {
+  color: #4A3428;
+  font-size: 1rem;
+  padding-bottom: 6px;
+}
+
+.apply-btn {
+  padding: 7px 18px;
+  background: transparent;
+  border: 1px solid #5C3D2E;
+  border-radius: 4px;
+  color: #E0C097;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+
+.apply-btn:hover {
+  background: #5C3D2E;
+  border-color: #E0C097;
+}
+
+/* Period Switcher */
+.period-switcher {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
 }
 
-.analytics-filters .filter-group input[type="date"] {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color, #333);
-  border-radius: 4px;
-  color: var(--text-primary);
-  padding: 4px 8px;
-  font-size: 0.85rem;
+.period-label-hint {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6B6055;
+  margin-right: 4px;
 }
 
-.analytics-filters .load-btn {
-  padding: 6px 16px;
-  background: var(--accent-color, #00b4d8);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
+.period-pill {
+  padding: 5px 14px;
+  border: 1px solid #3A2820;
+  border-radius: 20px;
+  background: transparent;
+  color: #7A6555;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.period-pill:hover {
+  border-color: #5C3D2E;
+  color: #C8A87A;
+}
+
+.period-pill.active {
+  border-color: #E0C097;
+  background: rgba(224, 192, 151, 0.08);
+  color: #E0C097;
   font-weight: 600;
 }
 
-.analytics-filters .load-btn:hover {
-  opacity: 0.85;
+/* ── State Messages ───────────────────────── */
+
+.dash-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #6B6055;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
 }
 
-.summary-cards {
+.dash-error {
+  color: #EF4444;
+}
+
+/* ── KPI Grid ─────────────────────────────── */
+
+.kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
-.summary-card {
-  background: var(--bg-card);
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+.kpi-card {
+  background: #2D2424;
+  border: 1px solid #3A2820;
+  border-radius: 6px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.15s;
+}
+
+.kpi-card:hover {
+  border-color: #5C3D2E;
+}
+
+.kpi-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6B6055;
+}
+
+.kpi-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #C8A87A;
+  line-height: 1.2;
+}
+
+.kpi-sub {
+  font-size: 0.68rem;
+  color: #6B6055;
+  margin-top: 1px;
+}
+
+/* Variants */
+.kpi-pos .kpi-value { color: #4ADE80; }
+.kpi-neg .kpi-value { color: #F87171; }
+
+/* ── Exit Strip ───────────────────────────── */
+
+.exit-strip {
+  display: flex;
   align-items: center;
-  text-align: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding: 8px 14px;
+  border-top: 1px solid #3A2820;
+  border-bottom: 1px solid #3A2820;
 }
 
-.card-title {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
+.exit-strip-head {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6B6055;
+  margin-right: 4px;
 }
 
-.card-value {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin-bottom: 5px;
+.exit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.card-subtext {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+.exit-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.summary-card.positive .card-value {
-  color: #4caf50;
+.exit-name {
+  font-size: 0.7rem;
+  color: #7A6D65;
+  letter-spacing: 0.05em;
 }
 
-.summary-card.negative .card-value {
-  color: #f44336;
+.exit-count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #C8A87A;
 }
 
-.charts-grid {
+.exit-note {
+  font-size: 0.68rem;
+  color: #6B6055;
+  font-style: italic;
+}
+
+/* ── Dashboard Sections ───────────────────── */
+
+.dash-section {
+  margin-bottom: 32px;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #3A2820;
+}
+
+.section-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #E0C097;
+  font-weight: 600;
+}
+
+.section-aside {
+  font-size: 0.67rem;
+  color: #6B6055;
+  letter-spacing: 0.04em;
+}
+
+/* Two-column row for Win/Loss + Strategy */
+.dash-two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
+  gap: 20px;
+  margin-bottom: 32px;
 }
+
+/* ── Chart containers (used by chart components) ── */
 
 .chart-container {
-  background: var(--bg-card);
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  background: transparent;
+  padding: 0;
 }
 
-.chart-container h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 1.1rem;
-  color: var(--text-secondary);
+/* When a chart is inside a section, inherit container transparency */
+.dash-section .chart-container {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* But standalone chart-container (legacy) still has card style */
+.charts-grid .chart-container {
+  background: #2D2424;
+  border: 1px solid #3A2820;
+  border-radius: 6px;
+  padding: 20px;
+}
+
+/* Suppress h3 titles inside sections (handled by SectionHead) */
+.dash-section .chart-container h3,
+.dash-section > h3 {
+  display: none;
+}
+
+/* ── Backtest Comparison Grid ─────────────── */
+
+.bt-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.bt-pair-card {
+  background: #2D2424;
+  border: 1px solid #3A2820;
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s;
+}
+
+.bt-pair-card:hover {
+  border-color: #5C3D2E;
+}
+
+.bt-pair-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #E0C097;
+  letter-spacing: 0.03em;
+}
+
+.bt-insufficient {
+  font-size: 0.68rem;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 3px;
+  padding: 2px 6px;
+  display: inline-block;
+}
+
+/* WR visual bar */
+.bt-wr-track {
+  position: relative;
+  height: 6px;
+  background: #3A2820;
+  border-radius: 3px;
+  overflow: visible;
+  margin: 4px 0;
+}
+
+.bt-wr-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.bt-wr-fill.pos { background: #4ADE80; }
+.bt-wr-fill.neg { background: #F87171; }
+
+.bt-wr-marker {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 12px;
+  background: #E0C097;
+  border-radius: 1px;
+  transform: translateX(-50%);
+}
+
+.bt-wr-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.bt-wr-live  { color: #A89B9B; }
+.bt-wr-live strong { color: #E8D5B0; }
+.bt-wr-bt   { color: #6B6055; }
+
+.bt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+}
+
+.bt-label { color: #6B6055; }
+
+.bt-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 500;
+  color: #C8A87A;
+}
+
+.bt-val.positive { color: #4ADE80; }
+.bt-val.negative { color: #F87171; }
+
+.bt-delta {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  border-radius: 3px;
+  padding: 2px 7px;
   text-align: center;
 }
 
+.bt-delta-positive {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ADE80;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.bt-delta-negative {
+  background: rgba(248, 113, 113, 0.1);
+  color: #F87171;
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+/* ── Period Breakdown chart extras ─────────── */
+
+.period-detail {
+  margin-top: 16px;
+  border-top: 1px solid #3A2820;
+  padding-top: 14px;
+}
+
+.period-detail h4 {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #E0C097;
+  margin: 0 0 10px;
+}
+
+.period-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.period-detail-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6B6055;
+  border-bottom: 1px solid #3A2820;
+}
+
+.period-detail-table td {
+  padding: 7px 8px;
+  color: #C8A87A;
+  border-bottom: 1px solid rgba(58, 40, 32, 0.5);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+}
+
+.period-detail-table td:first-child {
+  font-family: inherit;
+  color: #A89B9B;
+}
+
+.period-detail-table td.positive { color: #4ADE80; }
+.period-detail-table td.negative { color: #F87171; }
+
+/* ── Responsive ───────────────────────────── */
+
 @media (max-width: 1024px) {
-  .charts-grid {
+  .dash-two-col {
     grid-template-columns: 1fr;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .analytics-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }

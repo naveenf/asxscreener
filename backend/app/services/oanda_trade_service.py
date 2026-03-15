@@ -172,10 +172,13 @@ class OandaTradeService:
                 if symbol not in oanda_open_symbols:
                     # Sync: Oanda says it's closed, but Firestore says it's open
                     logger.info(f"SYNC: {symbol} found open in Firestore but not in Oanda. Marking as CLOSED.")
+                    oanda_trade_id = data.get('oanda_trade_id', '')
+                    close_type = OandaPriceService.get_trade_close_type(oanda_trade_id) if oanda_trade_id else 'UNKNOWN'
                     doc.reference.update({
                         'status': 'CLOSED',
                         'sell_price': 0,
                         'sell_date': datetime.utcnow().strftime("%Y-%m-%d"),
+                        'close_type': close_type,
                         'notes': (data.get('notes', '') or '') + " | Auto-closed: Not found in Oanda open trades."
                     })
         except Exception as e:

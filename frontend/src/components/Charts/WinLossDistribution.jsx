@@ -8,7 +8,7 @@ const WinLossDistribution = ({ data, title }) => {
 
   return (
     <div className="chart-container">
-      <h3>{title}</h3>
+      {title && <h3>{title}</h3>}
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
           <PieChart>
@@ -25,10 +25,12 @@ const WinLossDistribution = ({ data, title }) => {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip 
-              contentStyle={{backgroundColor: '#1a1a1a', border: '1px solid #333'}}
+            <Tooltip
+              contentStyle={{backgroundColor: '#2D2424', border: '1px solid #5C3D2E'}}
+              labelStyle={{color: '#E0C097'}}
+              itemStyle={{color: '#E0C097'}}
             />
-            <Legend />
+            <Legend formatter={(value) => <span style={{color: '#A89B9B'}}>{value}</span>} />
           </PieChart>
         </ResponsiveContainer>
       </div>

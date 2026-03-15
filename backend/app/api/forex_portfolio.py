@@ -6,10 +6,128 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from typing import List, Dict, Optional
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # Python < 3.9 without tzdata installed
+    from backports.zoneinfo import ZoneInfo
+from pathlib import Path
 import json
 import pandas as pd
 import logging
+
+MELBOURNE_TZ = ZoneInfo('Australia/Melbourne')
+
+
+def _utc_date_to_melbourne(sell_date_str: Optional[str], updated_at=None) -> Optional[datetime]:
+    """Convert sell_date string (or updated_at timestamp) to Melbourne datetime."""
+    mel_dt = None
+    if updated_at:
+        try:
+            if hasattr(updated_at, 'tzinfo') and updated_at.tzinfo:
+                mel_dt = updated_at.astimezone(MELBOURNE_TZ)
+            else:
+                utc_dt = updated_at.replace(tzinfo=timezone.utc)
+                mel_dt = utc_dt.astimezone(MELBOURNE_TZ)
+        except Exception:
+            pass
+    if mel_dt is None and sell_date_str:
+        try:
+            utc_dt = datetime.strptime(sell_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            mel_dt = utc_dt.astimezone(MELBOURNE_TZ)
+        except Exception:
+            pass
+    return mel_dt
+
+
+def _bucket_trade(mel_dt: Optional[datetime], period: str) -> Optional[str]:
+    """Bucket a Melbourne datetime using 9am as trading day boundary."""
+    if mel_dt is None:
+        return None
+    shifted = mel_dt - timedelta(hours=9)
+    if period == 'daily':
+        return shifted.strftime('%Y-%m-%d')
+    elif period == 'weekly':
+        return shifted.strftime('%G-W%V')
+    elif period == 'monthly':
+        return shifted.strftime('%Y-%m')
+    elif period == 'yearly':
+        return shifted.strftime('%Y')
+    return shifted.strftime('%Y-%m')
+
+
+def _compute_period_breakdown(trades: list, period: str) -> dict:
+    """Return trades bucketed by period with per-pair sub-breakdown."""
+    breakdown: dict = {}
+    for t in trades:
+        bucket = _bucket_trade(t.get('mel_dt'), period)
+        if not bucket:
+            continue
+        if bucket not in breakdown:
+            breakdown[bucket] = {'trades': 0, 'pnl': 0, 'wins': 0, 'by_pair': {}}
+        breakdown[bucket]['trades'] += 1
+        breakdown[bucket]['pnl'] += t['pnl_aud']
+        if t['pnl_aud'] > 0:
+            breakdown[bucket]['wins'] += 1
+        pair_key = f"{t.get('symbol', 'Unknown')}::{t.get('strategy', 'Unknown')}"
+        bp = breakdown[bucket]['by_pair']
+        if pair_key not in bp:
+            bp[pair_key] = {'trades': 0, 'pnl': 0, 'wins': 0}
+        bp[pair_key]['trades'] += 1
+        bp[pair_key]['pnl'] += t['pnl_aud']
+        if t['pnl_aud'] > 0:
+            bp[pair_key]['wins'] += 1
+    for bucket in breakdown:
+        n = breakdown[bucket]['trades']
+        breakdown[bucket]['win_rate'] = (breakdown[bucket]['wins'] / n * 100) if n > 0 else 0
+        for pk in breakdown[bucket]['by_pair']:
+            pn = breakdown[bucket]['by_pair'][pk]['trades']
+            breakdown[bucket]['by_pair'][pk]['win_rate'] = (
+                breakdown[bucket]['by_pair'][pk]['wins'] / pn * 100
+            ) if pn > 0 else 0
+    return breakdown
+
+
+def _load_backtest_reference() -> dict:
+    """Load backtest benchmark data from JSON file."""
+    try:
+        from ..config import settings as _s
+        path = Path(_s.DATA_DIR) / 'metadata' / 'backtest_reference.json'
+        with open(path, 'r') as f:
+            return json.load(f).get('pairs', {})
+    except Exception:
+        return {}
+
+
+def _build_backtest_comparison(trades: list, backtest_ref: dict) -> dict:
+    """Compare live trade stats vs backtest benchmarks per PAIR::Strategy."""
+    live_stats: dict = {}
+    for t in trades:
+        pair_key = f"{t.get('symbol', 'Unknown')}::{t.get('strategy', 'Unknown')}"
+        if pair_key not in live_stats:
+            live_stats[pair_key] = {'trades': 0, 'wins': 0, 'pnl': 0, 'rr_sum': 0}
+        live_stats[pair_key]['trades'] += 1
+        live_stats[pair_key]['pnl'] += t['pnl_aud']
+        live_stats[pair_key]['rr_sum'] += t.get('actual_rr') or 0
+        if t['pnl_aud'] > 0:
+            live_stats[pair_key]['wins'] += 1
+
+    comparison: dict = {}
+    for pair_key, bt in backtest_ref.items():
+        live = live_stats.get(pair_key, {'trades': 0, 'wins': 0, 'pnl': 0, 'rr_sum': 0})
+        n = live['trades']
+        live_wr = (live['wins'] / n * 100) if n > 0 else 0
+        comparison[pair_key] = {
+            'live': {
+                'trades': n,
+                'win_rate_pct': round(live_wr, 1),
+                'pnl': round(live['pnl'], 2),
+                'avg_rr': round(live['rr_sum'] / n, 2) if n > 0 else 0,
+            },
+            'backtest': bt,
+            'delta_win_rate': round(live_wr - bt['win_rate_pct'], 1) if n > 0 else None,
+        }
+    return comparison
 
 from ..firebase_setup import db
 from ..models.forex_portfolio_schema import ForexPortfolioItemCreate, ForexPortfolioItemResponse, ForexPortfolioItemSell
@@ -251,15 +369,11 @@ async def get_trade_history(
                 actual_rr=data.get('actual_rr')
             ))
 
-        # Sorting
+        # Sorting: default is newest-first (descending). Prefix '-' flips to ascending.
         reverse = True
         if sort_by.startswith('-'):
             sort_by = sort_by[1:]
-            reverse = False # Wait, usually '-' means descending. 
-            # If default is descending, then '-' would be ascending? No.
-        
-        # Let's use standard convention: default ascending, but for trades we usually want newest first.
-        # Plan says default sort_by="sell_date".
+            reverse = False
         
         def sort_key(x):
             val = getattr(x, sort_by, None)
@@ -278,10 +392,11 @@ async def get_trade_history(
 async def get_trade_analytics(
     email: str = Depends(get_current_user_email),
     start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None)
+    end_date: Optional[date] = Query(None),
+    period: Optional[str] = Query('monthly', description="Grouping period: daily | weekly | monthly | yearly")
 ):
     """
-    Return comprehensive trade analytics.
+    Return comprehensive trade analytics with period breakdown and backtest comparison.
     """
     try:
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
@@ -293,7 +408,7 @@ async def get_trade_analytics(
         forex_data = get_forex_data()
         signals = forex_data.get('signals', [])
 
-        trades = []
+        trades_list = []
         for doc in docs:
             data = doc.to_dict()
 
@@ -301,43 +416,44 @@ async def get_trade_analytics(
             if not sell_date_str:
                 continue
 
-            sell_date = datetime.strptime(sell_date_str, "%Y-%m-%d").date()
-            if start_date and sell_date < start_date:
+            sell_date_obj = datetime.strptime(sell_date_str, "%Y-%m-%d").date()
+            if start_date and sell_date_obj < start_date:
                 continue
-            if end_date and sell_date > end_date:
+            if end_date and sell_date_obj > end_date:
                 continue
 
             metrics = calculate_forex_metrics(data, signals)
             data['pnl_aud'] = metrics['gain_loss_aud']
-            data['sell_date_dt'] = sell_date
-            trades.append(data)
+            data['sell_date_dt'] = sell_date_obj
+            # Enrich with Melbourne datetime for period bucketing
+            data['mel_dt'] = _utc_date_to_melbourne(sell_date_str, data.get('updated_at'))
+            trades_list.append(data)
 
-        if not trades:
+        if not trades_list:
             return {
                 "summary": {
                     "total_trades": 0, "total_profit_aud": 0, "total_loss_aud": 0,
                     "net_pnl_aud": 0, "net_pnl_percent": 0, "win_rate": 0,
                     "loss_rate": 0, "avg_winning_trade": 0, "avg_losing_trade": 0,
                     "best_trade": 0, "worst_trade": 0, "profit_factor": 0,
-                    "current_balance_aud": 0, "starting_balance_aud": 0
+                    "current_balance_aud": 0, "starting_balance_aud": 0,
+                    "avg_rr": 0, "close_types": {}, "max_drawdown_pct": 0
                 },
-                "by_strategy": {}, "by_month": {}, "daily_breakdown": {}, "equity_curve": []
+                "by_strategy": {}, "by_month": {}, "daily_breakdown": {}, "equity_curve": [],
+                "by_pair": {}, "period_breakdown": {}, "period_breakdowns": {}, "backtest_comparison": {}, "period": period
             }
 
         # 1. Summary Metrics
-        winning_trades = [t for t in trades if t['pnl_aud'] > 0]
-        losing_trades = [t for t in trades if t['pnl_aud'] <= 0]
+        winning_trades = [t for t in trades_list if t['pnl_aud'] > 0]
+        losing_trades = [t for t in trades_list if t['pnl_aud'] <= 0]
 
         total_profit = sum(t['pnl_aud'] for t in winning_trades)
         total_loss = abs(sum(t['pnl_aud'] for t in losing_trades))
         net_pnl = total_profit - total_loss
 
-        total_trades_count = len(trades)
+        total_trades_count = len(trades_list)
         win_rate = (len(winning_trades) / total_trades_count * 100) if total_trades_count > 0 else 0
 
-        # ROI = net_pnl / balance_at_start_date * 100
-        # Look up the closest balance snapshot stored in Firestore on or before start_date.
-        # Snapshots are written to account_balance_history/{YYYY-MM-DD} on every forex refresh.
         roi_start = start_date.isoformat() if start_date else '2026-02-19'
         starting_balance_aud = 0
         try:
@@ -356,7 +472,6 @@ async def get_trade_analytics(
         oanda_summary = OandaPriceService.get_account_summary()
         current_balance_aud = float(oanda_summary.get('balance', 0)) if oanda_summary else 0
 
-        # If no Firestore snapshot found, estimate starting balance from current balance
         if starting_balance_aud == 0 and current_balance_aud > 0:
             estimated = current_balance_aud - net_pnl
             if estimated > 0:
@@ -364,6 +479,14 @@ async def get_trade_analytics(
                 logger.info(f"No balance snapshot for {roi_start}; using estimated starting balance ${estimated:.2f}")
 
         net_pnl_percent = (net_pnl / starting_balance_aud * 100) if starting_balance_aud > 0 else 0
+
+        # Close type summary
+        close_types: dict = {}
+        for t in trades_list:
+            ct = t.get('close_type') or 'UNKNOWN'
+            close_types[ct] = close_types.get(ct, 0) + 1
+
+        avg_rr = sum(t.get('actual_rr') or 0 for t in trades_list) / total_trades_count if total_trades_count > 0 else 0
 
         summary = {
             "total_trades": total_trades_count,
@@ -377,76 +500,120 @@ async def get_trade_analytics(
             "loss_rate": 100 - win_rate,
             "avg_winning_trade": total_profit / len(winning_trades) if winning_trades else 0,
             "avg_losing_trade": -total_loss / len(losing_trades) if losing_trades else 0,
-            "best_trade": max(t['pnl_aud'] for t in trades),
-            "worst_trade": min(t['pnl_aud'] for t in trades),
-            "profit_factor": total_profit / total_loss if total_loss > 0 else (total_profit if total_profit > 0 else 1)
+            "best_trade": max(t['pnl_aud'] for t in trades_list),
+            "worst_trade": min(t['pnl_aud'] for t in trades_list),
+            "profit_factor": total_profit / total_loss if total_loss > 0 else (total_profit if total_profit > 0 else 1),
+            "avg_rr": round(avg_rr, 2),
+            "close_types": close_types,
         }
-        
+
         # 2. Group by Strategy
         by_strategy = {}
-        strategies = set(t.get('strategy', 'Unknown') for t in trades)
+        strategies = set(t.get('strategy', 'Unknown') for t in trades_list)
         for strat in strategies:
-            strat_trades = [t for t in trades if t.get('strategy', 'Unknown') == strat]
+            strat_trades = [t for t in trades_list if t.get('strategy', 'Unknown') == strat]
             strat_wins = [t for t in strat_trades if t['pnl_aud'] > 0]
             strat_pnl = sum(t['pnl_aud'] for t in strat_trades)
-            
             by_strategy[strat] = {
                 "trades": len(strat_trades),
                 "win_rate": (len(strat_wins) / len(strat_trades) * 100) if strat_trades else 0,
                 "pnl": strat_pnl,
-                "avg_rr": sum(t.get('actual_rr', 0) for t in strat_trades) / len(strat_trades) if strat_trades else 0
+                "avg_rr": sum(t.get('actual_rr') or 0 for t in strat_trades) / len(strat_trades) if strat_trades else 0
             }
-            
+
         # 3. Group by Month
         by_month = {}
-        for t in trades:
+        for t in trades_list:
             month = t['sell_date_dt'].strftime("%Y-%m")
             if month not in by_month:
                 by_month[month] = {"trades": 0, "pnl": 0, "wins": 0}
-            
             by_month[month]["trades"] += 1
             by_month[month]["pnl"] += t['pnl_aud']
             if t['pnl_aud'] > 0:
                 by_month[month]["wins"] += 1
-                
         for month in by_month:
-            by_month[month]["win_rate"] = (by_month[month]["wins"] / by_month[month]["trades"] * 100)
-            
+            by_month[month]["win_rate"] = by_month[month]["wins"] / by_month[month]["trades"] * 100
+
         # 4. Daily Breakdown
         daily_breakdown = {}
-        for t in trades:
+        for t in trades_list:
             day = t['sell_date_dt'].isoformat()
             if day not in daily_breakdown:
                 daily_breakdown[day] = {"trades": 0, "pnl": 0}
             daily_breakdown[day]["trades"] += 1
             daily_breakdown[day]["pnl"] += t['pnl_aud']
-            
-        # 5. Equity Curve
-        sorted_trades = sorted(trades, key=lambda x: x['sell_date_dt'])
+
+        # 5. Equity Curve + Max Drawdown
+        sorted_trades = sorted(trades_list, key=lambda x: x['sell_date_dt'])
         equity_curve = []
         cumulative_pnl = 0
-        
-        # Initial point
+        peak = 0
+        max_dd = 0
+
         if sorted_trades:
             first_date = sorted_trades[0]['sell_date_dt']
             equity_curve.append({"date": first_date.isoformat(), "cumulative_pnl": 0})
-            
+
         for t in sorted_trades:
             cumulative_pnl += t['pnl_aud']
             equity_curve.append({
                 "date": t['sell_date_dt'].isoformat(),
                 "cumulative_pnl": cumulative_pnl
             })
-            
+            if cumulative_pnl > peak:
+                peak = cumulative_pnl
+            dd = (cumulative_pnl - peak) / starting_balance_aud * 100 if starting_balance_aud > 0 else 0
+            if dd < max_dd:
+                max_dd = dd
+
+        summary['max_drawdown_pct'] = round(max_dd, 2)
+
+        # 6. By Pair breakdown (PAIR::Strategy keyed)
+        by_pair: dict = {}
+        for t in trades_list:
+            pair_key = f"{t.get('symbol', 'Unknown')}::{t.get('strategy', 'Unknown')}"
+            if pair_key not in by_pair:
+                by_pair[pair_key] = {'trades': 0, 'pnl': 0, 'wins': 0, 'close_types': {}, 'rr_sum': 0}
+            by_pair[pair_key]['trades'] += 1
+            by_pair[pair_key]['pnl'] += t['pnl_aud']
+            by_pair[pair_key]['rr_sum'] += t.get('actual_rr') or 0
+            if t['pnl_aud'] > 0:
+                by_pair[pair_key]['wins'] += 1
+            ct = t.get('close_type') or 'UNKNOWN'
+            by_pair[pair_key]['close_types'][ct] = by_pair[pair_key]['close_types'].get(ct, 0) + 1
+        for key in by_pair:
+            n = by_pair[key]['trades']
+            by_pair[key]['win_rate'] = (by_pair[key]['wins'] / n * 100) if n > 0 else 0
+            by_pair[key]['avg_rr'] = round(by_pair[key]['rr_sum'] / n, 2) if n > 0 else 0
+            del by_pair[key]['rr_sum']
+
+        # 7. All period breakdowns (computed once, switched client-side)
+        period_breakdowns = {
+            'daily':   _compute_period_breakdown(trades_list, 'daily'),
+            'weekly':  _compute_period_breakdown(trades_list, 'weekly'),
+            'monthly': _compute_period_breakdown(trades_list, 'monthly'),
+            'yearly':  _compute_period_breakdown(trades_list, 'yearly'),
+        }
+        period_breakdown = period_breakdowns.get(period or 'monthly', {})
+
+        # 8. Backtest comparison
+        backtest_ref = _load_backtest_reference()
+        backtest_comparison = _build_backtest_comparison(trades_list, backtest_ref)
+
         return {
             "summary": summary,
             "by_strategy": by_strategy,
             "by_month": by_month,
             "daily_breakdown": daily_breakdown,
-            "equity_curve": equity_curve
+            "equity_curve": equity_curve,
+            "by_pair": by_pair,
+            "period_breakdown": period_breakdown,
+            "period_breakdowns": period_breakdowns,
+            "backtest_comparison": backtest_comparison,
+            "period": period
         }
     except Exception as e:
-        print(f"Forex Portfolio Analytics Error: {e}")
+        logger.error(f"Forex Portfolio Analytics Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to calculate analytics")
 
 @router.get("/oanda-accounts", description="List all available Oanda accounts")
@@ -569,6 +736,8 @@ async def get_strategy_comparison(
     """
     Compare performance across all strategies.
     Returns ranking: ROI, win rate, total trades.
+    NOTE: Always uses all-time data (no date filter). Add start_date/end_date params
+    to this endpoint and pass them through if per-period filtering is needed.
     """
     try:
         analytics = await get_trade_analytics(email)
@@ -953,3 +1122,55 @@ async def check_portfolio_exits(email: str = Depends(get_current_user_email)):
     except Exception as e:
         print(f"Portfolio Exit Check Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to check exits")
+
+
+@router.post("/backfill-close-type", description="Backfill close_type for CLOSED trades missing that field (admin only)")
+async def backfill_close_type(
+    email: str = Depends(get_current_user_email)
+):
+    """
+    Iterate CLOSED trades with oanda_trade_id but no close_type, fetch from Oanda,
+    and write back to Firestore. Rate-limited to 1 call/second to respect Oanda limits.
+    """
+    import asyncio
+
+    ADMIN_EMAIL = settings.AUTHORIZED_AUTO_TRADER_EMAIL
+    if email != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    try:
+        portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
+        closed_docs = list(portfolio_ref.where('status', '==', 'CLOSED').stream())
+
+        updated = 0
+        skipped = 0
+
+        for doc in closed_docs:
+            data = doc.to_dict()
+            if data.get('close_type'):
+                skipped += 1
+                continue
+            trade_id = data.get('oanda_trade_id')
+            if not trade_id:
+                skipped += 1
+                continue
+
+            close_type = OandaPriceService.get_trade_close_type(trade_id)
+            doc.reference.update({'close_type': close_type, 'updated_at': datetime.utcnow()})
+            updated += 1
+            logger.info(f"Backfilled close_type={close_type} for trade {trade_id}")
+
+            await asyncio.sleep(1)  # 1 call/sec rate limit — non-blocking
+
+        return {
+            "status": "success",
+            "updated": updated,
+            "skipped": skipped,
+            "message": f"Backfilled close_type for {updated} trades, skipped {skipped}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error backfilling close_type: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to backfill: {str(e)}")

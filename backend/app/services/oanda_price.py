@@ -452,6 +452,56 @@ class OandaPriceService:
             return None
 
     @classmethod
+    @retry_oanda(retries=2, delay=1)
+    def get_trade_close_type(cls, trade_id: str) -> str:
+        """
+        Determine how a trade was closed: 'TP', 'SL', 'MANUAL', or 'UNKNOWN'.
+        Makes 2 Oanda API calls: TradeDetails + TransactionDetails.
+        Only call during sync cycles, not on every analytics request.
+        """
+        if not trade_id:
+            return 'UNKNOWN'
+
+        api = cls.get_api()
+        account_id = settings.OANDA_ACCOUNT_ID
+        if not api or not account_id:
+            return 'UNKNOWN'
+
+        try:
+            import oandapyV20.endpoints.transactions as txn_endpoints
+
+            # Step 1: Get trade details to find closing transaction IDs
+            r = trades.TradeDetails(accountID=account_id, tradeID=trade_id)
+            api.request(r)
+            trade_data = r.response.get('trade', {})
+
+            closing_txn_ids = trade_data.get('closingTransactionIDs', [])
+            if not closing_txn_ids:
+                return 'UNKNOWN'
+
+            # Step 2: Fetch the most recent closing transaction
+            txn_id = closing_txn_ids[-1]
+            r_txn = txn_endpoints.TransactionDetails(accountID=account_id, transactionID=txn_id)
+            api.request(r_txn)
+            txn = r_txn.response.get('transaction', {})
+
+            reason = txn.get('reason', '')
+            txn_type = txn.get('type', '')
+
+            if reason == 'TAKE_PROFIT_ORDER':
+                return 'TP'
+            elif reason in ('STOP_LOSS_ORDER', 'TRAILING_STOP_LOSS_ORDER'):
+                return 'SL'
+            elif reason == 'CLIENT_ORDER' or txn_type == 'MARKET_ORDER_TRANSACTION':
+                return 'MANUAL'
+            else:
+                return 'UNKNOWN'
+
+        except Exception as e:
+            logger.warning(f"Could not determine close type for trade {trade_id}: {e}")
+            return 'UNKNOWN'
+
+    @classmethod
     def get_closed_trades_by_id(cls, trade_ids: List[str]) -> List[Dict[str, Any]]:
         """
         Fetch details for specific trades by ID.

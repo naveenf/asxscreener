@@ -273,11 +273,13 @@ class PortfolioMonitor:
                         sell_date = datetime.utcnow().strftime("%Y-%m-%d")
 
                     # Update Firestore with exit data
+                    close_type = OandaPriceService.get_trade_close_type(trade_id)
                     doc.reference.update({
                         'status': 'CLOSED',
                         'sell_price': closed_trade.get('exit_price'),
                         'sell_date': sell_date,
                         'pnl': closed_trade.get('pnl'),
+                        'close_type': close_type,
                         'closed_by': 'OandaSync',
                         'updated_at': datetime.utcnow()
                     })

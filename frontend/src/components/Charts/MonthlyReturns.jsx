@@ -6,8 +6,8 @@ const CustomTooltip = ({ active, payload, label }) => {
     const value = payload[0].value;
     const color = value >= 0 ? '#4caf50' : '#f44336';
     return (
-      <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #333', padding: '8px 12px', borderRadius: 4 }}>
-        <p style={{ color: 'rgba(255,255,255,0.6)', margin: 0, fontSize: 12 }}>{label}</p>
+      <div style={{ backgroundColor: '#2D2424', border: '1px solid #5C3D2E', padding: '8px 12px', borderRadius: 4 }}>
+        <p style={{ color: '#A89B9B', margin: 0, fontSize: 12 }}>{label}</p>
         <p style={{ color, margin: '4px 0 0', fontWeight: 600 }}>${value.toFixed(2)}</p>
       </div>
     );
@@ -24,9 +24,9 @@ const MonthlyReturns = ({ data, title }) => {
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="month" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 12}} />
-            <YAxis tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 12}} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
+            <XAxis dataKey="month" tick={{fill: '#A89B9B', fontSize: 12}} />
+            <YAxis tick={{fill: '#A89B9B', fontSize: 12}} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="pnl">
               {data.map((entry, index) => (
