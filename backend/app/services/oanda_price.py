@@ -196,20 +196,52 @@ class OandaPriceService:
             "granularity": "S5",
             "price": "BA" # Bid/Ask
         }
-        
+
         try:
             r = instruments.InstrumentsCandles(instrument=symbol, params=params)
             api.request(r)
             candles = r.response.get('candles', [])
-            
+
             if candles:
                 bid = float(candles[0]['bid']['c'])
                 ask = float(candles[0]['ask']['c'])
                 return ask - bid
         except Exception as e:
             logger.error(f"Error fetching spread for {symbol}: {e}")
-        
+
         return None
+
+    @classmethod
+    @retry_oanda(retries=3, delay=1)
+    def get_bid_ask(cls, symbol: str) -> tuple:
+        """
+        Get the current bid and ask prices for a symbol using S5 candle close.
+        Returns (bid, ask) floats, or (None, None) on failure.
+        BUY orders fill at ASK; SELL orders fill at BID.
+        """
+        api = cls.get_api()
+        if not api:
+            return (None, None)
+
+        params = {
+            "count": 1,
+            "granularity": "S5",
+            "price": "BA"  # Bid/Ask
+        }
+
+        try:
+            r = instruments.InstrumentsCandles(instrument=symbol, params=params)
+            api.request(r)
+            candles = r.response.get('candles', [])
+
+            if candles:
+                bid = float(candles[0]['bid']['c'])
+                ask = float(candles[0]['ask']['c'])
+                return (bid, ask)
+        except Exception as e:
+            logger.error(f"Error fetching bid/ask for {symbol}: {e}")
+
+        return (None, None)
 
     @classmethod
     @retry_oanda(retries=3, delay=1)

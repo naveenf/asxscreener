@@ -320,7 +320,84 @@ class OandaTradeService:
             stop_loss = signal['stop_loss']
             take_profit = signal['take_profit']
             direction = signal['signal']
-            
+
+            # === SLIPPAGE FIX: Re-anchor SL/TP to live fill price ===
+            # Signal SL/TP are absolute prices anchored to the last closed candle.
+            # A market order fills at ASK (BUY) or BID (SELL), not the candle close.
+            # Fix: keep the same SL/TP distances but shift them to the live fill price.
+            sl_distance = abs(entry_price - stop_loss)
+            tp_distance = abs(take_profit - entry_price)
+
+            # Guard: sl_distance == 0 means degenerate signal; skip to avoid zero-risk-per-unit
+            # errors downstream and nonsensical SL==TP placements.
+            if sl_distance == 0:
+                logger.warning(f"Skipping {symbol}: sl_distance is 0 (degenerate signal).")
+                continue
+
+            # Fetch live bid/ask — BUY fills at ASK, SELL fills at BID.
+            bid_price, ask_price = OandaPriceService.get_bid_ask(symbol)
+            if bid_price is not None and ask_price is not None:
+                live_fill_price = ask_price if direction == 'BUY' else bid_price
+                spread = ask_price - bid_price
+                signal_price = signal['price']
+                slippage = abs(live_fill_price - signal_price)
+
+                # Guard: SL minimum distance — Oanda rejects SL within the spread.
+                # If the re-anchored SL would be closer to fill price than the spread,
+                # the order will be rejected. Log and skip rather than place a doomed order.
+                if sl_distance <= spread:
+                    logger.warning(
+                        f"Skipping {symbol}: sl_distance {sl_distance:.5f} <= spread {spread:.5f}. "
+                        f"SL would be within Oanda's minimum distance after re-anchoring."
+                    )
+                    continue
+
+                # Guard: Adverse move past original SL — the signal's SL level has already
+                # been breached in the fill direction, meaning the setup is invalidated.
+                if direction == 'BUY' and live_fill_price <= stop_loss:
+                    logger.warning(
+                        f"Skipping {symbol} BUY: Live ask {live_fill_price:.5f} is at or below "
+                        f"original SL {stop_loss:.5f}. Setup already invalidated."
+                    )
+                    continue
+                if direction == 'SELL' and live_fill_price >= stop_loss:
+                    logger.warning(
+                        f"Skipping {symbol} SELL: Live bid {live_fill_price:.5f} is at or above "
+                        f"original SL {stop_loss:.5f}. Setup already invalidated."
+                    )
+                    continue
+
+                # Guard: Stale signal — price has moved more than 1× the SL distance from
+                # the signal candle close. This is checked on raw displacement (not direction)
+                # since even a favorable move that large suggests a new market context.
+                if slippage > sl_distance:
+                    logger.warning(
+                        f"Skipping {symbol}: Slippage {slippage:.5f} ({slippage/sl_distance*100:.0f}% of SL) "
+                        f"exceeds SL distance {sl_distance:.5f}. Signal stale — fill price {live_fill_price:.5f} "
+                        f"vs signal {signal_price:.5f}."
+                    )
+                    continue
+
+                # Re-anchor SL/TP from the live fill price so actual dollar risk == intended risk.
+                orig_sl = stop_loss
+                orig_tp = take_profit
+                if direction == 'BUY':
+                    stop_loss   = live_fill_price - sl_distance
+                    take_profit = live_fill_price + tp_distance
+                else:
+                    stop_loss   = live_fill_price + sl_distance
+                    take_profit = live_fill_price - tp_distance
+                entry_price = live_fill_price
+
+                logger.info(
+                    f"SLIPPAGE ADJUST [{symbol} {direction}]: "
+                    f"signal_close={signal_price:.5f} → live_fill={live_fill_price:.5f} "
+                    f"(spread={spread:.5f}, slippage={slippage:.5f}, {slippage/sl_distance*100:.1f}% of SL) | "
+                    f"orig SL={orig_sl:.5f} TP={orig_tp:.5f} → new SL={stop_loss:.5f} TP={take_profit:.5f}"
+                )
+            else:
+                logger.warning(f"Could not fetch live bid/ask for {symbol}; using signal price for SL/TP.")
+
             risk_pct = signal.get('risk_pct', 0.01)
             units = cls.calculate_units(symbol, entry_price, stop_loss, balance, margin_avail, risk_pct)
             if units <= 0:
@@ -331,30 +408,42 @@ class OandaTradeService:
             oanda_units = units if direction == 'BUY' else -units
 
             logger.info(f"EXECUTION: {direction} {symbol} ({units} units) | Risk {risk_pct*100:.0f}% | Balance: {balance:.2f} AUD")
-            
+
             # Place Order
             response = OandaPriceService.place_market_order(symbol, oanda_units, stop_loss, take_profit)
-            
+
             if response and 'orderFillTransaction' in response:
                 fill = response['orderFillTransaction']
                 exec_price = float(fill.get('price'))
                 trade_id = fill.get('id')
-                
+
                 logger.info(f"SUCCESS: {symbol} Trade ID {trade_id} filled at {exec_price}")
-                
+
                 # Add to Firestore Portfolio (Local Sync)
-                cls._log_to_portfolio(auth_email, signal, units, exec_price, trade_id)
+                # Pass adjusted SL/TP so Firestore reflects what was actually placed at Oanda,
+                # not the original signal levels (which were anchored to a different candle close).
+                cls._log_to_portfolio(auth_email, signal, units, exec_price, trade_id, stop_loss, take_profit)
                 executed_count += 1
                 existing_symbols.append(symbol)
             else:
                 logger.error(f"FAILURE: Order placement for {symbol} failed.")
 
     @staticmethod
-    def _log_to_portfolio(email: str, signal: Dict, units: int, exec_price: float, trade_id: str):
-        """Add the executed trade to the user's Firestore portfolio."""
+    def _log_to_portfolio(email: str, signal: Dict, units: int, exec_price: float, trade_id: str,
+                          adjusted_sl: Optional[float] = None, adjusted_tp: Optional[float] = None):
+        """Add the executed trade to the user's Firestore portfolio.
+
+        adjusted_sl / adjusted_tp should be the re-anchored levels actually placed at Oanda
+        (may differ from signal['stop_loss'] / signal['take_profit'] after slippage adjustment).
+        Falls back to the original signal values if not provided.
+        """
         try:
             portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
-            
+
+            # Use adjusted levels if available; fall back to original signal levels.
+            sl_placed = adjusted_sl if adjusted_sl is not None else signal.get('stop_loss')
+            tp_placed = adjusted_tp if adjusted_tp is not None else signal.get('take_profit')
+
             doc_data = {
                 'symbol': signal['symbol'],
                 'direction': signal['signal'],
@@ -366,11 +455,13 @@ class OandaTradeService:
                 'timeframe': signal.get('timeframe_used', 'Unknown'),
                 'status': 'OPEN',
                 'oanda_trade_id': trade_id,
-                'stop_loss': signal.get('stop_loss'),
-                'take_profit': signal.get('take_profit'),
+                'stop_loss': sl_placed,
+                'take_profit': tp_placed,
+                'signal_stop_loss': signal.get('stop_loss'),
+                'signal_take_profit': signal.get('take_profit'),
                 'created_at': datetime.utcnow()
             }
-            
+
             portfolio_ref.add(doc_data)
             logger.info(f"SYNC: Logged trade {trade_id} to Firestore for {email}")
         except Exception as e:
