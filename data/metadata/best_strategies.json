@@ -38,7 +38,7 @@
     "strategies": [
       {
         "strategy": "SmaScalping",
-        "sharpe": 4.47,
+        "sharpe": 5.87,
         "timeframe": "5m",
         "target_rr": 5.0,
         "params": {
@@ -48,7 +48,8 @@
           "di_slope": true,
           "adx_rising": true,
           "atr_ratio_min": 1.2,
-          "di_spread_min": 15.0
+          "di_spread_min": 15.0,
+          "avoid_hours": [21, 22, 23]
         }
       }
     ]
