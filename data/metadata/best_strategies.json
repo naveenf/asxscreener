@@ -38,14 +38,16 @@
     "strategies": [
       {
         "strategy": "SmaScalping",
-        "sharpe": 5.93,
+        "sharpe": 4.47,
         "timeframe": "5m",
         "target_rr": 5.0,
         "params": {
           "di_threshold": 30.0,
           "adx_min": 20.0,
           "di_persist": 2,
-          "di_slope": true
+          "di_slope": true,
+          "adx_rising": true,
+          "atr_ratio_min": 1.2
         }
       }
     ]

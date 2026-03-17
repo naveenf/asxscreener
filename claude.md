@@ -95,7 +95,7 @@ asx-screener/
 |------|----|-----|----|---------|--------------|--------|-----|------|--------|-------|
 | XAU_USD | 15m | 35 | 5.0 | 2 | `adx_rising, avoid_hours=[8,9]` | 26 | 42.3% | 47.1% | 7.97 | -5.85% |
 | XAG_USD | 5m | 35 | 12.0 | 1 | `atr_ratio=1.2, di_slope, avoid_hours=[14,15,16]` | 34 | 26.5% | 115.7% | 6.30 | -6.79% |
-| JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope` | 37 | 35.1% | 48.2% | 5.93 | -3.94% |
+| JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope, adx_rising, atr_ratio=1.2` | 53 | 30.2% | 81.83% | 4.47 | -8.67% |
 | NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope, avoid_hours=[7,21,22,23]` | 34 | 32.4% | 28.8% | 4.42 | -10.47% |
 | USD_JPY | 5m | 30 | 2.5 | 1 | `adx_min=15, avoid_hours=[15-21]` | 158 | 36.1% | 48.1% | 2.20 | -15.00% |
 
@@ -143,7 +143,7 @@ Streamlined to 6 pairs across 3 strategies. NAS100 uses NewBreakout (not SmaScal
 |-------|----------|----|--------|------|-----|--------|----------|
 | XAU_USD | SmaScalping | 15m | 7.97 | 47.1% | 42.3% | -5.85% | 1.5% |
 | XAG_USD | SmaScalping | 5m | 6.30 | 115.7% | 26.5% | -6.79% | 1.0% |
-| JP225_USD | SmaScalping | 5m | 5.93 | 48.2% | 35.1% | -3.94% | 1.5% |
+| JP225_USD | SmaScalping | 5m | 4.47 | 81.83% | 30.2% | -8.67% | 1.5% |
 | UK100_GBP | PVTScalping | 1h | 2.99 | 14.3% | 38.1% | -4.02% | 1.0% |
 | NAS100_USD | NewBreakout | 15m | 3.36 | 17.8% | 44.2% | -5.88% | 1.0% |
 | USD_JPY | SmaScalping | 5m | 2.20 | 48.1% | 36.1% | -15.00% | 1.0% |
@@ -163,7 +163,7 @@ Streamlined to 6 pairs across 3 strategies. NAS100 uses NewBreakout (not SmaScal
 | USD_CAD | SmaScalping | — | Suspended: 0% live WR, Sharpe -0.49 |
 | GBP_JPY | SmaScalping | — | Suspended: live WR 12.5% vs BT 27.8% |
 
-**Note on UK100_GBP (PVTScalping, Sharpe 5.79):** This is competitive with JP225 (5.93) and higher than NAS100 (4.42) and USD_JPY (2.20). Worth re-enabling when expanding beyond SmaScalping.
+**Note on UK100_GBP (PVTScalping, Sharpe 5.79):** This is competitive with JP225 (4.47) and higher than NAS100 (4.42) and USD_JPY (2.20). Worth re-enabling when expanding beyond SmaScalping.
 
 **Suspended (Mar 3, 2026):** AUD_USD, USD_CAD, BCO_USD, JP225 HeikenAshi — removed due to live underperformance or insufficient Sharpe.
 
@@ -211,7 +211,7 @@ Backward compatible with legacy single-strategy format.
 
 **Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-**Last Updated:** March 14, 2026 — Focused active deployment on SmaScalping only (5 pairs: XAU, XAG, JP225, NAS100, USD_JPY). All other strategies archived in `best_strategies_archived.json`. Risk adjusted: XAU + JP225 → 1.5%, others → 1.0%.
+**Last Updated:** March 17, 2026 — Focused active deployment on SmaScalping only (5 pairs: XAU, XAG, JP225, NAS100, USD_JPY). All other strategies archived in `best_strategies_archived.json`. Risk adjusted: XAU + JP225 → 1.5%, others → 1.0%. JP225 updated with adx_rising + atr_ratio=1.2 noise filters (Sharpe 4.47, MaxDD -8.67%).
 
 ---
 
