@@ -47,7 +47,8 @@
           "di_persist": 2,
           "di_slope": true,
           "adx_rising": true,
-          "atr_ratio_min": 1.2
+          "atr_ratio_min": 1.2,
+          "di_spread_min": 15.0
         }
       }
     ]
@@ -98,6 +99,7 @@
           "di_threshold": 30.0,
           "di_persist": 1,
           "adx_min": 15.0,
+          "di_spread_min": 15.0,
           "avoid_hours": [15, 16, 17, 18, 19, 20, 21]
         }
       }
