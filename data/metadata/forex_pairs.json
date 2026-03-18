@@ -41,6 +41,13 @@
       "type": "Index",
       "oanda_symbol": "UK100_GBP",
       "yf_symbol_legacy": "UK100_GBP"
+    },
+    {
+      "symbol": "BCO_USD",
+      "name": "Brent Crude Oil",
+      "type": "Commodity",
+      "oanda_symbol": "BCO_USD",
+      "yf_symbol_legacy": "BCO_USD"
     }
   ],
   "_archived_pairs": [

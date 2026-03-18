@@ -98,6 +98,7 @@ asx-screener/
 | JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope, adx_rising, atr_ratio=1.2` | 53 | 30.2% | 81.83% | 4.47 | -8.67% |
 | NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope, avoid_hours=[7,21,22,23]` | 34 | 32.4% | 28.8% | 4.42 | -10.47% |
 | USD_JPY | 5m | 30 | 2.5 | 1 | `adx_min=15, avoid_hours=[15-21]` | 158 | 36.1% | 48.1% | 2.20 | -15.00% |
+| BCO_USD | 15m | 30 | 4.0 | 1 | `adx_min=15` | 51 | 29.4% | 25.4% | 3.18 | -8.74% |
 
 **Suspended (live underperformance):** AUD_USD (live WR 20% vs 34.8% BT), USD_CAD (0% WR, Sharpe -0.49), GBP_JPY (live WR 12.5% vs 27.8% BT).
 **NOT deployed:** AU200_AUD (Sharpe 1.59, MaxDD -21%). See `data/backtest_sma_au200.csv`.
@@ -147,6 +148,7 @@ Streamlined to 6 pairs across 3 strategies. NAS100 uses NewBreakout (not SmaScal
 | UK100_GBP | PVTScalping | 1h | 2.99 | 14.3% | 38.1% | -4.02% | 1.0% |
 | NAS100_USD | NewBreakout | 15m | 3.36 | 17.8% | 44.2% | -5.88% | 1.0% |
 | USD_JPY | SmaScalping | 5m | 2.20 | 48.1% | 36.1% | -15.00% | 1.0% |
+| BCO_USD | SmaScalping | 15m | 3.18 | 25.4% | 29.4% | -8.74% | 1.0% |
 
 **Archived (configs preserved in `best_strategies_archived.json`, not running):**
 
@@ -165,7 +167,7 @@ Streamlined to 6 pairs across 3 strategies. NAS100 uses NewBreakout (not SmaScal
 
 **Note on UK100_GBP (PVTScalping, Sharpe 5.79):** This is competitive with JP225 (4.47) and higher than NAS100 (4.42) and USD_JPY (2.20). Worth re-enabling when expanding beyond SmaScalping.
 
-**Suspended (Mar 3, 2026):** AUD_USD, USD_CAD, BCO_USD, JP225 HeikenAshi — removed due to live underperformance or insufficient Sharpe.
+**Suspended (Mar 3, 2026):** AUD_USD, USD_CAD, JP225 HeikenAshi — removed due to live underperformance or insufficient Sharpe. (BCO_USD re-added Mar 19, 2026 with SmaScalping 15m.)
 
 ---
 
@@ -211,7 +213,7 @@ Backward compatible with legacy single-strategy format.
 
 **Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
 
-**Last Updated:** March 17, 2026 — Focused active deployment on SmaScalping only (5 pairs: XAU, XAG, JP225, NAS100, USD_JPY). All other strategies archived in `best_strategies_archived.json`. Risk adjusted: XAU + JP225 → 1.5%, others → 1.0%. JP225 updated with adx_rising + atr_ratio=1.2 noise filters (Sharpe 4.47, MaxDD -8.67%).
+**Last Updated:** March 19, 2026 — Added BCO_USD (Brent Crude Oil) SmaScalping 15m (Sharpe 3.18, ROI +25.4%, MaxDD -8.74%, risk_pct 1.0%). Base config: DI>30, RR=4.0, persist=1, adx_min=15. No noise filters — backtested filter sweep confirmed base config is optimal (all filters reduced Sharpe). Backtest period: Oct 2025–Mar 2026 (51 trades over 5 months). Data: `data/backtest_bco_strategy_compare.csv`.
 
 ---
 

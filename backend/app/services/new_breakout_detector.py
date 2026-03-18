@@ -85,6 +85,7 @@ class NewBreakoutDetector(ForexStrategy):
 
         # 2. Breakout Entry Conditions (15M Timeframe)
         # Use sr_lookback_candles from __init__ or from params if provided
+        params = params or {}
         current_sr_lookback_candles = params.get('sr_lookback_candles', self.sr_lookback_candles)
         
         # Identify recent high and low as potential S/R levels on 15m

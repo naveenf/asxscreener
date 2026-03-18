@@ -70,7 +70,7 @@ async def startup_event():
     # Add scheduled tasks
     
     # 1. High-Frequency Sniper Refresh (Every 5 minutes, offset by 1m)
-    # This runs for 5m strategy assets only (Silver, BCO) on the in-between intervals
+    # This runs for 5m strategy assets only (XAG, JP225, USD_JPY) on the in-between intervals
     scheduler.add_job(run_forex_refresh_task, 'cron', minute='6,11,21,26,36,41,51,56', args=['sniper'])
     
     # 2. General Forex Refresh (Every 15 minutes - Full Universe)

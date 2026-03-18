@@ -1,14 +1,22 @@
 import pandas as pd
 import pytest
+from datetime import datetime, timedelta
 from backend.app.services.new_breakout_detector import NewBreakoutDetector
 from backend.app.services.indicators import TechnicalIndicators # To ensure indicators are calculated
 
 # Dummy data for testing
 @pytest.fixture
 def dummy_data():
+    # Timestamps must end at "now" so the candle freshness check (10-min limit) passes
+    now = pd.Timestamp.now().floor('min')
+    end_15m = now
+    start_15m = end_15m - pd.Timedelta(minutes=15 * 249)
+    end_4h = now
+    start_4h = end_4h - pd.Timedelta(hours=4 * 49)  # 50 candles, need >= 34 for EMA34
+
     # 15m data - create a series of closes that can show breakout
     data_15m = {
-        'Date': pd.to_datetime(pd.date_range(start='2023-01-01', periods=250, freq='15min')),
+        'Date': pd.date_range(start=start_15m, end=end_15m, periods=250),
         'Open': [100 + i*0.05 for i in range(250)],
         'High': [100.1 + i*0.05 for i in range(250)],
         'Low': [99.9 + i*0.05 for i in range(250)],
@@ -18,13 +26,14 @@ def dummy_data():
     df_15m = pd.DataFrame(data_15m).set_index('Date')
 
     # 4h data - strongly bullish trend to guarantee ADX, DI+, EMA conditions are met
+    # Need >= 34 candles: max(ema_period=34, rsi_period=14, 20) = 34
     data_4h = {
-        'Date': pd.to_datetime(pd.date_range(start='2023-01-01', periods=20, freq='4H')),
-        'Open': [100 + i*10 for i in range(20)],
-        'High': [102 + i*10 for i in range(20)],
-        'Low': [98 + i*10 for i in range(20)],
-        'Close': [101 + i*10 for i in range(20)],
-        'Volume': [5000 + i*10 for i in range(20)]
+        'Date': pd.date_range(start=start_4h, end=end_4h, periods=50),
+        'Open': [100 + i*10 for i in range(50)],
+        'High': [102 + i*10 for i in range(50)],
+        'Low': [98 + i*10 for i in range(50)],
+        'Close': [101 + i*10 for i in range(50)],
+        'Volume': [5000 + i*10 for i in range(50)]
     }
     df_4h = pd.DataFrame(data_4h).set_index('Date')
 
@@ -61,13 +70,19 @@ def test_new_breakout_detector_analyze_buy_signal(dummy_data):
     symbol = "TEST_PAIR"
     sr_lookback = 20
 
+    # Timestamps must end at "now" so the candle freshness check (10-min limit) passes
+    now = pd.Timestamp.now().floor('min')
+
     # --- Setup df_4h for a clear bullish trend ---
-    num_candles_4h = 20
+    # Need >= 34 candles: max(ema_period=34, rsi_period=14, 20) = 34
+    num_candles_4h = 50
     closes_4h = [100.0 + i * 5 for i in range(num_candles_4h)]
     highs_4h = [c + 2 for c in closes_4h]
     lows_4h = [c - 2 for c in closes_4h]
+    end_4h = now
+    start_4h = end_4h - pd.Timedelta(hours=4 * (num_candles_4h - 1))
     df_4h_raw = pd.DataFrame({
-        'Date': pd.to_datetime(pd.date_range(start='2023-01-01', periods=num_candles_4h, freq='4H')),
+        'Date': pd.date_range(start=start_4h, end=end_4h, periods=num_candles_4h),
         'Open': [c - 1 for c in closes_4h],
         'High': highs_4h,
         'Low': lows_4h,
@@ -94,8 +109,10 @@ def test_new_breakout_detector_analyze_buy_signal(dummy_data):
     highs_15m = [c + 0.1 for c in closes_15m]
     lows_15m = [c - 0.1 for c in closes_15m]
 
+    end_15m = now
+    start_15m = end_15m - pd.Timedelta(minutes=15 * (len(closes_15m) - 1))
     df_15m_raw = pd.DataFrame({
-        'Date': pd.to_datetime(pd.date_range(start='2023-01-01', periods=len(closes_15m), freq='15min')),
+        'Date': pd.date_range(start=start_15m, end=end_15m, periods=len(closes_15m)),
         'Open': [c - 0.05 for c in closes_15m],
         'High': highs_15m,
         'Low': lows_15m,

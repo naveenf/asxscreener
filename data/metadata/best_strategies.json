@@ -105,5 +105,21 @@
         }
       }
     ]
+  },
+  "BCO_USD": {
+    "risk_pct": 0.01,
+    "strategies": [
+      {
+        "strategy": "SmaScalping",
+        "sharpe": 3.18,
+        "timeframe": "15m",
+        "target_rr": 4.0,
+        "params": {
+          "di_threshold": 30.0,
+          "di_persist": 1,
+          "adx_min": 15.0
+        }
+      }
+    ]
   }
 }
