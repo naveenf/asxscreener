@@ -151,7 +151,8 @@ class EmailService:
         """Send an email for closed positions."""
         if not exits or not recipients: return
         
-        subject = f"🏁 {len(exits)} Trade Signal{'s' if len(exits) > 1 else ''} Closed"
+        today = datetime.now().strftime("%d %b")
+        subject = f"🏁 {len(exits)} Trade Signal{'s' if len(exits) > 1 else ''} Closed [{today}]"
         
         html_body = f"""
         <html>
@@ -263,7 +264,8 @@ class EmailService:
             logger.warning("SMTP credentials not set. Skipping email.")
             return
 
-        subject = f"🚀 {len(signals)} New Trading Signal{'s' if len(signals) > 1 else ''} Detected"
+        today = datetime.now().strftime("%d %b")
+        subject = f"🚀 {len(signals)} New Trading Signal{'s' if len(signals) > 1 else ''} Detected [{today}]"
         
         # Build HTML Body
         html_body = f"""
