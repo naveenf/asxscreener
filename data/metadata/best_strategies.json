@@ -34,7 +34,7 @@
     ]
   },
   "JP225_USD": {
-    "risk_pct": 0.015,
+    "risk_pct": 0.01,
     "strategies": [
       {
         "strategy": "SmaScalping",

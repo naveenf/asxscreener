@@ -5,6 +5,7 @@
     "JP225_USD::SmaScalping": { "sharpe": 5.93, "roi_pct": 48.2,  "win_rate_pct": 35.1, "max_dd_pct": -3.94,  "total_trades": 37,  "timeframe": "5m"  },
     "UK100_GBP::PVTScalping": { "sharpe": 2.99, "roi_pct": 14.3,  "win_rate_pct": 38.1, "max_dd_pct": -4.02,  "total_trades": 21,  "timeframe": "1h"  },
     "NAS100_USD::NewBreakout": { "sharpe": 3.36, "roi_pct": 17.8,  "win_rate_pct": 44.2, "max_dd_pct": -5.88,  "total_trades": 26,  "timeframe": "15m" },
-    "USD_JPY::SmaScalping":   { "sharpe": 2.20, "roi_pct": 48.1,  "win_rate_pct": 36.1, "max_dd_pct": -15.00, "total_trades": 158, "timeframe": "5m"  }
+    "USD_JPY::SmaScalping":   { "sharpe": 2.20, "roi_pct": 48.1,  "win_rate_pct": 36.1, "max_dd_pct": -15.00, "total_trades": 158, "timeframe": "5m"  },
+    "BCO_USD::SmaScalping":   { "sharpe": 3.18, "roi_pct": 25.4,  "win_rate_pct": 29.4, "max_dd_pct": -8.74,  "total_trades": 51,  "timeframe": "15m" }
   }
 }
