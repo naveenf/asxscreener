@@ -3,7 +3,7 @@
 ## Project Overview
 Full-stack app identifying trading opportunities on ASX and Global Forex/Commodity markets via a **Dynamic Strategy Selection** engine. Calculations match **Pine Script** (TradingView) standards using Wilder's Smoothing.
 
-**Strategies (active):** Silver Sniper, Daily ORB, Heiken Ashi, PVT Scalping, SMA Scalping, NewBreakout.
+**Strategies (active):** SMA Scalping.
 
 ---
 
@@ -48,16 +48,7 @@ asx-screener/
 │   └── services/
 │       ├── indicators.py                  # ADX, DI, RSI, BB
 │       ├── forex_screener.py              # Dynamic Strategy Orchestrator
-│       ├── forex_detector.py              # Trend Following (MTF)
-│       ├── squeeze_detector.py            # Squeeze Strategy
-│       ├── sniper_detector.py             # Legacy Sniper
-│       ├── enhanced_sniper_detector.py    # Optimized Forex Sniper
-│       ├── silver_sniper_detector.py      # Silver 5m + FVG
-│       ├── daily_orb_detector.py          # Daily Open Range Breakout
-│       ├── commodity_sniper_detector.py   # Commodity-optimized Sniper
-│       ├── triple_trend_detector.py       # Fib + Supertrend
-│       ├── pvt_scalping_detector.py       # PVT Scalping
-│       ├── sma_scalping_detector.py       # SMA Scalping
+│       ├── sma_scalping_detector.py       # SMA Scalping (active)
 │       └── strategy_interface.py          # Abstract Base Class
 ├── data/
 │   ├── raw/                    # Stock CSVs
@@ -67,8 +58,13 @@ asx-screener/
 │       ├── forex_pairs.json
 │       └── stock_list.json
 ├── scripts/
-│   ├── backtest_arena.py       # Backtesting engine
-│   └── download_forex.py       # Data fetcher
+│   ├── backtest_sma_15m_all_pairs.py      # 15m pair exploration sweep
+│   ├── backtest_noise_filter_sweep.py     # Filter sweep for active pairs
+│   ├── backtest_bco_strategy_compare.py   # BCO config derivation
+│   ├── backtest_jp225_time_filter.py      # JP225 time filter validation
+│   ├── backtest_sma_all_pairs_exit_mode.py # Exit mode validation (SMA20 disabled)
+│   ├── backtest_sma_jpy_pairs.py          # USD_JPY config sweep
+│   └── download_forex.py                  # Data fetcher
 └── docs/analysis/              # Backtest reports
 ```
 
@@ -78,47 +74,31 @@ asx-screener/
 
 | # | Strategy | Key Indicators | Pairs |
 |---|----------|---------------|-------|
-| 1 | **SMA Scalping** | SMA20/50/100 stack, DI+/DI-, ATR SL floor | XAU, XAG, JP225, NAS100, USD_JPY |
-| 2 | **PVT Scalping** | PVT>0.05, EMA50, SMA100, circuit breaker | UK100, NAS100, XAG |
-| 3 | **NewBreakout** | 15m S/R breakout, EMA34, ADX>25, HTF 4h | NAS100, USD_CHF |
-| 4 | **Heiken Ashi** | HA candles, SMA200, 4H trend, ADX>22 | XAU |
-| 5 | **Daily ORB** | Sydney session range, 4H DI, BB width | XAG (2.0R) |
-| 6 | **Silver Sniper** | 5m Squeeze, 15m ADX>20, FVG | XAG (3.0R) |
+| 1 | **SMA Scalping** | SMA20/50/100 stack, DI+/DI-, ATR SL floor | XAU, XAG, JP225, NAS100, USD_JPY, BCO, UK100, EUR_USD, EUR_AUD |
 
-**Silver time filter (all XAG strategies):** `avoid_utc_hours: [14, 15, 16]` — blocks London-NY overlap noise.
+All 9 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, PVTScalping, and NewBreakout are archived — see archived table below.
 
 ---
 
-## SMA Scalping — Deployed Configs (Mar 6, 2026)
-
-| Pair | TF | DI> | RR | persist | Extra filters | Trades | WR% | ROI% | Sharpe | MaxDD |
-|------|----|-----|----|---------|--------------|--------|-----|------|--------|-------|
-| XAU_USD | 15m | 35 | 5.0 | 2 | `adx_rising, avoid_hours=[8,9]` | 26 | 42.3% | 47.1% | 7.97 | -5.85% |
-| XAG_USD | 5m | 35 | 12.0 | 1 | `atr_ratio=1.2, di_slope, avoid_hours=[14,15,16]` | 34 | 26.5% | 115.7% | 6.30 | -6.79% |
-| JP225_USD | 5m | 30 | 5.0 | 2 | `adx_min=20, di_slope, adx_rising, atr_ratio=1.2` | 53 | 30.2% | 81.83% | 4.47 | -8.67% |
-| NAS100_USD | 5m | 35 | 4.5 | 1 | `atr_ratio=1.0, di_slope, avoid_hours=[7,21,22,23]` | 34 | 32.4% | 28.8% | 4.42 | -10.47% |
-| USD_JPY | 5m | 30 | 2.5 | 1 | `adx_min=15, avoid_hours=[15-21]` | 158 | 36.1% | 48.1% | 2.20 | -15.00% |
-| BCO_USD | 15m | 30 | 4.0 | 1 | `adx_min=15` | 51 | 29.4% | 25.4% | 3.18 | -8.74% |
-
-**Suspended (live underperformance):** AUD_USD (live WR 20% vs 34.8% BT), USD_CAD (0% WR, Sharpe -0.49), GBP_JPY (live WR 12.5% vs 27.8% BT).
-**NOT deployed:** AU200_AUD (Sharpe 1.59, MaxDD -21%). See `data/backtest_sma_au200.csv`.
+**Suspended (live underperformance):** AUD_USD (live WR 20% vs 34.8% BT), USD_CAD (0% WR, Sharpe -0.49), GBP_JPY (live WR 12.5% vs BT 27.8%; 15m BT Sharpe 4.69 base — not yet deployed).
+**NOT deployed:** AU200_AUD (Sharpe 2.10, MaxDD -9.22%).
 
 ### SMA Scalping Rules & Gotchas
 
 **Core entry (LONG):** Price > SMA20/50/100 · DI+ > DI- · DI+ > threshold for N candles · ADX ≥ adx_min · entry not below 2-candle lows
 **Stop Loss:** `max(structural_distance, 1×ATR)` — ATR floor prevents noise-triggered stops.
-**Exit mechanism:** Broker-level SL and TP orders placed on Oanda at entry — trade closes **only** when SL or TP is hit. SMA20 trailing exit is disabled for all SmaScalping pairs. Backtesting showed SMA20 exit cut 60–89% of trades short before TP, reducing Sharpe by 2–5 points per pair across all 5 deployed configs (validated Mar 6, 2026 — see `data/backtest_sma_all_pairs_exit_mode.csv`).
+**Exit mechanism:** Broker-level SL and TP orders placed on Oanda at entry — trade closes **only** when SL or TP is hit. SMA20 trailing exit is disabled for all SmaScalping pairs. Backtesting showed SMA20 exit cut 60–89% of trades short before TP, reducing Sharpe by 2–5 points per pair (validated Mar 6, 2026 — see `data/backtest_sma_all_pairs_exit_mode.csv`).
 
 **Optional noise filters** (configured per-pair in `best_strategies.json`):
 
 | Filter | Description |
 |--------|-------------|
-| `di_persist` | DI must exceed threshold for N consecutive candles. Use 2 for choppy pairs (JP225); keep 1 for fast-moving (XAG, NAS100). |
-| `adx_min` | ADX floor. JP225 uses 20. |
+| `di_persist` | DI must exceed threshold for N consecutive candles. Use 2 for choppy pairs (JP225, NAS100 15m, UK100, EUR_USD); keep 1 for fast-moving (XAG 5m, BCO, EUR_AUD). |
+| `adx_min` | ADX floor. JP225 uses 20, EUR_AUD uses 15, NAS100 uses 25. |
 | `adx_rising` | ADX must be rising vs previous candle. XAU uses this. |
 | `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 12R), NAS100=1.0. |
 | `di_slope` | DI+ must be rising over last 2 candles — targets fading-momentum entries. Safe for most pairs. |
-| `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,21,22,23] (pre-London + post-NYSE), USD_JPY=[15–21]. |
+| `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,8,21,22,23] (pre-London + post-NYSE), USD_JPY=[15,16,17,18,19,20,21] (NY open + evening). |
 | `di_spread_min` | Min DI+/DI- gap — rejects marginal crossings. |
 | `body_ratio_min` | Min candle body/range ratio — rejects doji candles. |
 
@@ -129,65 +109,59 @@ asx-screener/
 - `di_threshold` above 30 for USD_JPY — DI spread too tight on JPY; di=35 produces negative ROI.
 - `adx_min` above 15 for USD_JPY — adx_min=20+ over-filters (Sharpe 1.69→1.15); sweet spot is 15.
 - `rsi_filter` on any 5m pair — adds noise.
-- `di_persist=2` to XAG or NAS100 — kills edge (XAG: +86%→+10%).
-- SMA20 trailing exit — validated harmful on all 5 pairs; 60–89% of trades exit early, avg-R collapses to <0.25R vs 0.96–2.44R with fixed TP. Do not re-enable `check_exit` for SmaScalping in `portfolio_monitor.py` or `oanda_trade_service.py`.
+- `di_persist=2` to XAG (5m) — kills edge (XAG: +86%→+10%). Note: NAS100 15m uses persist=2 in production — the restriction was validated on 5m only.
+- SMA20 trailing exit — validated harmful on all tested pairs; 60–89% of trades exit early, avg-R collapses to <0.25R vs 0.96–2.44R with fixed TP. Do not re-enable `check_exit` for SmaScalping in `portfolio_monitor.py` or `oanda_trade_service.py`.
 
 ---
 
-## Active Strategy Configuration (Mar 14, 2026)
+## Active Strategy Configuration (Mar 27, 2026)
 
-Streamlined to 6 pairs across 3 strategies. NAS100 uses NewBreakout (not SmaScalping) to avoid simultaneous signals with JP225 which is also on SmaScalping. UK100 re-enabled with PVTScalping. Other strategies archived in `data/metadata/best_strategies_archived.json`.
+9 active pairs, all running SmaScalping. NAS100 switched from NewBreakout to SmaScalping 15m (never triggered in live trading). UK100 switched from PVTScalping 1h to SmaScalping 15m. EUR_USD and EUR_AUD added as new SmaScalping 15m pairs. Other strategies archived in `data/metadata/best_strategies_archived.json`.
 
 **Active pairs** (`best_strategies.json` + `forex_pairs.json`):
 
 | Asset | Strategy | TF | Sharpe | ROI% | WR% | MaxDD% | risk_pct |
 |-------|----------|----|--------|------|-----|--------|----------|
-| XAU_USD | SmaScalping | 15m | 7.97 | 47.1% | 42.3% | -5.85% | 1.5% |
+| UK100_GBP | SmaScalping | 15m | 8.45 | 42.7% | 42.1% | -3.94% | 1.0% |
+| XAU_USD | SmaScalping | 15m | 6.48 | 39.9% | 35.5% | -7.73% | 1.5% |
 | XAG_USD | SmaScalping | 5m | 6.30 | 115.7% | 26.5% | -6.79% | 1.0% |
-| JP225_USD | SmaScalping | 5m | 4.47 | 81.83% | 30.2% | -8.67% | 1.5% |
-| UK100_GBP | PVTScalping | 1h | 2.99 | 14.3% | 38.1% | -4.02% | 1.0% |
-| NAS100_USD | NewBreakout | 15m | 3.36 | 17.8% | 44.2% | -5.88% | 1.0% |
-| USD_JPY | SmaScalping | 5m | 2.20 | 48.1% | 36.1% | -15.00% | 1.0% |
+| JP225_USD | SmaScalping | 5m | 5.87 | 52.5% | 35.0% | -5.85% | 1.0% |
+| EUR_USD | SmaScalping | 15m | 5.56 | 56.2% | 29.5% | -10.47% | 1.0% |
+| EUR_AUD | SmaScalping | 15m | 4.52 | 23.3% | 30.8% | -8.65% | 1.0% |
+| NAS100_USD | SmaScalping | 15m | 4.31 | 37.4% | 39.0% | -5.85% | 1.0% |
 | BCO_USD | SmaScalping | 15m | 3.18 | 25.4% | 29.4% | -8.74% | 1.0% |
+| USD_JPY | SmaScalping | 5m | 2.78 | 48.1% | 36.1% | -15.00% | 1.0% |
+
+**New 15m SmaScalping configs (added Mar 27, 2026):**
+
+| Asset | DI> | RR | persist | Filters | Trades | Notes |
+|-------|-----|-----|---------|---------|--------|-------|
+| UK100_GBP | 35 | 6.0 | 2 | `atr_ratio=1.2, avoid_hours=[15,16,17,18,19]` | 19 | Replaces PVTScalping 1h (Sharpe 2.99). Blocks post-UK-close dead volume. Low trade count — monitor closely. |
+| EUR_USD | 25 | 6.0 | 2 | `atr_ratio=1.0, avoid_hours=[20,21,22,23]` | 44 | Strongest new addition — 44 trades, clean 2-filter config. Blocks NY/pre-London dead zone. MaxDD -10.47% elevated — use 1% risk. |
+| EUR_AUD | 30 | 5.0 | 1 | `di_slope=true, adx_min=15, avoid_hours=[7,8]` | 26 | Blocks London open spike. Short BT history (Dec 2025–Feb 2026). Monitor first 2 months. |
+| NAS100_USD | 30 | 3.0 | 2 | `di_slope=true, adx_min=25, atr_ratio=1.0, avoid_hours=[7,8,21,22,23]` | 59 | Replaces NewBreakout (Sharpe 3.36, never triggered live). Mirrors old 5m filter set + adx_min=25. MaxDD -5.85% — best of all active pairs. |
 
 **Archived (configs preserved in `best_strategies_archived.json`, not running):**
 
 | Asset | Strategy | Sharpe | Reason archived |
 |-------|----------|--------|-----------------|
+| UK100_GBP | PVTScalping | 2.99 | Replaced by SmaScalping 15m (Sharpe 8.45) Mar 27, 2026 |
+| NAS100_USD | NewBreakout | 3.36 | Replaced by SmaScalping 15m (Sharpe 4.31) Mar 27, 2026 — never triggered in live trading |
 | XAG_USD | PVTScalping | 4.95 | Reducing strategy clutter |
 | XAG_USD | DailyORB | 1.99 | Reducing strategy clutter |
 | XAG_USD | SilverSniper | 1.53 | Reducing strategy clutter |
-| NAS100_USD | PVTScalping | 6.24 | Replaced by NewBreakout |
-| NAS100_USD | SmaScalping | 3.28 | Replaced by NewBreakout (avoids JP225 correlation) |
+| NAS100_USD | PVTScalping | 6.24 | Replaced by NewBreakout, then SmaScalping 15m |
+| NAS100_USD | SmaScalping (5m) | 3.28 | Replaced by NewBreakout Mar 14 (JP225 correlation), then back to SmaScalping 15m Mar 27 |
 | XAU_USD | HeikenAshi | 2.35 | Reducing strategy clutter |
 | USD_CHF | NewBreakout | 1.94 | Low Sharpe; insufficient live data |
 | AUD_USD | SmaScalping | — | Suspended: live WR 20% vs BT 34.8% |
 | USD_CAD | SmaScalping | — | Suspended: 0% live WR, Sharpe -0.49 |
-| GBP_JPY | SmaScalping | — | Suspended: live WR 12.5% vs BT 27.8% |
+| GBP_JPY | SmaScalping | — | Suspended 5m: live WR 12.5% vs BT 27.8%. 15m BT Sharpe 4.69 (base) / 6.57 (filtered) — not yet deployed, insufficient live data. |
 
-**Note on UK100_GBP (PVTScalping, Sharpe 5.79):** This is competitive with JP225 (4.47) and higher than NAS100 (4.42) and USD_JPY (2.20). Worth re-enabling when expanding beyond SmaScalping.
-
-**Suspended (Mar 3, 2026):** AUD_USD, USD_CAD, JP225 HeikenAshi — removed due to live underperformance or insufficient Sharpe. (BCO_USD re-added Mar 19, 2026 with SmaScalping 15m.)
+**Suspended (Mar 3, 2026):** AUD_USD, USD_CAD suspended for live underperformance. BCO_USD re-added Mar 19, 2026. JP225 HeikenAshi archived Mar 3, 2026.
 
 ---
 
-## Multi-Strategy Framework
-
-`best_strategies.json` supports multiple strategies per asset. `forex_screener.py` loads data once, runs all strategies, ranks by score.
-
-```json
-"XAG_USD": {
-  "strategies": [
-    { "strategy": "DailyORB", "timeframe": "15m", "target_rr": 2.0, "params": { ... } },
-    { "strategy": "SilverSniper", "timeframe": "5m", "target_rr": 3.0 },
-    { "strategy": "SmaScalping", "timeframe": "5m", "target_rr": 12.0, "params": { ... } }
-  ]
-}
-```
-
-Backward compatible with legacy single-strategy format.
-
----
 
 ## Trade History & Analytics
 
@@ -197,23 +171,13 @@ Backward compatible with legacy single-strategy format.
 
 ---
 
-## NewBreakout Strategy
-
-- **Timeframe:** 15m (HTF: 4h trend filter, ADX>25)
-- **Exit:** EMA9 crossover
-- **USD_CHF:** 1.5R target · **NAS100_USD:** 2.0R target (1.5R was unprofitable: -3.6% ROI)
-
----
-
 ## Documentation Organization
 
-- Analysis reports → `docs/analysis/[ASSET]_PERFORMANCE_REPORT.md` or `[STRATEGY]_RESULTS.md`
-- Backtest CSVs → `data/backtest_results_[ASSET]_[STRATEGY].csv`
-- When adding strategies: create CSV in `data/`, create doc in `docs/analysis/`, update CLAUDE.md
+- When adding strategies: run backtest sweep → save CSV to `data/` → update `best_strategies.json` + `forex_pairs.json` → update CLAUDE.md active table
 
-**Key analysis docs:** `docs/analysis/` — DAILY_ORB_FINAL_RESULTS.md, HEIKEN_ASHI_V2_CRITICAL_REVIEW.md, GT_SCORE_RESULTS_SUMMARY.md, SILVER_STRATEGY_FINAL_SUMMARY.md
+**Active backtest data:** `data/backtest_sma_15m_all_pairs.csv`, `data/backtest_noise_filter_sweep.csv`, `data/backtest_sma_nas100_15m_filter_sweep.csv`, `data/backtest_bco_strategy_compare.csv`, `data/backtest_sma_jpy_pairs.csv`, `data/backtest_sma_all_pairs_exit_mode.csv`
 
-**Last Updated:** March 19, 2026 — Added BCO_USD (Brent Crude Oil) SmaScalping 15m (Sharpe 3.18, ROI +25.4%, MaxDD -8.74%, risk_pct 1.0%). Base config: DI>30, RR=4.0, persist=1, adx_min=15. No noise filters — backtested filter sweep confirmed base config is optimal (all filters reduced Sharpe). Backtest period: Oct 2025–Mar 2026 (51 trades over 5 months). Data: `data/backtest_bco_strategy_compare.csv`.
+**Last Updated:** March 27, 2026 — NAS100_USD switched from NewBreakout (Sharpe 3.36, never triggered live) to SmaScalping 15m (Sharpe 4.31, ROI +37.4%, MaxDD -5.85%, WR 39.0%, 59 trades, DI>30, RR=3.0, p=2, di_slope, adx_min=25, atr_ratio=1.0, avoid_hours=[7,8,21,22,23]). Also: Added EUR_USD SmaScalping 15m (Sharpe 5.56, ROI +56.2%, MaxDD -10.47%, WR 29.5%, 44 trades, DI>25, RR=6.0, p=2, atr_ratio=1.0, avoid_hours=[20,21,22,23]); EUR_AUD SmaScalping 15m (Sharpe 4.52, ROI +23.3%, MaxDD -8.65%, WR 30.8%, 26 trades, DI>30, RR=5.0, p=1, di_slope, adx_min=15, avoid_hours=[7,8]); UK100_GBP switched from PVTScalping 1h to SmaScalping 15m (Sharpe 8.45, ROI +42.7%, MaxDD -3.94%, WR 42.1%, 19 trades, DI>35, RR=6.0, p=2, atr_ratio=1.2, avoid_hours=[15,16,17,18,19]). Backtest data: `data/backtest_sma_15m_all_pairs.csv`, `data/backtest_noise_filter_sweep.csv`. Previous update: March 19, 2026 — Added BCO_USD (Brent Crude Oil) SmaScalping 15m (Sharpe 3.18, ROI +25.4%, MaxDD -8.74%, risk_pct 1.0%). Base config: DI>30, RR=4.0, persist=1, adx_min=15. Data: `data/backtest_bco_strategy_compare.csv`.
 
 ---
 

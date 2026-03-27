@@ -1,25 +1,19 @@
 """
-SmaScalping — deployed-pairs backtest using current production parameters.
+SmaScalping 15m — Full Pair Sweep
+==================================
+Tests every pair in data/forex_raw/ that has a 15m CSV against a grid of:
+  DI threshold : 25, 30, 35
+  RR           : 2.5, 3.0, 4.0, 5.0, 6.0
+  di_persist   : 1, 2
 
-Matches the live detector exactly:
-  - DI threshold + DI dominance (DI+ > DI-)
-  - ADX min
-  - di_persist: DI must exceed threshold for N consecutive candles
-  - Structural validity: price not already past the 2-candle SL level
-  - ATR floor for stop loss: SL = max(structural_distance, 1×ATR)
+Reports the best config per pair (by Sharpe), sorted descending.
+Minimum 10 trades required to appear in results.
 
-Deployed pairs and timeframes (Feb 2026):
-  XAU_USD   15m  DI>35  RR=5.0   di_persist=2
-  XAG_USD    5m  DI>35  RR=10.0  di_persist=1
-  JP225_USD  5m  DI>30  RR=5.0   di_persist=2  adx_min=20
-  AUD_USD    5m  DI>35  RR=2.5   di_persist=2
-  USD_CAD    5m  DI>35  RR=3.0   di_persist=1
-  NAS100_USD 5m  DI>35  RR=4.5   di_persist=1
-
-Generates: data/backtest_sma_scalping_all_pairs.csv
+Output: data/backtest_sma_15m_all_pairs.csv
 """
 
 import sys
+import itertools
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -28,27 +22,46 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from backend.app.services.indicators import TechnicalIndicators
 
 DATA_DIR        = Path("data/forex_raw")
-OUT_FILE        = Path("data/backtest_sma_scalping_all_pairs.csv")
+OUT_FILE        = Path("data/backtest_sma_15m_all_pairs.csv")
 INITIAL_BALANCE = 10_000.0
 RISK_PCT        = 0.01
+MIN_TRADES      = 10
 
-# Current deployed parameters — keep in sync with best_strategies.json
-DEPLOYED = {
-    #          tf      di     adx    rr     persist  spread
-    "XAU_USD":    dict(tf="15m", di=35.0, adx=0.0,  rr=5.0,  persist=2, spread=0.50),
-    "XAG_USD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=12.0, persist=1, spread=0.03),
-    "JP225_USD":  dict(tf="5m",  di=30.0, adx=20.0, rr=5.0,  persist=2, spread=17.0),
-    "AUD_USD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=2.5,  persist=2, spread=0.0002),
-    "USD_CAD":    dict(tf="5m",  di=35.0, adx=0.0,  rr=3.0,  persist=1, spread=0.0002),
-    "NAS100_USD": dict(tf="5m",  di=35.0, adx=0.0,  rr=4.5,  persist=1, spread=2.30),
+# Realistic Oanda spreads (in price units)
+SPREADS = {
+    "XAU_USD":   0.50,
+    "XAG_USD":   0.03,
+    "BCO_USD":   0.04,
+    "XCU_USD":   0.0005,
+    "AU200_AUD": 0.50,
+    "UK100_GBP": 0.80,
+    "JP225_USD": 17.0,
+    "NAS100_USD": 2.30,
+    "EUR_USD":   0.0001,
+    "GBP_USD":   0.0001,
+    "AUD_USD":   0.0001,
+    "NZD_USD":   0.0002,
+    "USD_CAD":   0.0002,
+    "USD_CHF":   0.0002,
+    "USD_JPY":   0.02,
+    "EUR_JPY":   0.03,
+    "GBP_JPY":   0.04,
+    "AUD_JPY":   0.03,
+    "CAD_JPY":   0.03,
+    "CHF_JPY":   0.03,
+    "EUR_AUD":   0.0002,
+    "CORN_USD":  1.50,
+    "WHEAT_USD": 2.00,
+    "SOYBN_USD": 2.00,
 }
 
-TF_SUFFIX = {"5m": "5_Min", "15m": "15_Min"}
+DI_THRESHOLDS = [25.0, 30.0, 35.0]
+RR_VALUES     = [2.5, 3.0, 4.0, 5.0, 6.0]
+PERSIST_VALUES = [1, 2]
 
 
-def load_and_prep(symbol: str, tf: str) -> pd.DataFrame:
-    suffix = TF_SUFFIX[tf]
-    csv = DATA_DIR / f"{symbol}_{suffix}.csv"
+def load_and_prep(symbol: str) -> pd.DataFrame:
+    csv = DATA_DIR / f"{symbol}_15_Min.csv"
     df = pd.read_csv(csv, parse_dates=["Date"])
     df.set_index("Date", inplace=True)
     df.sort_index(inplace=True)
@@ -128,7 +141,7 @@ def run_backtest(df, rr, di, adx_min, spread, di_persist):
 
         in_trade = True
 
-    if len(trades) < 5:
+    if len(trades) < MIN_TRADES:
         return None
 
     df_t   = pd.DataFrame(trades)
@@ -151,38 +164,72 @@ def _close(balance, rr, win):
 
 
 if __name__ == "__main__":
-    print("SmaScalping — Deployed Pairs Backtest")
-    print("=" * 78)
-    print(f"  {'Symbol':<14} {'TF':<4} {'DI':>3} {'RR':>5} {'p':>2} {'Trades':>6} "
-          f"{'WR%':>6} {'ROI%':>8} {'Sharpe':>7} {'MaxDD%':>8}")
-    print("  " + "-" * 67)
+    # Collect all pairs with 15m data
+    pairs = sorted([f.stem.replace("_15_Min", "")
+                    for f in DATA_DIR.glob("*_15_Min.csv")])
 
-    rows = []
-    for symbol, p in DEPLOYED.items():
-        tf_suffix = TF_SUFFIX[p["tf"]]
-        csv = DATA_DIR / f"{symbol}_{tf_suffix}.csv"
-        if not csv.exists():
-            print(f"  {symbol:<14} — no {p['tf']} data file, skipping")
-            continue
+    print(f"SmaScalping 15m — Full Pair Sweep  ({len(pairs)} pairs)")
+    print(f"Grid: DI={DI_THRESHOLDS}, RR={RR_VALUES}, persist={PERSIST_VALUES}")
+    print("=" * 90)
+
+    results = []
+    for symbol in pairs:
+        spread = SPREADS.get(symbol, 0.0002)
         try:
-            df = load_and_prep(symbol, p["tf"])
+            df = load_and_prep(symbol)
         except Exception as e:
-            print(f"  {symbol:<14} — load error: {e}")
+            print(f"  {symbol:<16} — load error: {e}")
             continue
 
         period = f"{df.index[0].date()} → {df.index[-1].date()}"
-        r = run_backtest(df, p["rr"], p["di"], p["adx"], p["spread"], p["persist"])
-        if r is None:
-            print(f"  {symbol:<14} — insufficient trades (<5)")
+        best = None
+
+        for di, rr, persist in itertools.product(DI_THRESHOLDS, RR_VALUES, PERSIST_VALUES):
+            r = run_backtest(df, rr, di, 0.0, spread, persist)
+            if r is None:
+                continue
+            if best is None or r["sharpe"] > best["sharpe"]:
+                best = {"di": di, "rr": rr, "persist": persist, **r}
+
+        if best is None:
+            print(f"  {symbol:<16} — no config with ≥{MIN_TRADES} trades")
             continue
 
-        print(f"  {symbol:<14} {p['tf']:<4} DI>{p['di']:<4.0f} RR={p['rr']:<4.1f} p={p['persist']}  "
-              f"n={r['trades']:>4}  wr={r['win_rate']:>5.1f}%  roi={r['roi']:>7.2f}%  "
-              f"sharpe={r['sharpe']:>5.2f}  dd={r['max_dd']:>7.2f}%")
-        rows.append({"symbol": symbol, "timeframe": p["tf"], "rr": p["rr"],
-                     "di_threshold": p["di"], "adx_min": p["adx"],
-                     "di_persist": p["persist"], "spread": p["spread"],
-                     "period": period, **r})
+        results.append({
+            "symbol":      symbol,
+            "timeframe":   "15m",
+            "di_threshold": best["di"],
+            "rr":          best["rr"],
+            "di_persist":  best["persist"],
+            "spread":      spread,
+            "period":      period,
+            "trades":      best["trades"],
+            "win_rate":    best["win_rate"],
+            "roi":         best["roi"],
+            "sharpe":      best["sharpe"],
+            "max_dd":      best["max_dd"],
+        })
 
-    pd.DataFrame(rows).to_csv(OUT_FILE, index=False)
-    print(f"\nSaved → {OUT_FILE}  ({len(rows)} pairs)")
+    # Sort by Sharpe descending
+    results.sort(key=lambda x: x["sharpe"], reverse=True)
+
+    print(f"\n{'Symbol':<16} {'DI':>3} {'RR':>5} {'p':>2} {'Trades':>6} {'WR%':>6} {'ROI%':>8} {'Sharpe':>7} {'MaxDD%':>8}")
+    print("-" * 72)
+    for r in results:
+        flag = ""
+        if r["sharpe"] >= 2.0 and r["roi"] > 0:
+            flag = " ✓"
+        print(f"  {r['symbol']:<14} DI>{r['di_threshold']:<4.0f} RR={r['rr']:<4.1f} p={r['di_persist']}  "
+              f"n={r['trades']:>4}  wr={r['win_rate']:>5.1f}%  roi={r['roi']:>7.2f}%  "
+              f"sharpe={r['sharpe']:>5.2f}  dd={r['max_dd']:>7.2f}%{flag}")
+
+    print(f"\nPairs with Sharpe ≥ 2.0 and positive ROI:")
+    good = [r for r in results if r["sharpe"] >= 2.0 and r["roi"] > 0]
+    for r in good:
+        print(f"  {r['symbol']:<14} Sharpe={r['sharpe']:.2f}  ROI={r['roi']:.1f}%  "
+              f"WR={r['win_rate']:.1f}%  MaxDD={r['max_dd']:.2f}%  "
+              f"DI>{r['di_threshold']:.0f} RR={r['rr']} p={r['di_persist']}")
+
+    df_out = pd.DataFrame(results)
+    df_out.to_csv(OUT_FILE, index=False)
+    print(f"\nSaved → {OUT_FILE}  ({len(results)} pairs)")

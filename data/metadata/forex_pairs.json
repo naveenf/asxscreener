@@ -48,6 +48,20 @@
       "type": "Commodity",
       "oanda_symbol": "BCO_USD",
       "yf_symbol_legacy": "BCO_USD"
+    },
+    {
+      "symbol": "EUR_USD",
+      "name": "EUR/USD",
+      "type": "Forex",
+      "oanda_symbol": "EUR_USD",
+      "yf_symbol_legacy": "EUR_USD"
+    },
+    {
+      "symbol": "EUR_AUD",
+      "name": "EUR/AUD",
+      "type": "Forex",
+      "oanda_symbol": "EUR_AUD",
+      "yf_symbol_legacy": "EUR_AUD"
     }
   ],
   "_archived_pairs": [

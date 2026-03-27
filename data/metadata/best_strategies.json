@@ -58,15 +58,17 @@
     "risk_pct": 0.01,
     "strategies": [
       {
-        "strategy": "NewBreakout",
-        "sharpe": 3.36,
+        "strategy": "SmaScalping",
+        "sharpe": 4.31,
         "timeframe": "15m",
-        "target_rr": 2.0,
+        "target_rr": 3.0,
         "params": {
-          "adx_threshold": 25.0,
-          "ema_period": 34,
-          "sr_lookback_candles": 40,
-          "atr_multiplier": 2.0
+          "di_threshold": 30.0,
+          "di_persist": 2,
+          "di_slope": true,
+          "adx_min": 25.0,
+          "atr_ratio_min": 1.0,
+          "avoid_hours": [7, 8, 21, 22, 23]
         }
       }
     ]
@@ -75,15 +77,50 @@
     "risk_pct": 0.01,
     "strategies": [
       {
-        "strategy": "PVTScalping",
-        "sharpe": 5.79,
-        "timeframe": "1h",
-        "target_rr": 2.5,
+        "strategy": "SmaScalping",
+        "sharpe": 8.45,
+        "timeframe": "15m",
+        "target_rr": 6.0,
         "params": {
-          "pvt_threshold": 0.05,
-          "consecutive_pvt": 1,
-          "rsi_entry_long": 20,
-          "rsi_entry_short": 30
+          "di_threshold": 35.0,
+          "di_persist": 2,
+          "atr_ratio_min": 1.2,
+          "avoid_hours": [15, 16, 17, 18, 19]
+        }
+      }
+    ]
+  },
+  "EUR_USD": {
+    "risk_pct": 0.01,
+    "strategies": [
+      {
+        "strategy": "SmaScalping",
+        "sharpe": 5.56,
+        "timeframe": "15m",
+        "target_rr": 6.0,
+        "params": {
+          "di_threshold": 25.0,
+          "di_persist": 2,
+          "atr_ratio_min": 1.0,
+          "avoid_hours": [20, 21, 22, 23]
+        }
+      }
+    ]
+  },
+  "EUR_AUD": {
+    "risk_pct": 0.01,
+    "strategies": [
+      {
+        "strategy": "SmaScalping",
+        "sharpe": 4.52,
+        "timeframe": "15m",
+        "target_rr": 5.0,
+        "params": {
+          "di_threshold": 30.0,
+          "di_persist": 1,
+          "di_slope": true,
+          "adx_min": 15.0,
+          "avoid_hours": [7, 8]
         }
       }
     ]
