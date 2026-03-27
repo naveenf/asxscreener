@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Dict, Optional, List
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import json
 
@@ -114,9 +114,7 @@ async def analyze_stock(ticker: str):
                 if not is_stale:
                     df = df_temp
                     # Ensure index is tz-naive
-                    df.index = pd.to_datetime(df.index)
-                    if hasattr(df.index, 'tz') and df.index.tz is not None:
-                        df.index = df.index.tz_convert(None)
+                    df.index = pd.to_datetime(df.index, utc=True).tz_convert(None)
                         
         except Exception as e:
             print(f"Error reading cache for {ticker}: {e}")
@@ -132,7 +130,7 @@ async def analyze_stock(ticker: str):
             raise HTTPException(status_code=404, detail=f"No data found for {ticker_input}: {str(e)}")
 
     # Standardize format: strictly timezone-naive and floored to midnight
-    df.index = pd.to_datetime(df.index, utc=True).tz_localize(None).normalize()
+    df.index = pd.to_datetime(df.index, utc=True).tz_convert(None).normalize()
     df.index.name = 'Date'
     
     current_price = df['Close'].iloc[-1]
@@ -141,7 +139,7 @@ async def analyze_stock(ticker: str):
     # If the last row is today's date (intraday), we exclude it for technical analysis
     # to avoid repainting or false signals based on incomplete candles.
     analysis_df = df.copy()
-    if analysis_df.index[-1].date() == datetime.now().date():
+    if analysis_df.index[-1].date() == datetime.now(UTC).date():
         analysis_df = analysis_df.iloc[:-1]
         
     # 2. Calculate Indicators on EOD Data

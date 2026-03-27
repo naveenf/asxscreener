@@ -161,7 +161,7 @@ class StockScreener:
                 df['Date'] = pd.to_datetime(df['Date'], utc=True)
                 df.set_index('Date', inplace=True)
                 # Strip timezone to match our normalized CSVs
-                df.index = df.index.tz_localize(None).floor('D')
+                df.index = df.index.tz_convert(None).floor('D')
             
             # Sort to be absolutely sure latest is at the bottom
             df.sort_index(inplace=True)

@@ -32,7 +32,7 @@ def analyze_loss_hours(csv_path: str, min_trades: int = 2, loss_threshold: float
         return []
 
     # Parse timestamps
-    df['Entry_Time'] = pd.to_datetime(df['Entry_Time'])
+    df['Entry_Time'] = pd.to_datetime(df['Entry_Time'], utc=True).dt.tz_localize(None)
     df['Hour_UTC'] = df['Entry_Time'].dt.hour
     df['Day_of_Week'] = df['Entry_Time'].dt.day_name()
 

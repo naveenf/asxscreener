@@ -8,7 +8,7 @@ Starting with daily data for reliability (can switch to 4H later).
 import yfinance as yf
 import pandas as pd
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import json
 import sys
 import time
@@ -98,7 +98,7 @@ def download_stock_data(ticker: str, period: str = '2y', interval: str = '1d', f
             if not existing_df.empty:
                 # Ensure Date is datetime and index
                 if 'Date' in existing_df.columns:
-                    existing_df['Date'] = pd.to_datetime(existing_df['Date'])
+                    existing_df['Date'] = pd.to_datetime(existing_df['Date'], utc=True).dt.tz_localize(None)
                     existing_df.set_index('Date', inplace=True)
                 elif isinstance(existing_df.index, pd.DatetimeIndex):
                     pass # Already fine
@@ -115,16 +115,16 @@ def download_stock_data(ticker: str, period: str = '2y', interval: str = '1d', f
                 # If last update was today or later, we can potentially skip 
                 # but markets might still be open/updating. 
                 # Since this is daily data, if last_date is yesterday, we update.
-                now = datetime.now()
+                now = datetime.now(UTC)
                 is_fresh = False
 
                 if last_date.date() == now.date():
-                    # We have today's data. 
+                    # We have today's data.
                     # If it's after market close (17:00), we might want to ensure it's the final EOD candle,
                     # but typically yfinance updates existing daily candle.
                     # For efficiency, if we ran it today, we consider it fresh.
                     is_fresh = True
-                
+
                 elif (now.date() - last_date.date()).days == 1:
                     # Last data is yesterday.
                     # If it's before 17:00 (5 PM), today's market is still open or pre-market.
@@ -189,7 +189,13 @@ def download_stock_data(ticker: str, period: str = '2y', interval: str = '1d', f
             # Match types for index comparison
             if not isinstance(df.index, pd.DatetimeIndex):
                 df.index = pd.to_datetime(df.index)
-            
+
+            # Normalize both indexes to tz-naive to allow comparison
+            if df.index.tz is not None:
+                df.index = df.index.tz_localize(None)
+            if existing_df.index.tz is not None:
+                existing_df.index = existing_df.index.tz_localize(None)
+
             # Check for split/gap at the junction or overlap
             overlap_dates = existing_df.index.intersection(df.index)
             

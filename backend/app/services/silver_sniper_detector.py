@@ -53,12 +53,12 @@ class SilverSniperDetector(ForexStrategy):
         # === CRITICAL: Candle Freshness Check ===
         # Don't generate signals from stale candles (prevents trading on old data)
         # For 5m strategy, candle must be very fresh (just closed)
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
         try:
             if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
                 now = datetime.now(current_time.tzinfo)
             else:
-                now = datetime.now()
+                now = datetime.now(UTC)
 
             candle_age = now - current_time
             max_candle_age = timedelta(minutes=5)  # Tight limit: 5 minutes for 5m timeframe

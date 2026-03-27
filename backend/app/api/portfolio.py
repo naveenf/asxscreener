@@ -59,7 +59,7 @@ def calculate_trend_signal(ticker: str, buy_price: float, buy_date: date, strate
             return "HOLD", "Empty history"
             
         # Standardize index: strictly timezone-naive and floored to midnight
-        df.index = pd.to_datetime(df.index, utc=True).tz_localize(None).normalize()
+        df.index = pd.to_datetime(df.index, utc=True).tz_convert(None).normalize()
             
         # Add indicators
         df = TechnicalIndicators.add_all_indicators(

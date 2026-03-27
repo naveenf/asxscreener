@@ -199,7 +199,7 @@ def run_backtest(df: pd.DataFrame, avoid_hours: set = None, label: str = ""):
 def hour_breakdown(trades_df: pd.DataFrame):
     """Show win rate and P&L by UTC entry hour."""
     trades_df = trades_df.copy()
-    trades_df["utc_hour"] = pd.to_datetime(trades_df["ts"]).dt.hour
+    trades_df["utc_hour"] = pd.to_datetime(trades_df["ts"], utc=True).dt.tz_localize(None).dt.hour
     grp = trades_df.groupby("utc_hour").agg(
         n=("result", "count"),
         wins=("result", lambda x: (x == "WIN").sum()),

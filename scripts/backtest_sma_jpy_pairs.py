@@ -98,7 +98,7 @@ def download_tf(api, symbol, tf_label):
     if csv.exists():
         try:
             existing_df = pd.read_csv(csv)
-            existing_df["Date"] = pd.to_datetime(existing_df["Date"])
+            existing_df["Date"] = pd.to_datetime(existing_df["Date"], utc=True).dt.tz_localize(None)
             start_time = existing_df["Date"].max()
             print(f"  [{symbol} {tf_label}] Existing file, last: {start_time}. Appending…")
         except Exception as e:
@@ -117,7 +117,7 @@ def download_tf(api, symbol, tf_label):
         if not rows:
             break
         all_rows.extend(rows)
-        last_ts = pd.to_datetime(rows[-1]["Date"])
+        last_ts = pd.to_datetime(rows[-1]["Date"], utc=True).tz_localize(None)
         if len(rows) < 5000:
             break
         cur = last_ts
@@ -128,7 +128,7 @@ def download_tf(api, symbol, tf_label):
         return
 
     new_df = pd.DataFrame(all_rows)
-    new_df["Date"] = pd.to_datetime(new_df["Date"])
+    new_df["Date"] = pd.to_datetime(new_df["Date"], utc=True).dt.tz_localize(None)
 
     if existing_df is not None:
         combined = (pd.concat([existing_df, new_df])
