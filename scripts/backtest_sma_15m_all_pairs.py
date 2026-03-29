@@ -66,7 +66,7 @@ def load_and_prep(symbol: str) -> pd.DataFrame:
     df.set_index("Date", inplace=True)
     df.sort_index(inplace=True)
     if df.index.tz is not None:
-        df.index = df.index.tz_localize(None)
+        df.index = df.index.tz_convert(None)
     df = TechnicalIndicators.add_all_indicators(df)
     for p, col in [(20, "SMA20"), (50, "SMA50"), (100, "SMA100")]:
         df[col] = df["Close"].rolling(p).mean()

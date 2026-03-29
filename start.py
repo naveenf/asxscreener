@@ -218,8 +218,15 @@ def download_forex_data():
 
     try:
         print_info("Updating forex/commodity data (Incremental)...")
-        subprocess.run([str(venv_python), str(forex_script)], cwd=str(PROJECT_ROOT), check=True)
+        subprocess.run(
+            [str(venv_python), str(forex_script)],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+            timeout=120,
+        )
         print_success("Forex data update completed")
+    except subprocess.TimeoutExpired:
+        print_warning("Forex data download timed out after 120s — continuing with existing data...")
     except subprocess.CalledProcessError as e:
         print_error(f"Forex download failed: {e}")
 
@@ -243,12 +250,19 @@ def download_data():
 
     try:
         # 1. Download Stocks
-        subprocess.run([str(venv_python), str(download_script)], cwd=str(PROJECT_ROOT), check=True)
+        subprocess.run(
+            [str(venv_python), str(download_script)],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+            timeout=120,
+        )
         print_success("Stock data download completed")
-        
+
         # 2. Download Forex
         download_forex_data()
 
+    except subprocess.TimeoutExpired:
+        print_warning("Stock data download timed out after 120s — continuing with existing data...")
     except subprocess.CalledProcessError as e:
         print_error(f"Data download failed: {e}")
         print_warning("Continuing with existing data (if available)...")
@@ -306,9 +320,13 @@ def run_screener():
             cmd = [str(venv_python), str(trigger_script), "dynamic"]
             env = os.environ.copy()
             env['PYTHONPATH'] = str(PROJECT_ROOT / 'backend')
-            
-            subprocess.run(cmd, cwd=str(PROJECT_ROOT / 'backend'), env=env, check=True)
+
+            subprocess.run(cmd, cwd=str(PROJECT_ROOT / 'backend'), env=env, check=True, timeout=300)
             print_success("Forex refresh and auto-trade check completed")
+        else:
+            print_warning(f"Forex screener script not found: {trigger_script} — skipping")
+    except subprocess.TimeoutExpired:
+        print_warning("Forex screener timed out after 300s — continuing...")
     except Exception as e:
         print_error(f"Forex refresh task failed: {e}")
 
@@ -577,22 +595,61 @@ def main():
 
     # Step 2: Update Data
     print("\n2. Updating market data...")
-    relevant_files = get_relevant_csv_files()
-    
-    if not relevant_files:
-        print_warning("No active stock data found. Performing full initial download...")
-    else:
-        oldest_file = min(relevant_files, key=lambda f: f.stat().st_mtime)
-        age_days = int((time.time() - oldest_file.stat().st_mtime) / 86400)
-        if age_days > 0:
-            print_info(f"Active stock data is {age_days} day{'s' if age_days != 1 else ''} old. Updating...")
-        else:
-            print_info("Active stock data is from today. Checking for latest increments...")
 
-    download_data() # Performs fast incremental update for Stocks + Forex
+    # Prompt: skip stock download/screener?
+    try:
+        skip_stocks = input("  Update ASX stocks? [y/N] ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        skip_stocks = 'n'
+    scan_stocks = skip_stocks == 'y'
+
+    if scan_stocks:
+        relevant_files = get_relevant_csv_files()
+        if not relevant_files:
+            print_warning("No active stock data found. Performing full initial download...")
+        else:
+            now = time.time()
+            stale = [f for f in relevant_files if (now - f.stat().st_mtime) / 86400 > 1]
+            newest_file = max(relevant_files, key=lambda f: f.stat().st_mtime)
+            newest_age = int((now - newest_file.stat().st_mtime) / 86400)
+            if stale:
+                print_info(f"{len(stale)} of {len(relevant_files)} stock files need updating (newest is {newest_age}d old)...")
+            else:
+                print_info("Active stock data is from today. Checking for latest increments...")
+        download_data()  # Stocks + Forex
+    else:
+        print_info("Skipping ASX stock update. Updating forex data only...")
+        download_forex_data()
 
     # Step 2.5: Run screener
-    run_screener()
+    if scan_stocks:
+        run_screener()
+    else:
+        # Still run the forex screener portion
+        print_info("Running forex/commodity screener (with auto-trade check)...")
+        if sys.platform == 'win32':
+            venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'Scripts' / 'python.exe'
+        else:
+            venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'bin' / 'python3'
+        try:
+            trigger_script = PROJECT_ROOT / 'scripts' / 'trigger_forex_refresh.py'
+            if trigger_script.exists():
+                env = os.environ.copy()
+                env['PYTHONPATH'] = str(PROJECT_ROOT / 'backend')
+                subprocess.run(
+                    [str(venv_python), str(trigger_script), "dynamic"],
+                    cwd=str(PROJECT_ROOT / 'backend'),
+                    env=env,
+                    check=True,
+                    timeout=300,
+                )
+                print_success("Forex refresh and auto-trade check completed")
+            else:
+                print_warning(f"Forex screener script not found: {trigger_script} — skipping")
+        except subprocess.TimeoutExpired:
+            print_warning("Forex screener timed out after 300s — continuing...")
+        except Exception as e:
+            print_error(f"Forex refresh task failed: {e}")
 
     # Step 3: Start backend
     print("\n3. Starting backend server...")

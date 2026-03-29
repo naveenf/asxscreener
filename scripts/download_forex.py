@@ -126,7 +126,7 @@ def update_dataset(api, symbol, oanda_symbol, granularity, label):
     if filename.exists():
         try:
             existing_df = pd.read_csv(filename)
-            existing_df['Date'] = pd.to_datetime(existing_df['Date'], utc=True).dt.tz_localize(None)
+            existing_df['Date'] = pd.to_datetime(existing_df['Date'])
             last_date = existing_df['Date'].max()
             # Start from the last date
             start_time = last_date
@@ -147,7 +147,7 @@ def update_dataset(api, symbol, oanda_symbol, granularity, label):
         return
 
     new_df = pd.DataFrame(new_records)
-    new_df['Date'] = pd.to_datetime(new_df['Date'], utc=True).dt.tz_localize(None)
+    new_df['Date'] = pd.to_datetime(new_df['Date'], utc=True).dt.tz_convert(None)
 
     # 3. Merge and Save
     if existing_df is not None:

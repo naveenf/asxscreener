@@ -113,12 +113,12 @@ class DailyORBDetector(ForexStrategy):
         # === CRITICAL: Candle Freshness Check ===
         # Don't generate signals from stale candles (prevents trading on old data)
         # For 15m strategy, candle must be very fresh (just closed)
-        from datetime import datetime, UTC
+        from datetime import datetime
         try:
             if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
                 now = datetime.now(current_time.tzinfo)
             else:
-                now = datetime.now(UTC)
+                now = datetime.now()
 
             candle_age = now - current_time
             max_candle_age = timedelta(minutes=10)  # Tight limit: 10 minutes for 15m timeframe

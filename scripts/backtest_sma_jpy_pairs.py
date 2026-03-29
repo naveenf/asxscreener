@@ -98,7 +98,7 @@ def download_tf(api, symbol, tf_label):
     if csv.exists():
         try:
             existing_df = pd.read_csv(csv)
-            existing_df["Date"] = pd.to_datetime(existing_df["Date"], utc=True).dt.tz_localize(None)
+            existing_df["Date"] = pd.to_datetime(existing_df["Date"])
             start_time = existing_df["Date"].max()
             print(f"  [{symbol} {tf_label}] Existing file, last: {start_time}. Appending…")
         except Exception as e:
@@ -117,7 +117,7 @@ def download_tf(api, symbol, tf_label):
         if not rows:
             break
         all_rows.extend(rows)
-        last_ts = pd.to_datetime(rows[-1]["Date"], utc=True).tz_localize(None)
+        last_ts = pd.to_datetime(rows[-1]["Date"])
         if len(rows) < 5000:
             break
         cur = last_ts
@@ -128,7 +128,7 @@ def download_tf(api, symbol, tf_label):
         return
 
     new_df = pd.DataFrame(all_rows)
-    new_df["Date"] = pd.to_datetime(new_df["Date"], utc=True).dt.tz_localize(None)
+    new_df["Date"] = pd.to_datetime(new_df["Date"])
 
     if existing_df is not None:
         combined = (pd.concat([existing_df, new_df])
@@ -150,7 +150,7 @@ def load_and_prep(symbol, tf_label):
     df.set_index("Date", inplace=True)
     df.sort_index(inplace=True)
     if df.index.tz is not None:
-        df.index = df.index.tz_localize(None)
+        df.index = df.index.tz_convert(None)
     df = TechnicalIndicators.add_all_indicators(df)
     for p, col in [(20, "SMA20"), (50, "SMA50"), (100, "SMA100")]:
         df[col] = df["Close"].rolling(p).mean()

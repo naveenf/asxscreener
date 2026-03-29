@@ -84,13 +84,13 @@ class HeikenAshiDetector(ForexStrategy):
         # === CRITICAL: Candle Freshness Check ===
         # Don't generate signals from stale candles (prevents trading on old data)
         # For 1H strategy, candle must be very fresh (just closed)
-        from datetime import datetime, timedelta, UTC
+        from datetime import datetime, timedelta
         try:
             current_time = latest.name
             if hasattr(current_time, 'tzinfo') and current_time.tzinfo is not None:
                 now = datetime.now(current_time.tzinfo)
             else:
-                now = datetime.now(UTC)
+                now = datetime.now()
 
             candle_age = now - current_time
             max_candle_age = timedelta(minutes=15)  # Tight limit: 15 minutes for 1H timeframe

@@ -42,7 +42,7 @@ def load_df(tf: str) -> pd.DataFrame:
     df.set_index("Date", inplace=True)
     df.sort_index(inplace=True)
     if df.index.tz is not None:
-        df.index = df.index.tz_localize(None)
+        df.index = df.index.tz_convert(None)
     df = TechnicalIndicators.add_all_indicators(df)
     for p, col in [(20, "SMA20"), (50, "SMA50"), (100, "SMA100")]:
         df[col] = df["Close"].rolling(p).mean()
@@ -59,7 +59,7 @@ def load_df_pvt(tf: str = "1h") -> pd.DataFrame:
     df.set_index("Date", inplace=True)
     df.sort_index(inplace=True)
     if df.index.tz is not None:
-        df.index = df.index.tz_localize(None)
+        df.index = df.index.tz_convert(None)
     df = TechnicalIndicators.add_all_indicators(df)
     # EMA50, SMA100
     df["EMA50"]  = df["Close"].ewm(span=50, adjust=False).mean()

@@ -161,18 +161,18 @@ def update_all_stocks_data(tickers: List[str], data_dir: Path) -> Dict[str, bool
                 
                 # Ensure index is datetime and timezone-naive
                 if ticker_df.index.tz is not None:
-                    ticker_df.index = ticker_df.index.tz_localize(None)
-                
+                    ticker_df.index = ticker_df.index.tz_convert(None)
+
                 # Floor to midnight
                 ticker_df.index = ticker_df.index.floor('D')
-                
+
                 csv_path = data_dir / f"{yf_t}.csv"
                 if csv_path.exists():
                     # Load existing data
                     existing_df = pd.read_csv(csv_path, index_col='Date', parse_dates=True)
-                    
+
                     if existing_df.index.tz is not None:
-                        existing_df.index = existing_df.index.tz_localize(None)
+                        existing_df.index = existing_df.index.tz_convert(None)
                     existing_df.index = existing_df.index.floor('D')
                     
                     # Combine and remove duplicates

@@ -114,7 +114,9 @@ async def analyze_stock(ticker: str):
                 if not is_stale:
                     df = df_temp
                     # Ensure index is tz-naive
-                    df.index = pd.to_datetime(df.index, utc=True).tz_convert(None)
+                    df.index = pd.to_datetime(df.index)
+                    if hasattr(df.index, 'tz') and df.index.tz is not None:
+                        df.index = df.index.tz_convert(None)
                         
         except Exception as e:
             print(f"Error reading cache for {ticker}: {e}")

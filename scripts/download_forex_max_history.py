@@ -41,7 +41,7 @@ def download_max_data(symbol, name):
 
         # Normalize timezone
         if df.index.tz is not None:
-            df.index = df.index.tz_localize(None)
+            df.index = df.index.tz_convert(None)
 
         # Save to CSV
         df.to_csv(output_file)
