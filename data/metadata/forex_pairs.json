@@ -55,16 +55,16 @@
       "type": "Forex",
       "oanda_symbol": "EUR_USD",
       "yf_symbol_legacy": "EUR_USD"
-    },
+    }
+  ],
+  "_archived_pairs": [
     {
       "symbol": "EUR_AUD",
       "name": "EUR/AUD",
       "type": "Forex",
       "oanda_symbol": "EUR_AUD",
       "yf_symbol_legacy": "EUR_AUD"
-    }
-  ],
-  "_archived_pairs": [
+    },
     {
       "symbol": "USD_CHF",
       "name": "USD/CHF",

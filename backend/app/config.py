@@ -74,7 +74,7 @@ class Settings(BaseSettings):
 
     # Auto-trading settings
     AUTHORIZED_AUTO_TRADER_EMAIL: str = "naveenf.opt@gmail.com"
-    MAX_CONCURRENT_TRADES: int = 4
+    MAX_CONCURRENT_TRADES: int = 5
 
     # Email Settings
     SMTP_SERVER: str = "smtp.gmail.com"

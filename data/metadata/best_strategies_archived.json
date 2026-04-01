@@ -111,6 +111,22 @@
     }
   },
 
+  "EUR_AUD": {
+    "risk_pct": 0.01,
+    "strategy": "SmaScalping",
+    "sharpe": 4.52,
+    "timeframe": "15m",
+    "target_rr": 5.0,
+    "_suspended_reason": "Live underperformance — full dataset Sharpe -0.07 vs BT 4.52 (Dec 2025–Feb 2026 only, over-fitted short window). Suspended Apr 1, 2026.",
+    "params": {
+      "di_threshold": 30.0,
+      "di_persist": 1,
+      "di_slope": true,
+      "adx_min": 15.0,
+      "avoid_hours": [7, 8]
+    }
+  },
+
   "UK100_GBP": {
     "risk_pct": 0.01,
     "strategy": "PVTScalping",

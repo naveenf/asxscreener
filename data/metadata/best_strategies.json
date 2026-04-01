@@ -6,7 +6,7 @@
         "strategy": "SmaScalping",
         "sharpe": 6.48,
         "timeframe": "15m",
-        "target_rr": 5.0,
+        "target_rr": 3.5,
         "params": {
           "di_threshold": 35.0,
           "di_persist": 2,
@@ -40,7 +40,7 @@
         "strategy": "SmaScalping",
         "sharpe": 5.87,
         "timeframe": "5m",
-        "target_rr": 5.0,
+        "target_rr": 1.5,
         "params": {
           "di_threshold": 30.0,
           "adx_min": 20.0,
@@ -61,7 +61,7 @@
         "strategy": "SmaScalping",
         "sharpe": 4.31,
         "timeframe": "15m",
-        "target_rr": 3.0,
+        "target_rr": 2.5,
         "params": {
           "di_threshold": 30.0,
           "di_persist": 2,
@@ -80,7 +80,7 @@
         "strategy": "SmaScalping",
         "sharpe": 8.45,
         "timeframe": "15m",
-        "target_rr": 6.0,
+        "target_rr": 3.5,
         "params": {
           "di_threshold": 35.0,
           "di_persist": 2,
@@ -103,24 +103,6 @@
           "di_persist": 2,
           "atr_ratio_min": 1.0,
           "avoid_hours": [20, 21, 22, 23]
-        }
-      }
-    ]
-  },
-  "EUR_AUD": {
-    "risk_pct": 0.01,
-    "strategies": [
-      {
-        "strategy": "SmaScalping",
-        "sharpe": 4.52,
-        "timeframe": "15m",
-        "target_rr": 5.0,
-        "params": {
-          "di_threshold": 30.0,
-          "di_persist": 1,
-          "di_slope": true,
-          "adx_min": 15.0,
-          "avoid_hours": [7, 8]
         }
       }
     ]
