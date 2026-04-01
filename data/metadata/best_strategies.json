@@ -112,14 +112,12 @@
     "strategies": [
       {
         "strategy": "SmaScalping",
-        "sharpe": 2.78,
-        "timeframe": "5m",
-        "target_rr": 2.5,
+        "sharpe": 2.85,
+        "timeframe": "15m",
+        "target_rr": 3.0,
         "params": {
           "di_threshold": 30.0,
           "di_persist": 1,
-          "adx_min": 15.0,
-          "di_spread_min": 15.0,
           "avoid_hours": [15, 16, 17, 18, 19, 20, 21]
         }
       }
