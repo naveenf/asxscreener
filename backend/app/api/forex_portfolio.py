@@ -486,7 +486,23 @@ async def get_trade_analytics(
             ct = t.get('close_type') or 'UNKNOWN'
             close_types[ct] = close_types.get(ct, 0) + 1
 
-        avg_rr = sum(t.get('actual_rr') or 0 for t in trades_list) / total_trades_count if total_trades_count > 0 else 0
+        def _resolve_rr(t: dict):
+            rr = t.get('actual_rr')
+            if rr is not None:
+                return rr
+            entry = t.get('buy_price')
+            sl = t.get('stop_loss')
+            exit_price = t.get('sell_price')
+            direction = t.get('direction', 'BUY')
+            if entry and sl and exit_price:
+                risk = abs(entry - sl)
+                if risk > 0:
+                    gain = exit_price - entry if direction.upper() == 'BUY' else entry - exit_price
+                    return gain / risk
+            return None  # exclude trades with incomplete data
+
+        rr_values = [v for v in (_resolve_rr(t) for t in trades_list) if v is not None]
+        avg_rr = sum(rr_values) / len(rr_values) if rr_values else 0
 
         summary = {
             "total_trades": total_trades_count,
@@ -1007,12 +1023,24 @@ async def sync_oanda_closes(
                 except Exception:
                     sell_date_str = datetime.utcnow().strftime("%Y-%m-%d")
 
+                exit_price = closed_trade.get('exit_price')
+                entry = data.get('buy_price')
+                sl = data.get('stop_loss')
+                direction = data.get('direction', 'BUY')
+                actual_rr = None
+                if entry and sl and exit_price:
+                    risk = abs(entry - sl)
+                    if risk > 0:
+                        gain = exit_price - entry if direction.upper() == 'BUY' else entry - exit_price
+                        actual_rr = round(gain / risk, 2)
+
                 doc.reference.update({
                     'status': 'CLOSED',
-                    'sell_price': closed_trade.get('exit_price'),
+                    'sell_price': exit_price,
                     'sell_date': sell_date_str,
                     'pnl': closed_trade.get('pnl'),
                     'closed_by': 'OandaSync',
+                    'actual_rr': actual_rr,
                     'updated_at': datetime.utcnow()
                 })
 

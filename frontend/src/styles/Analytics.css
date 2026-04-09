@@ -58,6 +58,11 @@
   border-color: #E0C097;
 }
 
+.date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(0.3) saturate(0.5) hue-rotate(10deg);
+  cursor: pointer;
+}
+
 .date-sep {
   color: #4A3428;
   font-size: 1rem;

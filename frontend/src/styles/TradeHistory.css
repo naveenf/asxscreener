@@ -84,7 +84,7 @@
   color: var(--text-secondary);
 }
 
-.filter-group input, 
+.filter-group input,
 .filter-group select {
   background: var(--bg-input);
   border: 1px solid var(--border-color);
@@ -92,6 +92,11 @@
   padding: 8px;
   border-radius: 4px;
   outline: none;
+}
+
+.filter-group input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
 }
 
 .load-btn {

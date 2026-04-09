@@ -151,7 +151,7 @@ const AnalyticsDashboard = () => {
             />
             <KpiCard
               label="Avg R:R"
-              value={summary.avg_rr > 0 ? summary.avg_rr.toFixed(2) : '—'}
+              value={summary.avg_rr != null && summary.avg_rr !== 0 ? summary.avg_rr.toFixed(2) : '—'}
               subtext="Per trade"
             />
             <KpiCard
