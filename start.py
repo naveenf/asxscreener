@@ -254,7 +254,7 @@ def download_data():
             [str(venv_python), str(download_script)],
             cwd=str(PROJECT_ROOT),
             check=True,
-            timeout=120,
+            timeout=480,
         )
         print_success("Stock data download completed")
 
@@ -262,7 +262,7 @@ def download_data():
         download_forex_data()
 
     except subprocess.TimeoutExpired:
-        print_warning("Stock data download timed out after 120s — continuing with existing data...")
+        print_warning("Stock data download timed out after 480s — continuing with existing data...")
     except subprocess.CalledProcessError as e:
         print_error(f"Data download failed: {e}")
         print_warning("Continuing with existing data (if available)...")
