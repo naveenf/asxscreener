@@ -65,6 +65,8 @@ asx-screener/
 │   ├── backtest_sma_all_pairs_exit_mode.py # Exit mode validation (SMA20 disabled)
 │   ├── backtest_sma_jpy_pairs.py          # USD_JPY config sweep
 │   ├── backtest_rr_sweep.py               # R:R sweep across all active pairs
+│   ├── backtest_bco_noise_filter_sweep.py # BCO noise filter sweep
+│   ├── backtest_prod_vs_live_comparison.py # Live vs BT comparison for all pairs
 │   └── download_forex.py                  # Data fetcher
 └── docs/analysis/              # Backtest reports
 ```
@@ -100,7 +102,7 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 | `adx_rising` | ADX must be rising vs previous candle. XAU uses this. |
 | `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 12R), NAS100=1.0. |
 | `di_slope` | DI+ must be rising over last 2 candles — targets fading-momentum entries. Safe for most pairs. |
-| `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,8,21,22,23] (pre-London + post-NYSE), USD_JPY=[15,16,17,18,19,20,21] (NY open + evening). |
+| `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,8,21,22,23] (pre-London + post-NYSE), USD_JPY=[15,16,17,18,19,20,21] (NY open + evening), BCO=[20,21,22,23] (post-NY thin session). |
 | `di_spread_min` | Min DI+/DI- gap — rejects marginal crossings. |
 | `body_ratio_min` | Min candle body/range ratio — rejects doji candles. |
 
@@ -114,8 +116,14 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 | NAS100_USD | 3.0 | 2.5 | Marginal Sharpe difference; 2.5 improves trade frequency |
 | EUR_USD | 6.0 | 6.0 | Confirmed optimal — lower values destroy Sharpe |
 | XAG_USD | 12.0 | 12.0 | High-RR tail regime; Sharpe rises monotonically to 11.0–12.0 |
-| BCO_USD | 4.0 | 4.0 | Already at sweep peak |
+| BCO_USD | 4.0 | 5.0 | Noise filter sweep Apr 11, 2026: atr_ratio=1.0 + avoid[20-23] added; Sharpe 1.62→2.14, MaxDD -12.42%→-8.78% |
 | USD_JPY | 2.5 | 3.0 | Migrated to 15m Apr 2, 2026; 15m sweep peak at RR=3.0 |
+
+**BCO_USD noise filter gotchas (Apr 11, 2026 sweep — `data/backtest_bco_noise_filter_sweep.csv`):**
+- `avoid[0-5]` (pre-London) is harmful — blocks London open where BCO trends
+- `adx_min >= 20` destroys edge (Sharpe -0.83 at adx=25)
+- `atr_ratio=1.5` is destructive — too tight, WR collapses to 4.5%
+- `di_spread=10` is inert — DI>30 already enforces this implicitly
 
 **⚠️ Do NOT apply:**
 - `sma_ordered` to NAS100 or XAG — destroys Sharpe (NAS100: 2.67→-1.04). SMAs lag on fast moves.
@@ -129,9 +137,9 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 
 ---
 
-## Active Strategy Configuration (Apr 1, 2026)
+## Active Strategy Configuration (Apr 11, 2026)
 
-8 active pairs, all running SmaScalping. EUR_AUD suspended Apr 1, 2026 (live Sharpe -0.07 vs BT 4.52 — over-fitted short window). RR values updated for XAU, JP225, UK100, NAS100 based on full RR sweep (see `data/backtest_rr_sweep.csv`). Other strategies archived in `data/metadata/best_strategies_archived.json`.
+8 active pairs, all running SmaScalping. EUR_AUD suspended Apr 1, 2026. BCO retuned Apr 11 (atr_ratio=1.0, avoid[20-23], RR=5.0). USD_JPY risk_pct halved to 0.5% Apr 11 (JPY regime shift — temporary). Other strategies archived in `data/metadata/best_strategies_archived.json`.
 
 **Active pairs** (`best_strategies.json` + `forex_pairs.json`):
 
@@ -143,8 +151,8 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 | JP225_USD | SmaScalping | 5m | 5.87 | 52.5% | 35.0% | -5.85% | 1.0% | 1.5 |
 | EUR_USD | SmaScalping | 15m | 5.56 | 56.2% | 29.5% | -10.47% | 1.0% | 6.0 |
 | NAS100_USD | SmaScalping | 15m | 4.31 | 37.4% | 39.0% | -5.85% | 1.0% | 2.5 |
-| BCO_USD | SmaScalping | 15m | 3.18 | 25.4% | 29.4% | -8.74% | 1.0% | 4.0 |
-| USD_JPY | SmaScalping | 15m | 2.85 | 50.54% | 34.5% | -8.65% | 1.0% | 3.0 |
+| BCO_USD | SmaScalping | 15m | 2.14 | 21.2% | 22.8% | -8.78% | 1.0% | 5.0 |
+| USD_JPY | SmaScalping | 15m | 2.85 | 50.54% | 34.5% | -8.65% | 0.5% | 3.0 |
 
 **New 15m SmaScalping configs (added Mar 27, 2026):**
 
@@ -190,9 +198,11 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 
 - When adding strategies: run backtest sweep → save CSV to `data/` → update `best_strategies.json` + `forex_pairs.json` → update CLAUDE.md active table
 
-**Active backtest data:** `data/backtest_sma_15m_all_pairs.csv`, `data/backtest_noise_filter_sweep.csv`, `data/backtest_sma_nas100_15m_filter_sweep.csv`, `data/backtest_bco_strategy_compare.csv`, `data/backtest_sma_jpy_pairs.csv`, `data/backtest_sma_all_pairs_exit_mode.csv`, `data/backtest_rr_sweep.csv`, `data/backtest_usdjpy_15m_production_trades.csv`
+**Active backtest data:** `data/backtest_sma_15m_all_pairs.csv`, `data/backtest_noise_filter_sweep.csv`, `data/backtest_sma_nas100_15m_filter_sweep.csv`, `data/backtest_bco_strategy_compare.csv`, `data/backtest_sma_jpy_pairs.csv`, `data/backtest_sma_all_pairs_exit_mode.csv`, `data/backtest_rr_sweep.csv`, `data/backtest_usdjpy_15m_production_trades.csv`, `data/backtest_bco_noise_filter_sweep.csv`, `data/backtest_prod_full.csv`
 
-**Last Updated:** April 2, 2026 — USD_JPY migrated to 15m (DI>30, RR=3.0, Sharpe 2.85, MaxDD -8.65% vs -18.63% on 5m). April 1, 2026 — EUR_AUD suspended (live Sharpe -0.07 vs BT 4.52; over-fitted short Dec 2025–Feb 2026 window). RR values updated via full sweep (`data/backtest_rr_sweep.csv`): XAU_USD 5.0→3.5 (sweep peak at 3.5–4.0), JP225_USD 5.0→1.5 (WR jumps 29%→52%), UK100_GBP 6.0→3.5 (sweep peak at 3.5), NAS100_USD 3.0→2.5. EUR_USD confirmed at RR=6.0 (optimal, lower values destroy Sharpe). XAG confirmed at RR=12.0 (high-RR tail regime). BCO and USD_JPY unchanged. Previous update: March 27, 2026 — NAS100_USD switched from NewBreakout (Sharpe 3.36, never triggered live) to SmaScalping 15m (Sharpe 4.31, ROI +37.4%, MaxDD -5.85%, WR 39.0%, 59 trades, DI>30, RR=3.0, p=2, di_slope, adx_min=25, atr_ratio=1.0, avoid_hours=[7,8,21,22,23]). Also: Added EUR_USD SmaScalping 15m (Sharpe 5.56, ROI +56.2%, MaxDD -10.47%, WR 29.5%, 44 trades, DI>25, RR=6.0, p=2, atr_ratio=1.0, avoid_hours=[20,21,22,23]); EUR_AUD SmaScalping 15m (Sharpe 4.52, ROI +23.3%, MaxDD -8.65%, WR 30.8%, 26 trades, DI>30, RR=5.0, p=1, di_slope, adx_min=15, avoid_hours=[7,8]); UK100_GBP switched from PVTScalping 1h to SmaScalping 15m (Sharpe 8.45, ROI +42.7%, MaxDD -3.94%, WR 42.1%, 19 trades, DI>35, RR=6.0, p=2, atr_ratio=1.2, avoid_hours=[15,16,17,18,19]).
+**Scripts:** `scripts/backtest_bco_noise_filter_sweep.py` (BCO filter sweep), `scripts/backtest_prod_vs_live_comparison.py` (live vs BT comparison for all pairs)
+
+**Last Updated:** April 11, 2026 — BCO_USD retuned (noise filter sweep): added `atr_ratio_min=1.0` + `avoid_hours=[20,21,22,23]`, RR 4.0→5.0; Sharpe 1.62→2.14, MaxDD -12.42%→-8.78% (see `data/backtest_bco_noise_filter_sweep.csv`). USD_JPY `risk_pct` reduced 1%→0.5% due to JPY regime shift Mar–Apr 2026 (BT Sharpe -1.08 in-window; no config change improves this — temporary risk reduction only). Live vs BT analysis (Mar 10–Apr 10): XAU, XAG, JP225, BCO healthy; NAS100 underperformance is variance on 17 trades (BT Sharpe 4.63 in same window); USD_JPY genuine regime shift (BT WR 22.6% in-window). Previous: April 2, 2026 — USD_JPY migrated to 15m (DI>30, RR=3.0, Sharpe 2.85, MaxDD -8.65% vs -18.63% on 5m). April 1, 2026 — EUR_AUD suspended (live Sharpe -0.07 vs BT 4.52; over-fitted short Dec 2025–Feb 2026 window). RR values updated via full sweep (`data/backtest_rr_sweep.csv`): XAU_USD 5.0→3.5, JP225_USD 5.0→1.5, UK100_GBP 6.0→3.5, NAS100_USD 3.0→2.5. March 27, 2026 — NAS100_USD, EUR_USD, UK100_GBP migrated to SmaScalping 15m.
 
 ---
 

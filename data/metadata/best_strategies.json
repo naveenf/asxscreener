@@ -108,7 +108,7 @@
     ]
   },
   "USD_JPY": {
-    "risk_pct": 0.01,
+    "risk_pct": 0.005,
     "strategies": [
       {
         "strategy": "SmaScalping",
@@ -128,13 +128,15 @@
     "strategies": [
       {
         "strategy": "SmaScalping",
-        "sharpe": 3.18,
+        "sharpe": 2.14,
         "timeframe": "15m",
-        "target_rr": 4.0,
+        "target_rr": 5.0,
         "params": {
           "di_threshold": 30.0,
           "di_persist": 1,
-          "adx_min": 15.0
+          "adx_min": 15.0,
+          "atr_ratio_min": 1.0,
+          "avoid_hours": [20, 21, 22, 23]
         }
       }
     ]
