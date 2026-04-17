@@ -51,5 +51,8 @@ class ForexPortfolioItemResponse(BaseModel):
     realized_gain_aud: Optional[float] = None
     actual_rr: Optional[float] = None
 
+    # Pre-close management
+    keep_through_close: Optional[bool] = None
+
     class Config:
         from_attributes = True

@@ -6,9 +6,11 @@ Global screener configuration managed by the admin user.
 
 import json
 import logging
+import re
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional, Union
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from firebase_admin import firestore
@@ -145,3 +147,126 @@ async def update_strategy_overrides(
     except Exception as e:
         logger.error(f"Failed to update strategy_overrides: {e}")
         raise HTTPException(status_code=500, detail="Failed to save overrides")
+
+
+# ---------------------------------------------------------------------------
+# Market Holidays
+# ---------------------------------------------------------------------------
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+def _known_pairs() -> set:
+    """Return set of known pair instrument names from best_strategies.json."""
+    try:
+        with open(BEST_STRATEGIES_PATH, "r") as f:
+            return set(json.load(f).keys())
+    except Exception:
+        return set()
+
+
+class HolidayEntry(BaseModel):
+    date: str                          # "YYYY-MM-DD"
+    label: str
+    affects: Union[str, List[str]]     # "all" or list of pair names
+
+
+class MarketHolidaysUpdate(BaseModel):
+    holidays: List[HolidayEntry]
+
+
+@router.get("/market-holidays")
+async def get_market_holidays(email: str = Depends(get_current_user_email)):
+    """
+    Return the current market holiday list.
+    Any authenticated user can read; is_admin indicates write access.
+    """
+    holidays = []
+    updated_by = None
+    updated_at = None
+    try:
+        doc = db.collection("config").document("market_holidays").get()
+        if doc.exists:
+            data = doc.to_dict()
+            holidays = data.get("holidays", [])
+            updated_by = data.get("updated_by")
+            updated_at = data.get("updated_at")
+    except Exception as e:
+        logger.warning(f"Could not read market_holidays from Firestore: {e}")
+
+    return {
+        "holidays": holidays,
+        "updated_by": updated_by,
+        "updated_at": updated_at,
+        "is_admin": email == settings.AUTHORIZED_AUTO_TRADER_EMAIL,
+    }
+
+
+@router.put("/market-holidays")
+async def update_market_holidays(
+    body: MarketHolidaysUpdate,
+    email: str = Depends(get_current_user_email),
+):
+    """
+    Full-replace the market holiday list.
+    Admin only.
+
+    Validates:
+    - Each date is YYYY-MM-DD
+    - Each affects entry is a known pair name or "all"
+    - Warns (but does not reject) past dates
+    """
+    if email != settings.AUTHORIZED_AUTO_TRADER_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    known = _known_pairs()
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    validated = []
+
+    for entry in body.holidays:
+        # Validate date format
+        if not _DATE_RE.match(entry.date):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid date format '{entry.date}'. Expected YYYY-MM-DD."
+            )
+        try:
+            datetime.strptime(entry.date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid calendar date '{entry.date}'."
+            )
+
+        # Warn for past dates (log only — don't block)
+        if entry.date < today_str:
+            logger.info(f"market-holidays: past date accepted for historical record: {entry.date}")
+
+        # Validate affects
+        affects = entry.affects
+        if affects != "all":
+            if isinstance(affects, str):
+                affects = [affects]
+            unknown = [p for p in affects if p not in known]
+            if unknown:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unknown pair(s) in affects: {unknown}. Known pairs: {sorted(known)}"
+                )
+
+        validated.append({
+            "date": entry.date,
+            "label": entry.label.strip(),
+            "affects": affects,
+        })
+
+    try:
+        db.collection("config").document("market_holidays").set({
+            "holidays": validated,
+            "updated_by": email,
+            "updated_at": firestore.SERVER_TIMESTAMP,
+        })
+        logger.info(f"market_holidays updated by {email}: {len(validated)} entries")
+        return {"success": True, "holidays": validated}
+    except Exception as e:
+        logger.error(f"Failed to update market_holidays: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save holidays")

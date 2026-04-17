@@ -19,7 +19,7 @@ pd.set_option('future.no_silent_downcasting', True)
 
 from .api.routes import router
 from .config import settings
-from .services.tasks import run_forex_refresh_task, run_stock_refresh_task
+from .services.tasks import run_forex_refresh_task, run_stock_refresh_task, run_preclose_check
 
 # Setup logging — console for everything, file handler scoped to services only
 logging.basicConfig(
@@ -79,7 +79,10 @@ async def startup_event():
     
     # 3. Stock Refresh: Run daily at 18:00 AEST
     scheduler.add_job(run_stock_refresh_task, 'cron', hour=18, minute=0)
-    
+
+    # 4. Pre-close position management (every 5 minutes)
+    scheduler.add_job(run_preclose_check, 'cron', minute='*/5')
+
     scheduler.start()
     logger.info("Background scheduler started (Forex every 15m, Stocks daily at 18:00).")
 

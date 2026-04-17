@@ -2,7 +2,7 @@
 Forex Portfolio Routes
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Header, Query
 from typing import List, Dict, Optional
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -366,7 +366,8 @@ async def get_trade_history(
                 gain_loss_aud=metrics['gain_loss_aud'] if data.get('status') == 'OPEN' else None,
                 gain_loss_percent=metrics['gain_loss_percent'],
                 realized_gain_aud=(data.get('pnl') if data.get('pnl') is not None else metrics['gain_loss_aud']) if data.get('status') == 'CLOSED' else None,
-                actual_rr=data.get('actual_rr')
+                actual_rr=data.get('actual_rr'),
+                keep_through_close=data.get('keep_through_close'),
             ))
 
         # Sorting: default is newest-first (descending). Prefix '-' flips to ascending.
@@ -816,7 +817,8 @@ async def list_forex_portfolio(email: str = Depends(get_current_user_email)):
                 gain_loss_aud=metrics['gain_loss_aud'] if data.get('status') == 'OPEN' else None,
                 gain_loss_percent=metrics['gain_loss_percent'],
                 realized_gain_aud=(data.get('pnl') if data.get('pnl') is not None else metrics['gain_loss_aud']) if data.get('status') == 'CLOSED' else None,
-                actual_rr=data.get('actual_rr')
+                actual_rr=data.get('actual_rr'),
+                keep_through_close=data.get('keep_through_close'),
             ))
 
         return items
@@ -1135,6 +1137,49 @@ async def backfill_sell_prices(
     except Exception as e:
         logger.error(f"Error backfilling sell prices: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to backfill: {str(e)}")
+
+
+@router.patch("/trades/{trade_id}/keep-through-close")
+async def set_keep_through_close(
+    trade_id: str,
+    body: dict = Body(...),
+    email: str = Depends(get_current_user_email),
+):
+    """
+    Toggle the keep_through_close flag on an open trade.
+    Admin only. When True, the pre-close job will skip closing this position.
+
+    Body: { "keep_through_close": true | false }
+    """
+    if email != settings.AUTHORIZED_AUTO_TRADER_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    keep = body.get("keep_through_close")
+    if not isinstance(keep, bool):
+        raise HTTPException(status_code=422, detail="keep_through_close must be a boolean")
+
+    try:
+        doc_ref = (
+            db.collection("users")
+            .document(email)
+            .collection("forex_portfolio")
+            .document(trade_id)
+        )
+        doc = doc_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Trade not found")
+
+        doc_ref.update({
+            "keep_through_close": keep,
+            "updated_at": datetime.now(timezone.utc),
+        })
+        logger.info(f"keep_through_close={keep} set on trade {trade_id} by {email}")
+        return {"success": True, "trade_id": trade_id, "keep_through_close": keep}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting keep_through_close on {trade_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update trade")
 
 
 @router.post("/check-exits")

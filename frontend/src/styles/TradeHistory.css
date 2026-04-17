@@ -242,3 +242,29 @@
     align-items: stretch;
   }
 }
+
+/* Keep-through-close toggle */
+.keep-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.keep-toggle input[type="checkbox"] {
+  accent-color: #4f9cf9;
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
+.keep-label {
+  font-size: 0.72rem;
+  color: #888;
+  white-space: nowrap;
+}
+
+.keep-toggle input:checked + .keep-label {
+  color: #4f9cf9;
+}

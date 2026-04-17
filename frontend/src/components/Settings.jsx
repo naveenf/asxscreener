@@ -7,11 +7,44 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getStrategyOverrides, updateStrategyOverrides } from '../services/api';
+import { getStrategyOverrides, updateStrategyOverrides, getMarketHolidays, updateMarketHolidays } from '../services/api';
 import styles from './Settings.module.css';
+
+// Display names shown in the holiday "affects" multi-select
+const PAIR_DISPLAY_NAMES = {
+  'XAU_USD':    'XAU/USD',
+  'XAG_USD':    'XAG/USD',
+  'JP225_USD':  'JP225',
+  'NAS100_USD': 'NAS100',
+  'EUR_USD':    'EUR/USD',
+  'UK100_GBP':  'UK100',
+  'BCO_USD':    'BCO',
+  'USD_JPY':    'USD/JPY',
+};
+const ALL_PAIRS = Object.keys(PAIR_DISPLAY_NAMES);
+
+function formatHolidayDate(dateStr) {
+  // "2026-04-03" → "03 Apr 2026"
+  try {
+    const d = new Date(dateStr + 'T00:00:00Z');
+    return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatAffects(affects) {
+  if (affects === 'all') return 'All pairs';
+  if (Array.isArray(affects)) {
+    return affects.map(p => PAIR_DISPLAY_NAMES[p] || p).join(', ');
+  }
+  return String(affects);
+}
 
 function Settings({ onShowToast }) {
   const { user, loading: authLoading } = useAuth();
+
+  // Strategy overrides state
   const [combos, setCombos] = useState([]);
   const [disabled, setDisabled] = useState(new Set());
   const [directionOverrides, setDirectionOverrides] = useState({});
@@ -19,9 +52,20 @@ function Settings({ onShowToast }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Holiday calendar state
+  const [holidays, setHolidays] = useState([]);
+  const [holidaysLoading, setHolidaysLoading] = useState(true);
+  const [holidaysSaving, setHolidaysSaving] = useState(false);
+  // New-row form state
+  const [newDate, setNewDate] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [newAffectsAll, setNewAffectsAll] = useState(true);
+  const [newAffectsPairs, setNewAffectsPairs] = useState([]);
+
   useEffect(() => {
     if (!user) return;
     loadOverrides();
+    loadHolidays();
   }, [user]);
 
   const loadOverrides = async () => {
@@ -36,6 +80,18 @@ function Settings({ onShowToast }) {
       onShowToast({ message: 'Failed to load strategy settings', type: 'error' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadHolidays = async () => {
+    setHolidaysLoading(true);
+    try {
+      const data = await getMarketHolidays();
+      setHolidays(data.holidays || []);
+    } catch (err) {
+      onShowToast({ message: 'Failed to load holiday calendar', type: 'error' });
+    } finally {
+      setHolidaysLoading(false);
     }
   };
 
@@ -75,6 +131,46 @@ function Settings({ onShowToast }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  // --- Holiday handlers ---
+  const handleAddHoliday = () => {
+    if (!newDate || !newLabel.trim()) {
+      onShowToast({ message: 'Date and label are required', type: 'error' });
+      return;
+    }
+    const affects = newAffectsAll ? 'all' : newAffectsPairs;
+    if (!newAffectsAll && newAffectsPairs.length === 0) {
+      onShowToast({ message: 'Select at least one pair or choose "All pairs"', type: 'error' });
+      return;
+    }
+    setHolidays(prev => [...prev, { date: newDate, label: newLabel.trim(), affects }]);
+    setNewDate('');
+    setNewLabel('');
+    setNewAffectsAll(true);
+    setNewAffectsPairs([]);
+  };
+
+  const handleRemoveHoliday = (idx) => {
+    setHolidays(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveHolidays = async () => {
+    setHolidaysSaving(true);
+    try {
+      await updateMarketHolidays(holidays);
+      onShowToast({ message: 'Holiday calendar saved.', type: 'success' });
+    } catch (err) {
+      onShowToast({ message: err.message || 'Failed to save holidays', type: 'error' });
+    } finally {
+      setHolidaysSaving(false);
+    }
+  };
+
+  const toggleNewAffectsPair = (pair) => {
+    setNewAffectsPairs(prev =>
+      prev.includes(pair) ? prev.filter(p => p !== pair) : [...prev, pair]
+    );
   };
 
   // Group combos by pair
@@ -173,6 +269,122 @@ function Settings({ onShowToast }) {
           </span>
         </div>
       )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Holiday Calendar card                                               */}
+      {/* ------------------------------------------------------------------ */}
+      <div className={styles.holidayCard}>
+        <div className={styles.holidayCardHeader}>
+          <h3 className={styles.holidayCardTitle}>Holiday Calendar</h3>
+          <p className={styles.holidayCardSubtitle}>
+            Positions are closed 1 hour before market close on the trading day preceding each holiday.
+            {!isAdmin && <span className={styles.readOnlyBadge}> Read-only</span>}
+          </p>
+        </div>
+
+        {holidaysLoading ? (
+          <p className={styles.loading}>Loading holidays...</p>
+        ) : (
+          <>
+            {holidays.length === 0 ? (
+              <p className={styles.holidayEmpty}>No holidays configured. Weekly Friday closes apply by default.</p>
+            ) : (
+              <table className={styles.holidayTable}>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Label</th>
+                    <th>Affects</th>
+                    {isAdmin && <th></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {holidays
+                    .map((h, origIdx) => ({ h, origIdx }))
+                    .sort((a, b) => a.h.date.localeCompare(b.h.date))
+                    .map(({ h, origIdx }) => (
+                      <tr key={origIdx}>
+                        <td className={styles.holidayDate}>{formatHolidayDate(h.date)}</td>
+                        <td>{h.label}</td>
+                        <td className={styles.holidayAffects}>{formatAffects(h.affects)}</td>
+                        {isAdmin && (
+                          <td>
+                            <button
+                              className={styles.removeBtn}
+                              onClick={() => handleRemoveHoliday(origIdx)}
+                              title="Remove holiday"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
+
+            {isAdmin && (
+              <div className={styles.holidayAddRow}>
+                <input
+                  type="date"
+                  className={styles.holidayInput}
+                  value={newDate}
+                  onChange={e => setNewDate(e.target.value)}
+                  title="Holiday date (the day markets are CLOSED)"
+                />
+                <input
+                  type="text"
+                  className={styles.holidayInput}
+                  placeholder="Label (e.g. Good Friday)"
+                  value={newLabel}
+                  onChange={e => setNewLabel(e.target.value)}
+                />
+                <div className={styles.affectsGroup}>
+                  <label className={styles.affectsAllLabel}>
+                    <input
+                      type="checkbox"
+                      checked={newAffectsAll}
+                      onChange={e => setNewAffectsAll(e.target.checked)}
+                    />
+                    <span>All pairs</span>
+                  </label>
+                  {!newAffectsAll && (
+                    <div className={styles.affectsPairGrid}>
+                      {ALL_PAIRS.map(pair => (
+                        <label key={pair} className={styles.affectsPairLabel}>
+                          <input
+                            type="checkbox"
+                            checked={newAffectsPairs.includes(pair)}
+                            onChange={() => toggleNewAffectsPair(pair)}
+                          />
+                          <span>{PAIR_DISPLAY_NAMES[pair]}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button className={styles.addHolidayBtn} onClick={handleAddHoliday}>
+                  Add
+                </button>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div className={styles.holidayFooter}>
+                <button
+                  className={styles.saveButton}
+                  onClick={handleSaveHolidays}
+                  disabled={holidaysSaving}
+                >
+                  {holidaysSaving ? 'Saving...' : 'Save Holiday Calendar'}
+                </button>
+                <span className={styles.disabledCount}>{holidays.length} holiday{holidays.length !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

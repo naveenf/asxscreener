@@ -224,6 +224,61 @@ export async function getStrategyOverrides() {
 }
 
 /**
+ * Fetch the market holiday calendar
+ */
+export async function getMarketHolidays() {
+  const token = localStorage.getItem('google_token');
+  const response = await fetch(`${API_BASE}/settings/market-holidays`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error(`Failed to fetch holidays: ${response.statusText}`);
+  return response.json();
+}
+
+/**
+ * Full-replace the market holiday list
+ * @param {Array} holidays - Array of {date, label, affects} objects
+ */
+export async function updateMarketHolidays(holidays) {
+  const token = localStorage.getItem('google_token');
+  const response = await fetch(`${API_BASE}/settings/market-holidays`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ holidays }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to save: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Toggle keep_through_close on a trade
+ * @param {string} tradeId - Firestore document ID (same as oanda_trade_id for synced trades)
+ * @param {boolean} keepThroughClose
+ */
+export async function setKeepThroughClose(tradeId, keepThroughClose) {
+  const token = localStorage.getItem('google_token');
+  const response = await fetch(`${API_BASE}/forex-portfolio/trades/${tradeId}/keep-through-close`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ keep_through_close: keepThroughClose }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to update: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
  * Save updated disabled strategy list and direction overrides
  * @param {string[]} disabled - Array of "PAIR::Strategy" combo keys to disable
  * @param {Object} direction_overrides - Map of "PAIR::Strategy" → "both"|"buy"|"sell"

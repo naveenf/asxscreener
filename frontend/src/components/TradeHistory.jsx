@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { fetchTradeHistory } from '../services/api';
+import { fetchTradeHistory, setKeepThroughClose } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import '../styles/TradeHistory.css';
 
+const ADMIN_EMAIL = 'naveenf.opt@gmail.com';
+
 const TradeHistory = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Map of tradeId → boolean for optimistic UI updates
+  const [keepMap, setKeepMap] = useState({});
 
   // Default to recent date; trades are synced from Oanda since Feb 2026
   const SYNC_START_DATE = '2026-03-10';
@@ -103,6 +111,19 @@ const TradeHistory = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleKeepToggle = async (tradeId, currentKeep) => {
+    const newValue = !currentKeep;
+    // Optimistic update
+    setKeepMap(prev => ({ ...prev, [tradeId]: newValue }));
+    try {
+      await setKeepThroughClose(tradeId, newValue);
+    } catch (err) {
+      // Revert on failure
+      setKeepMap(prev => ({ ...prev, [tradeId]: currentKeep }));
+      alert('Failed to update keep-through-close: ' + err.message);
     }
   };
 
@@ -224,6 +245,7 @@ const TradeHistory = () => {
                 <th onClick={() => setSortBy('realized_gain_aud')}>P&L (AUD)</th>
                 <th onClick={() => setSortBy('gain_loss_percent')}>%</th>
                 <th>R:R</th>
+                {isAdmin && <th title="Keep position through weekly/holiday market close">Keep</th>}
               </tr>
             </thead>
             <tbody>
@@ -231,6 +253,7 @@ const TradeHistory = () => {
                 const isOpen = trade.status === 'OPEN';
                 const pnl = isOpen ? trade.gain_loss_aud : trade.realized_gain_aud;
                 const exitPrice = isOpen ? trade.current_price : trade.sell_price;
+                const keepValue = trade.id in keepMap ? keepMap[trade.id] : (trade.keep_through_close || false);
                 return (
                   <tr key={trade.id} className={isOpen ? 'row-open' : ''}>
                     <td>{trade.sell_date || trade.buy_date}</td>
@@ -251,6 +274,25 @@ const TradeHistory = () => {
                       {trade.gain_loss_percent?.toFixed(2) ?? '0.00'}%
                     </td>
                     <td>{trade.actual_rr?.toFixed(2) || 'N/A'}</td>
+                    {isAdmin && (
+                      <td>
+                        {isOpen ? (
+                          <label
+                            className="keep-toggle"
+                            title={keepValue ? 'Position will be kept through close' : 'Position will be closed before market close'}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={keepValue}
+                              onChange={() => handleKeepToggle(trade.id, keepValue)}
+                            />
+                            <span className="keep-label">{keepValue ? 'Keep' : 'Close'}</span>
+                          </label>
+                        ) : (
+                          <span style={{ color: '#555', fontSize: '0.75rem' }}>—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
