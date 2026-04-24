@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getStrategyOverrides, updateStrategyOverrides, getMarketHolidays, updateMarketHolidays } from '../services/api';
+import { getStrategyOverrides, updateStrategyOverrides, getMarketHolidays, updateMarketHolidays, getTradeSettings, updateTradeSettings } from '../services/api';
 import styles from './Settings.module.css';
 
 // Display names shown in the holiday "affects" multi-select
@@ -52,6 +52,11 @@ function Settings({ onShowToast }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Trade settings state
+  const [holidayCloseEnabled, setHolidayCloseEnabled] = useState(true);
+  const [tradeSettingsLoading, setTradeSettingsLoading] = useState(true);
+  const [tradeSettingsSaving, setTradeSettingsSaving] = useState(false);
+
   // Holiday calendar state
   const [holidays, setHolidays] = useState([]);
   const [holidaysLoading, setHolidaysLoading] = useState(true);
@@ -66,6 +71,7 @@ function Settings({ onShowToast }) {
     if (!user) return;
     loadOverrides();
     loadHolidays();
+    loadTradeSettings();
   }, [user]);
 
   const loadOverrides = async () => {
@@ -80,6 +86,42 @@ function Settings({ onShowToast }) {
       onShowToast({ message: 'Failed to load strategy settings', type: 'error' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTradeSettings = async () => {
+    setTradeSettingsLoading(true);
+    try {
+      const data = await getTradeSettings();
+      setHolidayCloseEnabled(data.holiday_close_enabled ?? true);
+      // Also set isAdmin from this response so the toggle is correctly disabled
+      // even if loadTradeSettings resolves before loadOverrides.
+      if (data.is_admin) setIsAdmin(true);
+    } catch (err) {
+      onShowToast({ message: 'Failed to load trade settings', type: 'error' });
+    } finally {
+      setTradeSettingsLoading(false);
+    }
+  };
+
+  const handleHolidayCloseToggle = async () => {
+    if (!isAdmin) return;
+    const newValue = !holidayCloseEnabled;
+    setHolidayCloseEnabled(newValue);
+    setTradeSettingsSaving(true);
+    try {
+      await updateTradeSettings({ holiday_close_enabled: newValue });
+      onShowToast({
+        message: newValue
+          ? 'Holiday close enabled — positions will be closed before holidays.'
+          : 'Holiday close disabled — positions will stay open through holidays.',
+        type: 'success',
+      });
+    } catch (err) {
+      setHolidayCloseEnabled(!newValue); // revert on failure
+      onShowToast({ message: err.message || 'Failed to save trade settings', type: 'error' });
+    } finally {
+      setTradeSettingsSaving(false);
     }
   };
 
@@ -269,6 +311,44 @@ function Settings({ onShowToast }) {
           </span>
         </div>
       )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Trade Settings card                                                 */}
+      {/* ------------------------------------------------------------------ */}
+      <div className={styles.holidayCard}>
+        <div className={styles.holidayCardHeader}>
+          <h3 className={styles.holidayCardTitle}>Trade Settings</h3>
+          <p className={styles.holidayCardSubtitle}>
+            Global trade behaviour controls.
+            {!isAdmin && <span className={styles.readOnlyBadge}> Read-only</span>}
+          </p>
+        </div>
+
+        {tradeSettingsLoading ? (
+          <p className={styles.loading}>Loading...</p>
+        ) : (
+          <div className={styles.tradeSettingRow}>
+            <div className={styles.tradeSettingInfo}>
+              <span className={styles.tradeSettingLabel}>Close positions before holidays</span>
+              <span className={styles.tradeSettingDesc}>
+                {holidayCloseEnabled
+                  ? 'ON — open positions are closed 1 hour before market close on the preceding trading day.'
+                  : 'OFF — positions remain open through holidays and weekends. New entries are still blocked during the pre-close window.'}
+              </span>
+            </div>
+            <label className={`${styles.toggle} ${!isAdmin ? styles.readOnly : ''}`}>
+              <input
+                type="checkbox"
+                checked={holidayCloseEnabled}
+                onChange={handleHolidayCloseToggle}
+                disabled={!isAdmin || tradeSettingsSaving}
+              />
+              <span className={styles.slider} />
+              <span className={styles.toggleLabel}>{holidayCloseEnabled ? 'ON' : 'OFF'}</span>
+            </label>
+          </div>
+        )}
+      </div>
 
       {/* ------------------------------------------------------------------ */}
       {/* Holiday Calendar card                                               */}

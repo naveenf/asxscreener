@@ -302,3 +302,29 @@ export async function updateStrategyOverrides(disabled, direction_overrides = {}
   if (response.status === 204) return {};
   return response.json();
 }
+
+export async function getTradeSettings() {
+  const token = localStorage.getItem('google_token');
+  const response = await fetch(`${API_BASE}/settings/trade-settings`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error(`Failed to fetch trade settings: ${response.statusText}`);
+  return response.json();
+}
+
+export async function updateTradeSettings(settings) {
+  const token = localStorage.getItem('google_token');
+  const response = await fetch(`${API_BASE}/settings/trade-settings`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(settings),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to save: ${response.statusText}`);
+  }
+  return response.json();
+}

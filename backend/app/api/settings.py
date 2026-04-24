@@ -270,3 +270,59 @@ async def update_market_holidays(
     except Exception as e:
         logger.error(f"Failed to update market_holidays: {e}")
         raise HTTPException(status_code=500, detail="Failed to save holidays")
+
+
+# ---------------------------------------------------------------------------
+# Trade Settings
+# ---------------------------------------------------------------------------
+
+class TradeSettingsUpdate(BaseModel):
+    holiday_close_enabled: bool
+
+
+@router.get("/trade-settings")
+async def get_trade_settings(email: str = Depends(get_current_user_email)):
+    """
+    Return global trade behaviour settings.
+    Any authenticated user can read; is_admin indicates write access.
+    """
+    holiday_close_enabled = True  # default ON — preserve existing behaviour
+    try:
+        doc = db.collection("config").document("trade_settings").get()
+        if doc.exists:
+            data = doc.to_dict()
+            holiday_close_enabled = data.get("holiday_close_enabled", True)
+    except Exception as e:
+        logger.warning(f"Could not read trade_settings from Firestore: {e}")
+
+    return {
+        "holiday_close_enabled": holiday_close_enabled,
+        "is_admin": email == settings.AUTHORIZED_AUTO_TRADER_EMAIL,
+    }
+
+
+@router.put("/trade-settings")
+async def update_trade_settings(
+    body: TradeSettingsUpdate,
+    email: str = Depends(get_current_user_email),
+):
+    """
+    Update global trade behaviour settings. Admin only.
+    """
+    if email != settings.AUTHORIZED_AUTO_TRADER_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        db.collection("config").document("trade_settings").set({
+            "holiday_close_enabled": body.holiday_close_enabled,
+            "updated_by": email,
+            "updated_at": firestore.SERVER_TIMESTAMP,
+        })
+        logger.info(
+            f"trade_settings updated by {email}: "
+            f"holiday_close_enabled={body.holiday_close_enabled}"
+        )
+        return {"success": True, "holiday_close_enabled": body.holiday_close_enabled}
+    except Exception as e:
+        logger.error(f"Failed to update trade_settings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save trade settings")

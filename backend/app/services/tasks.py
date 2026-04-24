@@ -505,6 +505,22 @@ def run_preclose_check():
         if not close_pairs:
             return  # Only in block phase — no closes yet
 
+        # Check global holiday_close_enabled setting — default True (closes positions)
+        holiday_close_enabled = True
+        try:
+            ts_doc = db.collection("config").document("trade_settings").get()
+            if ts_doc.exists:
+                holiday_close_enabled = ts_doc.to_dict().get("holiday_close_enabled", True)
+        except Exception as e:
+            logger.warning(f"run_preclose_check: could not read trade_settings: {e}")
+
+        if not holiday_close_enabled:
+            logger.info(
+                f"run_preclose_check: holiday_close_enabled=False — "
+                f"skipping position close for {close_pairs} (entries still blocked)"
+            )
+            return
+
         for pair in close_pairs:
             _close_open_positions_for_pair(pair, auth_email, now)
 
