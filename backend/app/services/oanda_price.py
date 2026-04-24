@@ -459,6 +459,38 @@ class OandaPriceService:
 
     @classmethod
     @retry_oanda(retries=2, delay=1)
+    def modify_trade_sl(cls, trade_id: str, new_sl: float, precision: int = 3) -> Optional[Dict[str, Any]]:
+        """
+        Modify the stop-loss of an open trade via TradeCRCDO (Client-Replaceable Close Order).
+
+        Args:
+            trade_id: Oanda trade ID to modify
+            new_sl: New stop-loss price
+            precision: Decimal places for price formatting (default 3 for XAG)
+
+        Returns:
+            Response dict on success, None on failure
+        """
+        api = cls.get_api()
+        account_id = settings.OANDA_ACCOUNT_ID
+        if not api or not account_id:
+            logger.error("OANDA API or Account ID not available for modify_trade_sl")
+            return None
+
+        data = {
+            "stopLoss": {
+                "price": f"{new_sl:.{precision}f}",
+                "timeInForce": "GTC"
+            }
+        }
+
+        logger.info(f"OANDA: Modifying SL for trade {trade_id} → {new_sl:.{precision}f}")
+        r = trades.TradeCRCDO(accountID=account_id, tradeID=trade_id, data=data)
+        api.request(r)
+        return r.response
+
+    @classmethod
+    @retry_oanda(retries=2, delay=1)
     def get_trade_details(cls, trade_id: str) -> Optional[Dict[str, Any]]:
         """
         Fetch details of a specific trade by ID.
