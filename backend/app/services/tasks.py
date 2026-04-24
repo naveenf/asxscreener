@@ -36,6 +36,18 @@ PRECLOSE_BLOCKED_PAIRS: set = set()
 # Simple flag to prevent concurrent pre-close checks
 _preclose_lock = threading.Lock()
 
+# ---------------------------------------------------------------------------
+# Profit-lock configs
+# ---------------------------------------------------------------------------
+# lock_at_r  : fire lock when trade unrealized P&L reaches this many R
+# lock_to_r  : move SL to this many R from entry when lock fires
+# cooldown_min: minutes to block new entries after a locked trade closes
+# sl_precision: decimal places for Oanda SL price formatting
+PAIR_LOCK_CONFIGS = {
+    "XAG_USD": {"lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25,  "sl_precision": 3},
+    "BCO_USD": {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90,  "sl_precision": 3},
+}
+
 def run_stock_refresh_task():
     """Logic for stock refresh."""
     task_id = str(uuid.uuid4())[:8]
@@ -142,19 +154,19 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
                 )
             all_signals = filtered_signals
 
-        # --- XAG Profit-Lock Check (cooldown gate + 3R SL move) ---
+        # --- Profit-Lock Check (cooldown gate + SL move for XAG, BCO) ---
         try:
-            run_xag_lock_check()
+            run_pair_lock_checks()
         except Exception as xag_e:
-            logger.error(f"[{task_id}] XAG lock check failed (non-critical): {xag_e}", exc_info=True)
+            logger.error(f"[{task_id}] Pair lock check failed (non-critical): {xag_e}", exc_info=True)
 
-        # Re-filter signals after XAG lock check may have added XAG_USD to blocked pairs
+        # Re-filter signals after lock checks may have added pairs to blocked set
         if PRECLOSE_BLOCKED_PAIRS:
             filtered_signals = [s for s in all_signals if s.get('symbol') not in PRECLOSE_BLOCKED_PAIRS]
             newly_blocked = len(all_signals) - len(filtered_signals)
             if newly_blocked:
                 logger.info(
-                    f"[{task_id}] Post-XAG-lock block: filtered {newly_blocked} signal(s) "
+                    f"[{task_id}] Post-lock-check block: filtered {newly_blocked} signal(s) "
                     f"for {PRECLOSE_BLOCKED_PAIRS}"
                 )
             all_signals = filtered_signals
@@ -175,11 +187,11 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
             except Exception as pe:
                 logger.error(f"[{task_id}] Portfolio exit check failed: {pe}")
 
-            # --- XAG Cooldown Writer (fires after Oanda sync marks trades CLOSED) ---
+            # --- Lock Cooldown Writer (fires after Oanda sync marks trades CLOSED) ---
             try:
-                check_xag_lock_cooldown()
+                check_pair_lock_cooldowns()
             except Exception as xag_cool_e:
-                logger.error(f"[{task_id}] XAG cooldown write failed (non-critical): {xag_cool_e}", exc_info=True)
+                logger.error(f"[{task_id}] Pair lock cooldown write failed (non-critical): {xag_cool_e}", exc_info=True)
 
         # --- Email Notification Logic ---
         diff = EmailService.filter_new_signals(all_signals, results.get('all_prices', {}), portfolio_exits)
@@ -228,213 +240,225 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
         refresh_manager.forex_lock.release()
 
 
-def run_xag_lock_check():
+def run_pair_lock_checks():
     """
-    Profit-lock check for XAG_USD (Silver).
+    Profit-lock check for all pairs in PAIR_LOCK_CONFIGS.
 
     Runs before signal execution each refresh cycle:
-      1. Reads config/xag_lock_state from Firestore. If a cooldown is active
-         (cooldown_until > now), adds XAG_USD to PRECLOSE_BLOCKED_PAIRS so no
-         new entries are placed this cycle.
-      2. Scans all OPEN XAG_USD trades where lock_fired is falsy.
-         If any trade has reached +3R unrealized profit, moves its Oanda SL
-         to +2R and flags the Firestore doc with lock_fired=True.
+      1. For each configured pair, reads config/lock_state_{symbol} from Firestore.
+         If a cooldown is active (cooldown_until > now), adds the symbol to
+         PRECLOSE_BLOCKED_PAIRS so no new entries are placed this cycle.
+      2. Scans all OPEN trades for each pair where lock_fired is falsy.
+         If a trade has reached lock_at_r unrealized profit, moves its Oanda SL
+         to lock_to_r and flags the Firestore doc with lock_fired=True.
     """
     global PRECLOSE_BLOCKED_PAIRS
 
-    try:
-        # --- Step 1: check cooldown ---
-        try:
-            lock_doc = db.collection("config").document("xag_lock_state").get()
-            if lock_doc.exists:
-                lock_data = lock_doc.to_dict() or {}
-                cooldown_until_str = lock_data.get("cooldown_until")
-                if cooldown_until_str:
-                    cooldown_until = datetime.fromisoformat(cooldown_until_str)
-                    if datetime.utcnow() < cooldown_until:
-                        logger.info(
-                            f"XAG lock: cooldown active until {cooldown_until_str} — "
-                            f"blocking XAG_USD entries this cycle"
-                        )
-                        PRECLOSE_BLOCKED_PAIRS.add("XAG_USD")
-        except Exception as e:
-            logger.error("XAG lock: failed to read xag_lock_state from Firestore", exc_info=True)
+    auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
+    if not auth_email:
+        return
 
-        # --- Step 2: scan open XAG_USD trades for 3R target ---
-        auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
-        if not auth_email:
-            return
-
-        portfolio_ref = (
-            db.collection("users")
-            .document(auth_email)
-            .collection("forex_portfolio")
-        )
+    for symbol, lock_cfg in PAIR_LOCK_CONFIGS.items():
+        lock_at_r    = lock_cfg["lock_at_r"]
+        lock_to_r    = lock_cfg["lock_to_r"]
+        sl_precision = lock_cfg["sl_precision"]
+        state_doc_id = f"lock_state_{symbol}"
+        tag          = f"{symbol} lock"
 
         try:
-            open_xag_docs = list(
-                portfolio_ref
-                .where(filter=firestore.FieldFilter("symbol", "==", "XAG_USD"))
-                .where(filter=firestore.FieldFilter("status", "==", "OPEN"))
-                .stream()
-            )
-        except Exception as e:
-            logger.error("XAG lock: Firestore query for open XAG_USD trades failed", exc_info=True)
-            return
-
-        for doc in open_xag_docs:
+            # --- Step 1: check cooldown ---
             try:
-                data = doc.to_dict()
+                lock_doc = db.collection("config").document(state_doc_id).get()
+                if lock_doc.exists:
+                    lock_data = lock_doc.to_dict() or {}
+                    cooldown_until_str = lock_data.get("cooldown_until")
+                    if cooldown_until_str:
+                        cooldown_until = datetime.fromisoformat(cooldown_until_str)
+                        if datetime.now(timezone.utc) < cooldown_until:
+                            logger.info(
+                                f"{tag}: cooldown active until {cooldown_until_str} — "
+                                f"blocking {symbol} entries this cycle"
+                            )
+                            PRECLOSE_BLOCKED_PAIRS.add(symbol)
+            except Exception:
+                logger.error(f"{tag}: failed to read {state_doc_id} from Firestore", exc_info=True)
 
-                # Skip if lock already fired
-                if data.get("lock_fired"):
-                    continue
+            # --- Step 2: scan open trades for lock threshold ---
+            portfolio_ref = (
+                db.collection("users")
+                .document(auth_email)
+                .collection("forex_portfolio")
+            )
 
-                buy_price = data.get("buy_price")
-                stop_loss = data.get("stop_loss")
-                direction = data.get("direction", "BUY")
-                oanda_trade_id = data.get("oanda_trade_id")
-
-                if buy_price is None or stop_loss is None or not oanda_trade_id:
-                    logger.warning(
-                        f"XAG lock: doc {doc.id} missing buy_price/stop_loss/oanda_trade_id — skipping"
-                    )
-                    continue
-
-                risk_distance = abs(float(buy_price) - float(stop_loss))
-                if risk_distance == 0:
-                    logger.warning(f"XAG lock: doc {doc.id} has zero risk_distance — skipping")
-                    continue
-
-                current_price = OandaPriceService.get_current_price("XAG_USD")
-                if current_price is None:
-                    logger.warning("XAG lock: could not fetch current XAG_USD price — skipping cycle")
-                    continue
-
-                if direction == "BUY":
-                    r_current = (current_price - float(buy_price)) / risk_distance
-                    lock_sl = float(buy_price) + 2.0 * risk_distance
-                else:  # SELL
-                    r_current = (float(buy_price) - current_price) / risk_distance
-                    lock_sl = float(buy_price) - 2.0 * risk_distance
-
-                logger.info(
-                    f"XAG lock: trade {oanda_trade_id} — current R={r_current:.2f}, "
-                    f"entry={buy_price}, current_price={current_price}, "
-                    f"risk_distance={risk_distance:.4f}"
+            try:
+                open_docs = list(
+                    portfolio_ref
+                    .where(filter=firestore.FieldFilter("symbol", "==", symbol))
+                    .where(filter=firestore.FieldFilter("status", "==", "OPEN"))
+                    .stream()
                 )
+            except Exception:
+                logger.error(f"{tag}: Firestore query for open trades failed", exc_info=True)
+                continue
 
-                if r_current >= 3.0:
-                    logger.info(
-                        f"XAG lock: FIRING profit-lock for trade {oanda_trade_id} "
-                        f"(R={r_current:.2f} >= 3.0) — moving SL to {lock_sl:.3f} (+2R)"
-                    )
+            current_price = None  # fetch once per symbol if needed
 
-                    modify_result = OandaPriceService.modify_trade_sl(
-                        oanda_trade_id, lock_sl, precision=3
-                    )
+            for doc in open_docs:
+                try:
+                    data = doc.to_dict()
 
-                    if modify_result is None:
-                        logger.error(
-                            f"XAG lock: modify_trade_sl returned None for trade {oanda_trade_id} "
-                            f"— will retry next cycle"
-                        )
+                    if data.get("lock_fired"):
                         continue
 
-                    # Flag the trade doc so we don't re-fire
-                    doc.reference.update({
-                        "lock_fired": True,
-                        "lock_sl": lock_sl,
-                        "lock_fired_at": datetime.utcnow().isoformat(),
-                        "updated_at": datetime.utcnow(),
-                    })
+                    buy_price      = data.get("buy_price")
+                    stop_loss      = data.get("stop_loss")
+                    direction      = data.get("direction", "BUY")
+                    oanda_trade_id = data.get("oanda_trade_id")
+
+                    if buy_price is None or stop_loss is None or not oanda_trade_id:
+                        logger.warning(f"{tag}: doc {doc.id} missing required fields — skipping")
+                        continue
+
+                    risk_distance = abs(float(buy_price) - float(stop_loss))
+                    if risk_distance == 0:
+                        logger.warning(f"{tag}: doc {doc.id} has zero risk_distance — skipping")
+                        continue
+
+                    if current_price is None:
+                        current_price = OandaPriceService.get_current_price(symbol)
+                    if current_price is None:
+                        logger.warning(f"{tag}: could not fetch current price — skipping cycle")
+                        break
+
+                    if direction == "BUY":
+                        r_current = (current_price - float(buy_price)) / risk_distance
+                        lock_sl   = float(buy_price) + (1.0 + lock_to_r) * risk_distance
+                    else:
+                        r_current = (float(buy_price) - current_price) / risk_distance
+                        lock_sl   = float(buy_price) - (1.0 + lock_to_r) * risk_distance
+
                     logger.info(
-                        f"XAG lock: Firestore doc {doc.id} updated with lock_fired=True, "
-                        f"lock_sl={lock_sl:.3f}"
+                        f"{tag}: trade {oanda_trade_id} — R={r_current:.2f}, "
+                        f"entry={buy_price}, price={current_price}, rdist={risk_distance:.4f}"
                     )
 
-            except Exception as e:
-                logger.error(
-                    f"XAG lock: unexpected error processing doc {doc.id}", exc_info=True
-                )
+                    if r_current >= lock_at_r:
+                        logger.info(
+                            f"{tag}: FIRING lock for trade {oanda_trade_id} "
+                            f"(R={r_current:.2f} >= {lock_at_r}) — moving SL to "
+                            f"{lock_sl:.{sl_precision}f} (+{lock_to_r}R)"
+                        )
 
-    except Exception as e:
-        logger.error("XAG lock: run_xag_lock_check failed unexpectedly", exc_info=True)
+                        modify_result = OandaPriceService.modify_trade_sl(
+                            oanda_trade_id, lock_sl, precision=sl_precision
+                        )
+
+                        if modify_result is None:
+                            logger.error(
+                                f"{tag}: modify_trade_sl returned None for {oanda_trade_id} "
+                                f"— will retry next cycle"
+                            )
+                            continue
+
+                        doc.reference.update({
+                            "lock_fired":    True,
+                            "lock_sl":       lock_sl,
+                            "lock_fired_at": datetime.now(timezone.utc).isoformat(),
+                            "updated_at":    datetime.now(timezone.utc),
+                        })
+                        logger.info(
+                            f"{tag}: Firestore doc {doc.id} updated — "
+                            f"lock_fired=True, lock_sl={lock_sl:.{sl_precision}f}"
+                        )
+
+                except Exception:
+                    logger.error(f"{tag}: unexpected error processing doc {doc.id}", exc_info=True)
+
+        except Exception:
+            logger.error(f"{tag}: run_pair_lock_checks failed for {symbol}", exc_info=True)
 
 
-def check_xag_lock_cooldown():
+def check_pair_lock_cooldowns():
     """
-    Cooldown writer for XAG_USD profit-lock.
+    Cooldown writer for all pairs in PAIR_LOCK_CONFIGS.
 
-    Called after portfolio sync each refresh cycle. Finds XAG_USD trades that:
+    Called after portfolio sync each refresh cycle. For each pair, finds trades that:
       - status == CLOSED
       - lock_fired == True
       - lock_cooldown_set is missing / False
 
-    For each such trade, writes a 25-minute cooldown to config/xag_lock_state
-    and stamps the trade doc with lock_cooldown_set=True so it isn't processed again.
+    Writes a cooldown timestamp to config/lock_state_{symbol} and stamps the trade
+    doc with lock_cooldown_set=True so it isn't processed again.
     """
-    try:
-        auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
-        if not auth_email:
-            return
+    auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
+    if not auth_email:
+        return
 
-        portfolio_ref = (
-            db.collection("users")
-            .document(auth_email)
-            .collection("forex_portfolio")
-        )
+    for symbol, lock_cfg in PAIR_LOCK_CONFIGS.items():
+        cooldown_min = lock_cfg["cooldown_min"]
+        state_doc_id = f"lock_state_{symbol}"
+        tag          = f"{symbol} lock"
 
         try:
-            closed_locked_docs = list(
-                portfolio_ref
-                .where(filter=firestore.FieldFilter("symbol", "==", "XAG_USD"))
-                .where(filter=firestore.FieldFilter("status", "==", "CLOSED"))
-                .where(filter=firestore.FieldFilter("lock_fired", "==", True))
-                .stream()
+            portfolio_ref = (
+                db.collection("users")
+                .document(auth_email)
+                .collection("forex_portfolio")
             )
-        except Exception as e:
-            logger.error("XAG lock: Firestore query for closed locked XAG_USD trades failed", exc_info=True)
-            return
 
-        for doc in closed_locked_docs:
             try:
-                data = doc.to_dict()
-
-                # Skip if cooldown already set for this trade
-                if data.get("lock_cooldown_set"):
-                    continue
-
-                cooldown_until = datetime.utcnow() + timedelta(minutes=25)
-                cooldown_until_str = cooldown_until.isoformat()
-
-                db.collection("config").document("xag_lock_state").set(
-                    {
-                        "cooldown_until": cooldown_until_str,
-                        "reason": "lock_sl_triggered",
-                        "triggered_by_trade": doc.id,
-                        "updated_at": datetime.utcnow().isoformat(),
-                    },
-                    merge=True,
+                closed_locked_docs = list(
+                    portfolio_ref
+                    .where(filter=firestore.FieldFilter("symbol", "==", symbol))
+                    .where(filter=firestore.FieldFilter("status", "==", "CLOSED"))
+                    .where(filter=firestore.FieldFilter("lock_fired", "==", True))
+                    .stream()
                 )
-
-                doc.reference.update({
-                    "lock_cooldown_set": True,
-                    "updated_at": datetime.utcnow(),
-                })
-
-                logger.info(
-                    f"XAG lock: cooldown written — no new XAG_USD entries until "
-                    f"{cooldown_until_str} (triggered by trade doc {doc.id})"
-                )
-
-            except Exception as e:
+            except Exception:
                 logger.error(
-                    f"XAG lock: failed to write cooldown for doc {doc.id}", exc_info=True
+                    f"{tag}: Firestore query for closed locked trades failed", exc_info=True
                 )
+                continue
 
-    except Exception as e:
-        logger.error("XAG lock: check_xag_lock_cooldown failed unexpectedly", exc_info=True)
+            for doc in closed_locked_docs:
+                try:
+                    data = doc.to_dict()
+
+                    if data.get("lock_cooldown_set"):
+                        continue
+
+                    cooldown_until     = datetime.now(timezone.utc) + timedelta(minutes=cooldown_min)
+                    cooldown_until_str = cooldown_until.isoformat()
+
+                    db.collection("config").document(state_doc_id).set(
+                        {
+                            "cooldown_until":     cooldown_until_str,
+                            "reason":             "lock_sl_triggered",
+                            "triggered_by_trade": doc.id,
+                            "updated_at":         datetime.now(timezone.utc).isoformat(),
+                        },
+                        merge=True,
+                    )
+
+                    doc.reference.update({
+                        "lock_cooldown_set": True,
+                        "updated_at":        datetime.now(timezone.utc),
+                    })
+
+                    logger.info(
+                        f"{tag}: cooldown written — no new {symbol} entries until "
+                        f"{cooldown_until_str} (triggered by trade doc {doc.id})"
+                    )
+
+                except Exception:
+                    logger.error(
+                        f"{tag}: failed to write cooldown for doc {doc.id}", exc_info=True
+                    )
+
+        except Exception:
+            logger.error(
+                f"{tag}: check_pair_lock_cooldowns failed for {symbol}", exc_info=True
+            )
 
 
 def run_preclose_check():
