@@ -746,3 +746,74 @@ class OandaPriceService:
             logger.error(f"Error fetching trades from Oanda: {e}")
             return []
 
+    @classmethod
+    def get_fund_transfers(cls, from_date: str, to_date: str) -> List[Dict[str, Any]]:
+        """
+        Return all TRANSFER_FUNDS transactions between from_date and to_date (inclusive).
+        Each entry: { 'date': date, 'amount': float }  — positive = deposit, negative = withdrawal.
+        from_date / to_date: 'YYYY-MM-DD' strings.
+
+        TransactionList returns a pagination index (pages) not the transactions themselves.
+        We parse the from/to IDs out of each page URL and fetch via TransactionIDRange.
+        """
+        api = cls.get_api()
+        account_id = settings.OANDA_ACCOUNT_ID
+        if not api or not account_id:
+            return []
+
+        try:
+            import oandapyV20.endpoints.transactions as txn_endpoints
+            from datetime import date as date_type
+            from urllib.parse import urlparse, parse_qs
+
+            # Step 1: get the pagination index for the date range.
+            # The 'type' param is accepted by the Oanda REST API to filter which
+            # transaction types appear in the pages, but we also filter client-side
+            # as a safety net.
+            params = {
+                "from": f"{from_date}T00:00:00Z",
+                "to": f"{to_date}T23:59:59Z",
+                "type": "TRANSFER_FUNDS",
+            }
+            r = txn_endpoints.TransactionList(accountID=account_id, params=params)
+            api.request(r)
+
+            # TransactionList returns {"count": N, "pages": ["...?from=X&to=Y", ...], ...}
+            # Each page URL encodes a from/to transaction-ID range.
+            pages = r.response.get("pages", [])
+            if not pages:
+                logger.info(f"Fund transfers [{from_date} → {to_date}]: no pages returned (0 matching transactions)")
+                return []
+
+            # Step 2: fetch each page via TransactionIDRange and collect TRANSFER_FUNDS.
+            transfers = []
+            for page_url in pages:
+                try:
+                    qs = parse_qs(urlparse(page_url).query)
+                    from_id = qs.get("from", [None])[0]
+                    to_id = qs.get("to", [None])[0]
+                    if from_id is None or to_id is None:
+                        continue
+                    page_params = {"from": from_id, "to": to_id}
+                    r_page = txn_endpoints.TransactionIDRange(accountID=account_id, params=page_params)
+                    api.request(r_page)
+                    page_txns = r_page.response.get("transactions", [])
+                    for txn in page_txns:
+                        if txn.get("type") != "TRANSFER_FUNDS":
+                            continue
+                        amount = float(txn.get("amount", 0))
+                        time_str = txn.get("time", "")
+                        txn_date = date_type.fromisoformat(time_str[:10]) if time_str else None
+                        if txn_date:
+                            transfers.append({"date": txn_date, "amount": amount})
+                except Exception as page_err:
+                    logger.warning(f"Could not fetch transaction page {page_url}: {page_err}")
+                    continue
+
+            logger.info(f"Fund transfers [{from_date} → {to_date}]: {transfers}")
+            return transfers
+
+        except Exception as e:
+            logger.warning(f"Could not fetch fund transfers: {e}")
+            return []
+

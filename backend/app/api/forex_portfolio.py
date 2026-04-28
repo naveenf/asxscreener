@@ -438,7 +438,9 @@ async def get_trade_analytics(
                     "loss_rate": 0, "avg_winning_trade": 0, "avg_losing_trade": 0,
                     "best_trade": 0, "worst_trade": 0, "profit_factor": 0,
                     "current_balance_aud": 0, "starting_balance_aud": 0,
-                    "avg_rr": 0, "close_types": {}, "max_drawdown_pct": 0
+                    "deposits_in_period": [], "modified_dietz_denominator": 0,
+                    "avg_rr": 0, "close_types": {}, "max_drawdown_pct": 0,
+                    "win_days": 0, "loss_days": 0, "max_win_streak": 0, "max_loss_streak": 0
                 },
                 "by_strategy": {}, "by_month": {}, "daily_breakdown": {}, "equity_curve": [],
                 "by_pair": {}, "period_breakdown": {}, "period_breakdowns": {}, "backtest_comparison": {}, "period": period
@@ -456,6 +458,7 @@ async def get_trade_analytics(
         win_rate = (len(winning_trades) / total_trades_count * 100) if total_trades_count > 0 else 0
 
         roi_start = start_date.isoformat() if start_date else '2026-02-19'
+        roi_end = end_date.isoformat() if end_date else date.today().isoformat()
         starting_balance_aud = 0
         try:
             snap = (
@@ -479,7 +482,23 @@ async def get_trade_analytics(
                 starting_balance_aud = estimated
                 logger.info(f"No balance snapshot for {roi_start}; using estimated starting balance ${estimated:.2f}")
 
-        net_pnl_percent = (net_pnl / starting_balance_aud * 100) if starting_balance_aud > 0 else 0
+        # Modified Dietz: weight each deposit by fraction of period remaining after it
+        # denominator = starting_balance + Σ(deposit_i × (D - d_i) / D)
+        # Fetch from roi_start+1 so deposits on the start date itself are excluded —
+        # the daily balance snapshot already captures the post-deposit balance, so
+        # including start-date transfers would double-count them in the denominator.
+        period_start_dt = date.fromisoformat(roi_start)
+        period_end_dt = date.fromisoformat(roi_end)
+        transfers_from = (period_start_dt + timedelta(days=1)).isoformat()
+        fund_transfers = OandaPriceService.get_fund_transfers(transfers_from, roi_end)
+        total_days = max((period_end_dt - period_start_dt).days, 1)
+        weighted_deposits = 0.0
+        for tf in fund_transfers:
+            days_elapsed = (tf["date"] - period_start_dt).days
+            weight = (total_days - days_elapsed) / total_days
+            weighted_deposits += tf["amount"] * weight
+        modified_dietz_denominator = starting_balance_aud + weighted_deposits
+        net_pnl_percent = (net_pnl / modified_dietz_denominator * 100) if modified_dietz_denominator > 0 else 0
 
         # Close type summary
         close_types: dict = {}
@@ -513,6 +532,8 @@ async def get_trade_analytics(
             "net_pnl_percent": net_pnl_percent,
             "current_balance_aud": current_balance_aud,
             "starting_balance_aud": starting_balance_aud,
+            "deposits_in_period": [{"date": str(tf["date"]), "amount": tf["amount"]} for tf in fund_transfers],
+            "modified_dietz_denominator": modified_dietz_denominator,
             "win_rate": win_rate,
             "loss_rate": 100 - win_rate,
             "avg_winning_trade": total_profit / len(winning_trades) if winning_trades else 0,
@@ -559,6 +580,24 @@ async def get_trade_analytics(
                 daily_breakdown[day] = {"trades": 0, "pnl": 0}
             daily_breakdown[day]["trades"] += 1
             daily_breakdown[day]["pnl"] += t['pnl_aud']
+
+        # 4b. Win/Loss day counts and max streaks (over trading days only)
+        sorted_days = sorted(daily_breakdown.keys())
+        win_days_count = sum(1 for d in sorted_days if daily_breakdown[d]['pnl'] > 0)
+        loss_days_count = sum(1 for d in sorted_days if daily_breakdown[d]['pnl'] <= 0)
+        max_win_streak = cur_win = 0
+        max_loss_streak = cur_loss = 0
+        for d in sorted_days:
+            if daily_breakdown[d]['pnl'] > 0:
+                cur_win += 1; cur_loss = 0
+                if cur_win > max_win_streak: max_win_streak = cur_win
+            else:
+                cur_loss += 1; cur_win = 0
+                if cur_loss > max_loss_streak: max_loss_streak = cur_loss
+        summary['win_days'] = win_days_count
+        summary['loss_days'] = loss_days_count
+        summary['max_win_streak'] = max_win_streak
+        summary['max_loss_streak'] = max_loss_streak
 
         # 5. Equity Curve + Max Drawdown
         sorted_trades = sorted(trades_list, key=lambda x: x['sell_date_dt'])

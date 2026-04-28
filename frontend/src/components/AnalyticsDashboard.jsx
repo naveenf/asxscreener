@@ -136,7 +136,7 @@ const AnalyticsDashboard = () => {
             <KpiCard
               label="Net P&L"
               value={`$${summary.net_pnl_aud.toFixed(2)}`}
-              subtext={summary.starting_balance_aud ? `${summary.net_pnl_percent.toFixed(1)}% ROI` : null}
+              subtext={summary.starting_balance_aud ? `${summary.net_pnl_percent.toFixed(1)}% ROI${summary.deposits_in_period?.length > 0 ? ' (adj.)' : ''}` : null}
               variant={summary.net_pnl_aud >= 0 ? 'pos' : 'neg'}
             />
             <KpiCard
@@ -177,7 +177,49 @@ const AnalyticsDashboard = () => {
                 subtext="Oanda AUD"
               />
             )}
+            {summary.win_days != null && (
+              <KpiCard
+                label="Win Days"
+                value={`${summary.win_days} (${summary.max_win_streak})`}
+                subtext="Total (max streak)"
+                variant="pos"
+              />
+            )}
+            {summary.loss_days != null && (
+              <KpiCard
+                label="Loss Days"
+                value={`${summary.loss_days} (${summary.max_loss_streak})`}
+                subtext="Total (max streak)"
+                variant="neg"
+              />
+            )}
           </div>
+
+          {/* ── Capital flows strip ── */}
+          {summary.deposits_in_period?.length > 0 && (
+            <div className="capital-flows-strip">
+              <span className="capital-flows-head">Capital flows</span>
+              <div className="capital-flows-rows">
+                {summary.deposits_in_period.map((tf, i) => {
+                  const isDeposit = tf.amount >= 0;
+                  const displayDate = new Date(tf.date + 'T00:00:00').toLocaleDateString('en-AU', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                  });
+                  return (
+                    <span key={i} className={`capital-flow-chip ${isDeposit ? 'deposit' : 'withdrawal'}`}>
+                      <span className="flow-dot" />
+                      <span className="flow-type">{isDeposit ? 'Deposit' : 'Withdrawal'}</span>
+                      <span className="flow-date">{displayDate}</span>
+                      <span className="flow-amount">A${Math.abs(tf.amount).toFixed(2)}</span>
+                    </span>
+                  );
+                })}
+              </div>
+              <span className="capital-flows-note">
+                ROI uses Modified Dietz — deposits/withdrawals weighted by time in period
+              </span>
+            </div>
+          )}
 
           {/* ── Exit classification strip ── */}
           {Object.keys(closeTypes).length > 0 && (

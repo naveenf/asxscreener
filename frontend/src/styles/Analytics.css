@@ -190,6 +190,81 @@
 .kpi-pos .kpi-value { color: #4ADE80; }
 .kpi-neg .kpi-value { color: #F87171; }
 
+/* ── Capital Flows Strip ──────────────────── */
+
+.capital-flows-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-top: 1px solid #3A2820;
+  border-bottom: 1px solid #3A2820;
+}
+
+.capital-flows-head {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6B6055;
+}
+
+.capital-flows-rows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.capital-flow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #251E1E;
+  border: 1px solid #3A2820;
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.capital-flow-chip.deposit  { border-color: rgba(74, 222, 128, 0.25); }
+.capital-flow-chip.withdrawal { border-color: rgba(248, 113, 113, 0.25); }
+
+.flow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.capital-flow-chip.deposit   .flow-dot { background: #4ADE80; }
+.capital-flow-chip.withdrawal .flow-dot { background: #F87171; }
+
+.flow-type {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: #7A6D65;
+}
+
+.flow-date {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  color: #6B6055;
+}
+
+.flow-amount {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.capital-flow-chip.deposit   .flow-amount { color: #4ADE80; }
+.capital-flow-chip.withdrawal .flow-amount { color: #F87171; }
+
+.capital-flows-note {
+  font-size: 0.63rem;
+  color: #6B6055;
+  font-style: italic;
+}
+
 /* ── Exit Strip ───────────────────────────── */
 
 .exit-strip {
