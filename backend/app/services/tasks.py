@@ -332,10 +332,10 @@ def run_pair_lock_checks():
 
                     if direction == "BUY":
                         r_current = (current_price - float(buy_price)) / risk_distance
-                        lock_sl   = float(buy_price) + (1.0 + lock_to_r) * risk_distance
+                        lock_sl   = float(buy_price) + lock_to_r * risk_distance
                     else:
                         r_current = (float(buy_price) - current_price) / risk_distance
-                        lock_sl   = float(buy_price) - (1.0 + lock_to_r) * risk_distance
+                        lock_sl   = float(buy_price) - lock_to_r * risk_distance
 
                     logger.info(
                         f"{tag}: trade {oanda_trade_id} — R={r_current:.2f}, "
