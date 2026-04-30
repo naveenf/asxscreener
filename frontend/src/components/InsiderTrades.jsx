@@ -7,16 +7,34 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
   const [loading, setLoading] = useState(true);
   const [expandedTickers, setExpandedTickers] = useState(new Set());
   const [sortOption, setSortOption] = useState('abs_value');
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const [refreshError, setRefreshError] = useState(null);
 
-  const fetchTrades = async () => {
+  const fetchTrades = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await axios.get('/api/insider-trades');
       setGroupedTrades(response.data);
     } catch (err) {
       console.error('Error fetching insider trades:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshError(null);
+    try {
+      setRefreshing(true);
+      await axios.post('/api/insider-trades/refresh');
+      await fetchTrades(true);
+      setLastRefreshed(new Date());
+    } catch (err) {
+      console.error('Error refreshing insider trades:', err);
+      setRefreshError(err.response?.data?.detail || 'Refresh failed. Try again.');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -92,6 +110,22 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
           </div>
         </div>
         
+        <div className="refresh-controls">
+          {refreshError && <span className="refresh-error">{refreshError}</span>}
+          {!refreshError && lastRefreshed && (
+            <span className="last-refreshed">
+              Updated {lastRefreshed.toLocaleTimeString()}
+            </span>
+          )}
+          <button
+            className="refresh-btn"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+
         <div className="sort-controls">
           <label htmlFor="sort-select">Sort By:</label>
           <select 
@@ -160,7 +194,7 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
                           </td>
                           <td>{trade.date_formatted}</td>
                           <td>{trade.amount}</td>
-                          <td>${trade.price.toFixed(3)}</td>
+                          <td>${(parseFloat(trade.price) || 0).toFixed(3)}</td>
                           <td style={{ fontWeight: 'bold' }}>{formatCurrency(trade.value)}</td>
                         </tr>
                       ))}

@@ -30,6 +30,10 @@ async def refresh_insider_trades():
     try:
         service = get_service()
         result = service.scrape_and_update()
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

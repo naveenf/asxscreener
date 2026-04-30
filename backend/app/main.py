@@ -20,6 +20,7 @@ pd.set_option('future.no_silent_downcasting', True)
 from .api.routes import router
 from .config import settings
 from .services.tasks import run_forex_refresh_task, run_stock_refresh_task, run_preclose_check
+from .services.insider_trades import InsiderTradesService
 
 # Setup logging — console for everything, file handler scoped to services only
 logging.basicConfig(
@@ -80,7 +81,13 @@ async def startup_event():
     # 3. Stock Refresh: Run daily at 18:00 AEST
     scheduler.add_job(run_stock_refresh_task, 'cron', hour=18, minute=0)
 
-    # 4. Pre-close position management (every 5 minutes)
+    # 4b. Insider Trades Refresh: every 6 hours independently of stock refresh
+    def run_insider_trades_refresh():
+        service = InsiderTradesService(settings.PROCESSED_DATA_DIR / 'insider_trades.json')
+        service.scrape_and_update()
+    scheduler.add_job(run_insider_trades_refresh, 'cron', hour='*/6', minute=5)
+
+    # 5. Pre-close position management (every 5 minutes)
     scheduler.add_job(run_preclose_check, 'cron', minute='*/5')
 
     scheduler.start()

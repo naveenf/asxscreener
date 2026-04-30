@@ -5,14 +5,15 @@ Scrapes and processes director transactions from Market Index.
 Filters for significant On-market trades (> $50,000).
 """
 
-import requests
 import json
 import re
 import html
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Dict, Optional
 import logging
+
+from curl_cffi import requests as cf_requests
 
 from ..config import settings
 
@@ -22,14 +23,11 @@ class InsiderTradesService:
     def __init__(self, storage_path: Path):
         self.storage_path = storage_path
         self.url = "https://www.marketindex.com.au/director-transactions"
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
 
     def scrape_and_update(self) -> Dict:
         """Fetch latest trades, deduplicate, filter, and save."""
         try:
-            response = requests.get(self.url, headers=self.headers, timeout=15)
+            response = cf_requests.get(self.url, impersonate="chrome110", timeout=20)
             response.raise_for_status()
             
             # Extract JSON from Vue component attribute
@@ -87,17 +85,22 @@ class InsiderTradesService:
                 if ticker and not ticker.endswith('.AX'):
                     ticker = f"{ticker}.AX"
 
+                trade_id = item.get('id')
+                if not trade_id:
+                    logger.warning(f"Skipping trade with no id: {item}")
+                    continue
+
                 processed.append({
-                    "id": item.get('id'), # Market Index unique ID
+                    "id": trade_id,
                     "ticker": ticker,
                     "company_name": company_field.get('title', ''),
                     "director": data_field.get('director', 'Unknown'),
                     "type": data_field.get('buy_sell', 'Unknown'),
                     "amount": data_field.get('amount', '0'),
-                    "price": data_field.get('price', 0),
+                    "price": float(data_field.get('price', 0) or 0),
                     "value": value,
                     "notes": data_field.get('notes', ''),
-                    "date": item.get('transaction_date', ''), # ISO format
+                    "date": item.get('transaction_date', ''),
                     "date_formatted": item.get('transaction_date_formatted', '')
                 })
             except Exception as e:
@@ -137,23 +140,31 @@ class InsiderTradesService:
 
     def _clean_old_records(self, history: List[Dict]) -> List[Dict]:
         """Keep only last 30 days."""
-        cutoff = datetime.now() - timedelta(days=30)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         cleaned = []
         for trade in history:
             try:
-                # transaction_date is ISO like 2025-12-30T13:00:00.000000Z
                 trade_date = datetime.fromisoformat(trade['date'].replace('Z', '+00:00'))
-                if trade_date.replace(tzinfo=None) > cutoff:
+                if trade_date > cutoff:
                     cleaned.append(trade)
-            except:
-                cleaned.append(trade) # Keep if parsing fails
+            except Exception:
+                cleaned.append(trade)
         return cleaned
 
     def get_grouped_trades(self) -> List[Dict]:
         """Return history grouped by ticker with net stats."""
         history = self._load_history()
-        # Filter for significant trades only for the main dashboard
-        significant = [t for t in history if self._is_significant(t)]
+        # Evict stale records on every read so startup always shows fresh data
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        recent = []
+        for trade in history:
+            try:
+                trade_date = datetime.fromisoformat(trade['date'].replace('Z', '+00:00'))
+                if trade_date > cutoff:
+                    recent.append(trade)
+            except Exception:
+                recent.append(trade)
+        significant = [t for t in recent if self._is_significant(t)]
         
         grouped = {}
         for trade in significant:
