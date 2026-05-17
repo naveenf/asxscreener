@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchTradeAnalytics } from '../services/api';
-import WinLossDistribution from './Charts/WinLossDistribution';
-import StrategyComparison from './Charts/StrategyComparison';
 import BacktestComparison from './Charts/BacktestComparison';
+import PortfolioBalance from './Charts/PortfolioBalance';
 import PeriodBreakdown from './Charts/PeriodBreakdown';
 import '../styles/Analytics.css';
 
@@ -65,17 +64,11 @@ const AnalyticsDashboard = () => {
   // Fetch on mount only; period switching is client-side
   useEffect(() => { loadAnalytics(); }, []); // eslint-disable-line
 
-  const { summary, by_strategy, period_breakdowns, backtest_comparison } = analytics || {};
+  const { summary, period_breakdowns, backtest_comparison } = analytics || {};
 
   const activePeriodData = period_breakdowns?.[activePeriod] ?? {};
   const bucketCount      = Object.keys(activePeriodData).length;
 
-  const winLossData = summary
-    ? [
-        { name: 'Wins',   value: Math.round(summary.total_trades * (summary.win_rate  / 100)) },
-        { name: 'Losses', value: Math.round(summary.total_trades * (summary.loss_rate / 100)) },
-      ]
-    : [];
 
   const closeTypes = summary?.close_types ?? {};
   const hasCloseTypes = CT_ORDER.slice(0, 3).some(k => (closeTypes[k] ?? 0) > 0); // any TP/SL/Manual > 0
@@ -252,16 +245,17 @@ const AnalyticsDashboard = () => {
             />
           </div>
 
-          {/* ── Two-column: Win/Loss + Strategy ── */}
-          <div className="dash-two-col">
-            <div className="dash-section">
-              <SectionHead>Win / Loss</SectionHead>
-              <WinLossDistribution data={winLossData} title="" />
-            </div>
-            <div className="dash-section">
-              <SectionHead>Strategy Performance</SectionHead>
-              <StrategyComparison data={by_strategy} title="" />
-            </div>
+          {/* ── Portfolio Balance curve ── */}
+          <div className="dash-section">
+            <SectionHead aside={summary.starting_balance_aud > 0 ? `from A$${summary.starting_balance_aud.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : ''}>
+              Portfolio Balance
+            </SectionHead>
+            <PortfolioBalance
+              periodData={activePeriodData}
+              startingBalance={summary.starting_balance_aud}
+              deposits={summary.deposits_in_period ?? []}
+              period={activePeriod}
+            />
           </div>
 
           {/* ── Backtest comparison (full width, most important) ── */}
