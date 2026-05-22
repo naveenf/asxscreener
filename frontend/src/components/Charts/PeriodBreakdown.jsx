@@ -39,7 +39,11 @@ const PeriodBreakdown = ({ data, period, title }) => {
         <ResponsiveContainer>
           <BarChart data={chartData} onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && handleBarClick(e.activePayload[0].payload)}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-strong)" />
-            <XAxis dataKey="bucket" tick={{ fill: 'var(--chart-tick)', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
+            <XAxis
+              dataKey="bucket"
+              tick={{ fill: 'var(--chart-tick)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
+              interval={Math.max(0, Math.ceil(chartData.length / 7) - 1)}
+            />
             <YAxis tick={{ fill: 'var(--chart-tick)', fontSize: 12, fontFamily: 'var(--font-mono)' }} />
             <Tooltip
               contentStyle={{ backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--line-3)', fontFamily: 'var(--font-ui)' }}

@@ -9,6 +9,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 from pathlib import Path
 from google.cloud import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from ..firebase_setup import db
 from ..config import settings
@@ -85,7 +86,7 @@ class PortfolioMonitor:
         self._sync_oanda_closed_trades(user_email)
 
         portfolio_ref = db.collection('users').document(user_email).collection('forex_portfolio')
-        docs = portfolio_ref.where('status', '==', 'OPEN').stream()
+        docs = portfolio_ref.where(filter=FieldFilter('status', '==', 'OPEN')).stream()
         
         exits_found = []
         updates_made = 0
@@ -237,55 +238,65 @@ class PortfolioMonitor:
     def _sync_oanda_closed_trades(self, user_email: str):
         """
         Sync closed trades from Oanda API back to Firestore.
-        This keeps Firestore in sync with actual Oanda account.
+        Uses a single batched Oanda API call for all open trades,
+        then only calls get_trade_close_type for trades that are actually closed.
         """
         try:
             portfolio_ref = db.collection('users').document(user_email).collection('forex_portfolio')
 
             # Get all OPEN trades from Firestore
-            open_docs = list(portfolio_ref.where('status', '==', 'OPEN').stream())
+            open_docs = list(portfolio_ref.where(filter=FieldFilter('status', '==', 'OPEN')).stream())
 
             if not open_docs:
                 return
 
+            # Collect docs that have an Oanda trade ID
+            docs_by_trade_id = {}
+            for doc in open_docs:
+                trade_id = doc.to_dict().get('oanda_trade_id')
+                if trade_id:
+                    docs_by_trade_id[str(trade_id)] = doc
+
+            if not docs_by_trade_id:
+                return
+
+            # Single batched Oanda API call for all trade IDs
+            trade_data_map = OandaPriceService.get_trades_batch(list(docs_by_trade_id.keys()))
+
             synced_count = 0
 
-            for doc in open_docs:
-                data = doc.to_dict()
-                trade_id = data.get('oanda_trade_id')
-
-                if not trade_id:
+            for trade_id, doc in docs_by_trade_id.items():
+                trade_data = trade_data_map.get(trade_id)
+                if not trade_data or trade_data.get('state') != 'CLOSED':
                     continue
 
-                # Check if trade is closed in Oanda
-                closed_trades = OandaPriceService.get_closed_trades_by_id([trade_id])
+                avg_close = trade_data.get('averageClosePrice')
+                exit_price = float(avg_close) if avg_close else None
+                pnl = float(trade_data.get('realizedPL', 0))
+                closed_at_raw = trade_data.get('closeTime') or ''
 
-                if closed_trades:
-                    closed_trade = closed_trades[0]
+                try:
+                    sell_date = datetime.fromisoformat(
+                        closed_at_raw.replace('Z', '+00:00')
+                    ).strftime("%Y-%m-%d")
+                except Exception:
+                    sell_date = datetime.utcnow().strftime("%Y-%m-%d")
 
-                    # Parse sell_date to YYYY-MM-DD string (strip time component)
-                    closed_at_raw = closed_trade.get('closed_at') or ''
-                    try:
-                        sell_date = datetime.fromisoformat(
-                            closed_at_raw.replace('Z', '+00:00')
-                        ).strftime("%Y-%m-%d")
-                    except Exception:
-                        sell_date = datetime.utcnow().strftime("%Y-%m-%d")
+                # get_trade_close_type makes 2 extra API calls — only for actually closed trades
+                close_type = OandaPriceService.get_trade_close_type(trade_id)
 
-                    # Update Firestore with exit data
-                    close_type = OandaPriceService.get_trade_close_type(trade_id)
-                    doc.reference.update({
-                        'status': 'CLOSED',
-                        'sell_price': closed_trade.get('exit_price'),
-                        'sell_date': sell_date,
-                        'pnl': closed_trade.get('pnl'),
-                        'close_type': close_type,
-                        'closed_by': 'OandaSync',
-                        'updated_at': datetime.utcnow()
-                    })
+                doc.reference.update({
+                    'status': 'CLOSED',
+                    'sell_price': exit_price,
+                    'sell_date': sell_date,
+                    'pnl': pnl,
+                    'close_type': close_type,
+                    'closed_by': 'OandaSync',
+                    'updated_at': datetime.utcnow()
+                })
 
-                    synced_count += 1
-                    print(f"✅ Synced trade {trade_id}: Exit={closed_trade.get('exit_price')}, P&L={closed_trade.get('pnl')}")
+                synced_count += 1
+                print(f"✅ Synced trade {trade_id}: Exit={exit_price}, P&L={pnl}")
 
             if synced_count > 0:
                 print(f"📊 Synced {synced_count} closed trades from Oanda to Firestore")

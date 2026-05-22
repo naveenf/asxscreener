@@ -53,7 +53,8 @@
 .status-pill {
   background: var(--bg-1);
   border: 1px solid var(--line-3);
-  padding: 5px 12px;
+  padding: 0 12px;
+  height: 32px;
   border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
@@ -73,11 +74,30 @@
   font-family: var(--font-mono);
 }
 
+.theme-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--fg-4);
+  padding: 0 10px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: border-color var(--dur-base) var(--ease-in-out), color var(--dur-base) var(--ease-in-out);
+}
+
+.theme-toggle-btn:hover {
+  border-color: var(--line-3);
+  color: var(--fg-2);
+}
+
 .refresh-button {
   background: var(--rust-400);
   color: var(--cream-50);
   border: none;
-  padding: 7px 18px;
+  padding: 0 18px;
+  height: 32px;
   border-radius: var(--radius-pill);
   font-family: var(--font-ui);
   font-weight: 600;
@@ -106,7 +126,8 @@
   background: transparent;
   border: 1px solid var(--line-3);
   color: var(--fg-2);
-  padding: 7px 14px;
+  padding: 0 14px;
+  height: 32px;
   border-radius: var(--radius-pill);
   cursor: pointer;
   font-family: var(--font-ui);
@@ -163,24 +184,28 @@
 .guest-login {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  margin-right: var(--spacing-sm);
 }
 
 .nav-links {
   display: flex;
   gap: 2px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-inset);
   padding: 3px;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line-1);
+  height: 38px;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .nav-link {
   background-color: transparent;
   color: var(--fg-4);
   text-decoration: none;
-  padding: 7px 14px;
+  padding: 0 14px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
   border-radius: var(--radius-pill);
   font-family: var(--font-ui);
   font-size: var(--t-xs);

@@ -48,31 +48,41 @@ def load_stock_list():
 
 def get_portfolio_tickers():
     """Fetch unique tickers from all user portfolios in Firestore."""
-    try:
-        # Add backend to path to import firebase_setup
-        sys.path.append(str(PROJECT_ROOT / 'backend'))
-        from app.firebase_setup import db
-        
-        tickers = set()
-        # Query all 'portfolio' collections (ASX stocks)
-        docs = db.collection_group('portfolio').stream()
-        
-        for doc in docs:
-            data = doc.to_dict()
-            if 'ticker' in data:
-                t = data['ticker'].upper().strip()
-                # Ensure .AX suffix if missing (simple heuristic)
-                if not t.endswith('.AX') and not t.endswith('.F'): 
-                    # Assuming ASX if not futures. 
-                    # Ideally we trust user input or validate, but for download we normalize.
-                    t += '.AX'
-                tickers.add(t)
-                
-        print(f"Found {len(tickers)} unique tickers from user portfolios.")
-        return list(tickers)
-    except Exception as e:
-        print(f"Warning: Failed to fetch portfolio tickers (Firebase error): {e}")
+    import threading
+
+    result = []
+    error = []
+
+    def _fetch():
+        try:
+            sys.path.append(str(PROJECT_ROOT / 'backend'))
+            from app.firebase_setup import db
+            tickers = set()
+            docs = db.collection_group('portfolio').stream()
+            for doc in docs:
+                data = doc.to_dict()
+                if 'ticker' in data:
+                    t = data['ticker'].upper().strip()
+                    if not t.endswith('.AX') and not t.endswith('.F'):
+                        t += '.AX'
+                    tickers.add(t)
+            result.extend(list(tickers))
+        except Exception as e:
+            error.append(str(e))
+
+    t = threading.Thread(target=_fetch, daemon=True)
+    t.start()
+    t.join(timeout=10)
+
+    if t.is_alive():
+        print("Warning: Firestore portfolio fetch timed out after 10s — using stock_list.json only.")
         return []
+    if error:
+        print(f"Warning: Failed to fetch portfolio tickers: {error[0]}")
+        return []
+
+    print(f"Found {len(result)} unique tickers from user portfolios.")
+    return result
 
 
 def download_stock_data(ticker: str, period: str = '2y', interval: str = '1d', force: bool = False):

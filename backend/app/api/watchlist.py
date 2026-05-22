@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import List
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, timezone
 
 from ..firebase_setup import db
@@ -129,7 +130,7 @@ async def add_to_watchlist(
         
         # Check if already exists? Maybe allow duplicates? Usually watchlist is unique per ticker.
         # Let's check for existence to prevent duplicates
-        existing = watchlist_ref.where('ticker', '==', item.ticker).limit(1).get()
+        existing = watchlist_ref.where(filter=FieldFilter('ticker', '==', item.ticker)).limit(1).get()
         if existing:
              raise HTTPException(status_code=400, detail="Stock already in watchlist")
 

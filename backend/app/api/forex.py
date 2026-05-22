@@ -7,6 +7,7 @@ Endpoints for Forex and Commodity signals.
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 import json
 import asyncio
+import threading
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -23,9 +24,21 @@ CONFIG_PATH = settings.METADATA_DIR / "forex_pairs.json"
 FOREX_DATA_DIR = settings.DATA_DIR / "forex_raw"
 OUTPUT_PATH = settings.PROCESSED_DATA_DIR / "forex_signals.json"
 
+_live_prices_cache: dict = {"data": None, "fetched_at": None}
+_live_prices_lock = threading.Lock()
+_LIVE_PRICES_TTL = 270  # seconds — serve cached data for ~4.5 min; matches 5-min frontend poll interval
+
 @router.get("/live-prices")
 async def get_live_prices():
     """Bulk price + daily change for all active pairs — used by ticker tape."""
+    now = datetime.utcnow()
+    with _live_prices_lock:
+        cached = _live_prices_cache
+        if cached["data"] and cached["fetched_at"]:
+            age = (now - cached["fetched_at"]).total_seconds()
+            if age < _LIVE_PRICES_TTL:
+                return cached["data"]
+
     with open(CONFIG_PATH, 'r') as f:
         config = json.load(f)
 
@@ -43,12 +56,16 @@ async def get_live_prices():
         }
 
     loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor(max_workers=len(pairs)) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         futures = [loop.run_in_executor(executor, fetch_one, pair) for pair in pairs]
         raw = await asyncio.gather(*futures)
 
     results = [r for r in raw if r is not None]
-    return {"prices": results, "fetched_at": datetime.utcnow().isoformat() + "Z"}
+    result = {"prices": results, "fetched_at": now.isoformat() + "Z"}
+    with _live_prices_lock:
+        _live_prices_cache["data"] = result
+        _live_prices_cache["fetched_at"] = now
+    return result
 
 
 @router.get("/price/{symbol}")

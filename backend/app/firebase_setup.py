@@ -20,5 +20,23 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(str(SERVICE_ACCOUNT_KEY))
     firebase_admin.initialize_app(cred)
 
-# Get Firestore client
-db = firestore.client()
+
+class _FirestoreProxy:
+    """
+    Proxy that delegates all Firestore calls to an inner client.
+    Call db.refresh() to swap in a fresh gRPC client without breaking
+    existing `from firebase_setup import db` bindings elsewhere.
+    Used to recover from stale gRPC channels after long idle periods
+    (e.g. post-screener in start.py).
+    """
+    def __init__(self):
+        self._client = firestore.client()
+
+    def refresh(self):
+        self._client = firestore.client()
+
+    def __getattr__(self, name):
+        return getattr(self._client, name)
+
+
+db = _FirestoreProxy()

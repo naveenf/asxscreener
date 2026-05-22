@@ -7,12 +7,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
-import { Search, RefreshCw } from 'lucide-react';
+import { Search, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import './Header.css';
 
 function Header({ status, onRefresh, refreshing, onSearch }) {
   const { user, login, logout } = useAuth();
+  const { theme, toggle } = useTheme();
 
   return (
     <header className="header">
@@ -72,17 +74,32 @@ function Header({ status, onRefresh, refreshing, onSearch }) {
           ) : (
             <div className="guest-login">
               <GoogleLogin
-                onSuccess={credentialResponse => {
-                  login(credentialResponse);
+                onSuccess={async (credentialResponse) => {
+                  try {
+                    await login(credentialResponse);
+                  } catch (err) {
+                    console.error('Login failed:', err);
+                    alert('Sign-in failed: ' + (err.response?.data?.detail || err.message || 'Unknown error'));
+                  }
                 }}
                 onError={(error) => {
                   console.error('Google Login Failed:', error);
+                  alert('Google Sign-In error. Please try again.');
                 }}
-                theme="filled_blue"
+                theme={theme === 'light' ? 'outline' : 'filled_black'}
                 shape="pill"
+                size="medium"
               />
             </div>
           )}
+
+          <button
+            className="theme-toggle-btn"
+            onClick={toggle}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
 
           <button
             className="refresh-button"

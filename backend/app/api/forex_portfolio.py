@@ -6,6 +6,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Header, Query
 from typing import List, Dict, Optional
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, date, timedelta, timezone
 try:
     from zoneinfo import ZoneInfo
@@ -105,16 +106,26 @@ def _build_backtest_comparison(trades: list, backtest_ref: dict) -> dict:
     for t in trades:
         pair_key = f"{t.get('symbol', 'Unknown')}::{t.get('strategy', 'Unknown')}"
         if pair_key not in live_stats:
-            live_stats[pair_key] = {'trades': 0, 'wins': 0, 'pnl': 0, 'rr_sum': 0}
+            live_stats[pair_key] = {'trades': 0, 'wins': 0, 'pnl': 0, 'rr_sum': 0, 'r_multiples': []}
         live_stats[pair_key]['trades'] += 1
         live_stats[pair_key]['pnl'] += t['pnl_aud']
         live_stats[pair_key]['rr_sum'] += t.get('actual_rr') or 0
         if t['pnl_aud'] > 0:
             live_stats[pair_key]['wins'] += 1
+        rr = t.get('actual_rr')
+        if rr is None:
+            entry, sl, exit_p = t.get('buy_price'), t.get('stop_loss'), t.get('sell_price')
+            if entry and sl and exit_p:
+                risk = abs(entry - sl)
+                if risk > 0:
+                    gain = exit_p - entry if t.get('direction', 'BUY').upper() == 'BUY' else entry - exit_p
+                    rr = round(gain / risk, 2)
+        if rr is not None:
+            live_stats[pair_key]['r_multiples'].append(rr)
 
     comparison: dict = {}
     for pair_key, bt in backtest_ref.items():
-        live = live_stats.get(pair_key, {'trades': 0, 'wins': 0, 'pnl': 0, 'rr_sum': 0})
+        live = live_stats.get(pair_key, {'trades': 0, 'wins': 0, 'pnl': 0, 'rr_sum': 0, 'r_multiples': []})
         n = live['trades']
         live_wr = (live['wins'] / n * 100) if n > 0 else 0
         comparison[pair_key] = {
@@ -123,6 +134,7 @@ def _build_backtest_comparison(trades: list, backtest_ref: dict) -> dict:
                 'win_rate_pct': round(live_wr, 1),
                 'pnl': round(live['pnl'], 2),
                 'avg_rr': round(live['rr_sum'] / n, 2) if n > 0 else 0,
+                'r_multiples': live['r_multiples'],
             },
             'backtest': bt,
             'delta_win_rate': round(live_wr - bt['win_rate_pct'], 1) if n > 0 else None,
@@ -308,11 +320,11 @@ async def get_trade_history(
         # Build query - only filter by status if explicitly specified (not None)
         query = portfolio_ref
         if status:
-            query = query.where('status', '==', status)
+            query = query.where(filter=FieldFilter('status', '==', status))
         if symbol:
-            query = query.where('symbol', '==', symbol)
+            query = query.where(filter=FieldFilter('symbol', '==', symbol))
         if strategy:
-            query = query.where('strategy', '==', strategy)
+            query = query.where(filter=FieldFilter('strategy', '==', strategy))
             
         docs = query.stream()
 
@@ -403,7 +415,7 @@ async def get_trade_analytics(
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
 
         # We only want CLOSED trades for analytics
-        query = portfolio_ref.where('status', '==', 'CLOSED')
+        query = portfolio_ref.where(filter=FieldFilter('status', '==', 'CLOSED'))
         docs = query.stream()
 
         forex_data = get_forex_data()
@@ -463,7 +475,7 @@ async def get_trade_analytics(
         try:
             snap = (
                 db.collection('account_balance_history')
-                .where('__name__', '<=', db.collection('account_balance_history').document(roi_start))
+                .where(filter=FieldFilter('__name__', '<=', db.collection('account_balance_history').document(roi_start)))
                 .order_by('__name__', direction='DESCENDING')
                 .limit(1)
                 .get()
@@ -1034,7 +1046,7 @@ async def sync_oanda_closes(
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
 
         # Get all OPEN trades from Firestore
-        open_docs = list(portfolio_ref.where('status', '==', 'OPEN').stream())
+        open_docs = list(portfolio_ref.where(filter=FieldFilter('status', '==', 'OPEN')).stream())
 
         if not open_docs:
             return {"status": "success", "synced": 0, "message": "No open trades to sync"}
@@ -1109,7 +1121,7 @@ async def backfill_sell_prices(
     """
     try:
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
-        closed_docs = list(portfolio_ref.where('status', '==', 'CLOSED').stream())
+        closed_docs = list(portfolio_ref.where(filter=FieldFilter('status', '==', 'CLOSED')).stream())
 
         SYNC_START = date(2026, 2, 19)
         backfilled = 0
@@ -1252,7 +1264,7 @@ async def backfill_close_type(
 
     try:
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
-        closed_docs = list(portfolio_ref.where('status', '==', 'CLOSED').stream())
+        closed_docs = list(portfolio_ref.where(filter=FieldFilter('status', '==', 'CLOSED')).stream())
 
         updated = 0
         skipped = 0

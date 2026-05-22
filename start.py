@@ -596,12 +596,18 @@ def main():
     # Step 2: Update Data
     print("\n2. Updating market data...")
 
-    # Prompt: skip stock download/screener?
+    # Prompt: update ASX stocks?
     try:
         skip_stocks = input("  Update ASX stocks? [y/N] ").strip().lower()
     except (EOFError, KeyboardInterrupt):
         skip_stocks = 'n'
     scan_stocks = skip_stocks == 'y'
+
+    # Prompt: run forex screener?
+    try:
+        run_forex = input("  Run forex screener? [y/N] ").strip().lower() == 'y'
+    except (EOFError, KeyboardInterrupt):
+        run_forex = False
 
     if scan_stocks:
         relevant_files = get_relevant_csv_files()
@@ -617,16 +623,17 @@ def main():
             else:
                 print_info("Active stock data is from today. Checking for latest increments...")
         download_data()  # Stocks + Forex
-    else:
-        print_info("Skipping ASX stock update. Updating forex data only...")
+    elif run_forex:
+        print_info("Skipping ASX stocks. Updating forex data only...")
         download_forex_data()
+    else:
+        print_info("Skipping data update.")
 
     # Step 2.5: Run screener
     if scan_stocks:
         run_screener()
-    else:
-        # Still run the forex screener portion
-        print_info("Running forex/commodity screener (with auto-trade check)...")
+    elif run_forex:
+        print_info("Running forex screener (with auto-trade check)...")
         if sys.platform == 'win32':
             venv_python = PROJECT_ROOT / 'backend' / 'venv' / 'Scripts' / 'python.exe'
         else:
@@ -650,6 +657,8 @@ def main():
             print_warning("Forex screener timed out after 300s — continuing...")
         except Exception as e:
             print_error(f"Forex refresh task failed: {e}")
+    else:
+        print_info("Skipping forex screener.")
 
     # Step 3: Start backend
     print("\n3. Starting backend server...")

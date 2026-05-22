@@ -228,3 +228,52 @@
   --spacing-xl:  var(--space-6);
   --spacing-2xl: var(--space-7);
 }
+
+/*
+ * LIGHT MODE — "Rustic Industrial Paper"
+ * Warm parchment backgrounds, dark-brown text, rust accent unchanged.
+ * Applied via data-theme="light" on <html>.
+ */
+[data-theme="light"] {
+
+  /* Canvas */
+  --bg-0:     #F7F2EA;
+  --bg-1:     #F0EAE0;
+  --bg-2:     #E8E1D5;
+  --bg-3:     #DED6C8;
+  --bg-inset: #F3EDE5;
+
+  /* Line work */
+  --line-1:   #D0C5B4;
+  --line-2:   #BFB09C;
+  --line-3:   #9E8C74;
+
+  /* Cream ramp — inverted to warm darks for text */
+  --cream-50:  #1E1410;
+  --cream-100: #2E2018;
+  --cream-200: #4A3424;
+  --cream-300: #6A5040;
+  --cream-400: #8C705A;
+  --cream-500: #B09484;
+  --cream-600: #D4C2B0;
+
+  /* Borders */
+  --border-card:   1px solid var(--line-2);
+  --border-strong: 1px solid var(--line-3);
+  --border-hair:   1px solid var(--line-1);
+
+  /* Shadows — lighter on paper */
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.07);
+  --shadow-md:    0 4px 14px rgba(0,0,0,0.09);
+  --shadow-lg:    0 12px 32px rgba(0,0,0,0.11);
+  --shadow-inset: inset 0 0 0 1px rgba(0,0,0,0.03);
+  --shadow-glow:  0 0 0 1px var(--rust-500), 0 8px 24px rgba(184,92,56,0.14);
+  --shadow-card:  var(--shadow-md);
+
+  /* Chart tokens */
+  --chart-tooltip-bg:  #EDE7DC;
+  --chart-grid:        rgba(0,0,0,0.07);
+  --chart-grid-strong: rgba(0,0,0,0.13);
+  --chart-tick:        var(--cream-300);
+  --chart-value:       var(--cream-100);
+}

@@ -172,6 +172,7 @@ const PortfolioBalance = ({ periodData, startingBalance, deposits = [], period }
             tick={{ fill: 'var(--chart-tick)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
             tickLine={false}
             axisLine={{ stroke: 'var(--chart-grid-strong)' }}
+            interval={Math.max(0, Math.ceil(chartData.length / 7) - 1)}
           />
           <YAxis
             domain={yDomain}

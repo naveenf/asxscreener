@@ -16,7 +16,7 @@ if __name__ == "__main__":
     mode = 'dynamic'
     if len(sys.argv) > 1:
         mode = sys.argv[1]
-    
+
     print(f"Triggering manual forex refresh task (mode: {mode})...")
     run_forex_refresh_task(mode=mode)
     print("Refresh task completed.")

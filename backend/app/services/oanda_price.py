@@ -29,8 +29,12 @@ def retry_oanda(retries=3, delay=2):
                     return func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e
-                    # If it's a timeout or connection issue, retry
-                    if "timed out" in str(e).lower() or "connection" in str(e).lower():
+                    err_str = str(e).lower()
+                    # 429 rate limit — don't retry, surface immediately
+                    if "429" in str(e) or "quota" in err_str:
+                        raise e
+                    # Timeout or connection issue — retry with backoff
+                    if "timed out" in err_str or "connection" in err_str:
                         logger.warning(f"OANDA API {func.__name__} attempt {i+1} failed: {e}. Retrying in {delay}s...")
                         time.sleep(delay)
                     else:
@@ -623,6 +627,32 @@ class OandaPriceService:
                     logger.info(f"Found CLOSED trade {trade_id}: Exit={closed_trade['exit_price']}, P&L={closed_trade['pnl']}")
 
         return closed_trades
+
+    @classmethod
+    def get_trades_batch(cls, trade_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """
+        Fetch status of multiple trades in a single Oanda API call.
+        Returns a dict keyed by trade_id with raw trade data.
+        Avoids N individual TradeDetails calls during sync.
+        """
+        if not trade_ids:
+            return {}
+
+        api = cls.get_api()
+        account_id = settings.OANDA_ACCOUNT_ID
+        if not api or not account_id:
+            return {}
+
+        try:
+            r = trades.TradesList(accountID=account_id, params={"ids": ",".join(str(t) for t in trade_ids)})
+            api.request(r)
+            result = {}
+            for t in r.response.get('trades', []):
+                result[str(t['id'])] = t
+            return result
+        except Exception as e:
+            logger.warning(f"get_trades_batch failed: {e}")
+            return {}
 
     @classmethod
     @retry_oanda(retries=2, delay=1)

@@ -47,10 +47,27 @@ async def google_login(request: GoogleAuthRequest):
             raise HTTPException(status_code=400, detail="Invalid token: Email missing")
 
         # Reference to the user document
+        import threading
         user_ref = db.collection('users').document(email)
-        user_doc = user_ref.get()
 
-        if not user_doc.exists:
+        result = [None]
+        exc = [None]
+        def _get():
+            try:
+                result[0] = user_ref.get()
+            except Exception as e:
+                exc[0] = e
+        t = threading.Thread(target=_get, daemon=True)
+        t.start()
+        t.join(timeout=15)
+        if exc[0]:
+            raise exc[0]
+        user_doc = result[0]
+
+        if user_doc is None:
+            # Firestore timed out — still return auth response, skip DB write
+            pass
+        elif not user_doc.exists:
             # Create new user
             user_data = {
                 'email': email,

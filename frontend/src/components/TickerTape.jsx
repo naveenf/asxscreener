@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchLivePrices } from '../services/api';
 import './TickerTape.css';
 
-const REFRESH_MS = 30000;
+const REFRESH_MS = 300000; // 5 min — daily candle data, no need for sub-minute refresh
 
 function formatPrice(price, symbol) {
   if (price > 500) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

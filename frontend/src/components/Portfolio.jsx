@@ -363,65 +363,51 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
   return (
     <div className="portfolio-page">
       <div className="portfolio-header">
-        <div className="header-title">
-          <h2>MY PORTFOLIO</h2>
-          <div className="asset-class-toggle">
-              <button 
-                className={`asset-btn ${assetClass === 'asx' ? 'active' : ''}`}
-                onClick={() => setAssetClass('asx')}
-              >
-                  ASX Stocks
+        <div className="portfolio-header-row1">
+          <h2 className="portfolio-title">MY PORTFOLIO</h2>
+          <button
+            className="add-stock-btn"
+            onClick={() => assetClass === 'asx' ? onAddStock({}) : onAddForex({})}
+          >
+            {assetClass === 'asx' ? '+ Add Stock' : '+ Add Position'}
+          </button>
+        </div>
+        <div className="portfolio-header-row2">
+          <div className="portfolio-tabs">
+            <div className="asset-class-toggle">
+              <button className={`asset-btn ${assetClass === 'asx' ? 'active' : ''}`} onClick={() => setAssetClass('asx')}>
+                ASX Stocks
               </button>
-              <button 
-                className={`asset-btn ${assetClass === 'forex' ? 'active' : ''}`}
-                onClick={() => setAssetClass('forex')}
-              >
-                  Forex & Commodities
+              <button className={`asset-btn ${assetClass === 'forex' ? 'active' : ''}`} onClick={() => setAssetClass('forex')}>
+                Forex & Commodities
               </button>
-          </div>
-          <div className="view-toggle">
-              <button 
-                className={`view-btn ${activeView === 'portfolio' ? 'active' : ''}`}
-                onClick={() => setActiveView('portfolio')}
-              >
-                  Holdings
+            </div>
+            <div className="view-toggle">
+              <button className={`view-btn ${activeView === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveView('portfolio')}>
+                Holdings
               </button>
               {assetClass === 'asx' ? (
-                  <button 
-                    className={`view-btn ${activeView === 'tax' ? 'active' : ''}`}
-                    onClick={() => setActiveView('tax')}
-                  >
-                      Tax Reports
-                  </button>
+                <button className={`view-btn ${activeView === 'tax' ? 'active' : ''}`} onClick={() => setActiveView('tax')}>
+                  Tax Reports
+                </button>
               ) : (
-                  <>
-                    <button 
-                      className={`view-btn ${activeView === 'history' ? 'active' : ''}`}
-                      onClick={() => setActiveView('history')}
-                    >
-                        Trade History
-                    </button>
-                    <button 
-                      className={`view-btn ${activeView === 'analytics' ? 'active' : ''}`}
-                      onClick={() => setActiveView('analytics')}
-                    >
-                        Analytics
-                    </button>
-                  </>
+                <>
+                  <button className={`view-btn ${activeView === 'history' ? 'active' : ''}`} onClick={() => setActiveView('history')}>
+                    Trade History
+                  </button>
+                  <button className={`view-btn ${activeView === 'analytics' ? 'active' : ''}`} onClick={() => setActiveView('analytics')}>
+                    Analytics
+                  </button>
+                </>
               )}
+            </div>
           </div>
           {lastUpdated && (
-              <div className="last-updated-portfolio">
-                  Last Screened: {new Date(lastUpdated).toLocaleString()}
-              </div>
+            <div className="last-updated-portfolio">
+              Last Screened: {new Date(lastUpdated).toLocaleString()}
+            </div>
           )}
         </div>
-        <button 
-          className="add-stock-btn" 
-          onClick={() => assetClass === 'asx' ? onAddStock({}) : onAddForex({})}
-        >
-          {assetClass === 'asx' ? '+ Add Stock' : '+ Add Position'}
-        </button>
       </div>
 
       {activeView === 'portfolio' && (

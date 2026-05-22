@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import List, Dict
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, date
 import math
 import pandas as pd
@@ -395,7 +396,7 @@ async def get_tax_summary(email: str = Depends(get_current_user_email)):
     """Get portfolio tax summary grouped by Financial Year."""
     try:
         portfolio_ref = db.collection('users').document(email).collection('portfolio')
-        docs = portfolio_ref.where('status', '==', 'CLOSED').stream()
+        docs = portfolio_ref.where(filter=FieldFilter('status', '==', 'CLOSED')).stream()
         
         all_items = []
         

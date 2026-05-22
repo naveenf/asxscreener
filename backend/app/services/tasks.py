@@ -24,7 +24,30 @@ from .market_close_schedule import get_all_preclose_pairs
 from ..firebase_setup import db
 from google.cloud import firestore
 
+
 logger = logging.getLogger(__name__)
+
+
+def _firestore_call(fn, timeout: int = 30, label: str = "Firestore"):
+    """Run a Firestore call in a daemon thread; return result or None on timeout."""
+    result = [None]
+    exc = [None]
+
+    def _run():
+        try:
+            result[0] = fn()
+        except Exception as e:
+            exc[0] = e
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+    if t.is_alive():
+        logger.warning(f"{label} call timed out after {timeout}s — skipping")
+        return None
+    if exc[0]:
+        raise exc[0]
+    return result[0]
 
 # ---------------------------------------------------------------------------
 # Pre-close state
@@ -100,7 +123,7 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
     """Logic for forex refresh."""
     task_id = str(uuid.uuid4())[:8]
     logger.info(f"[{task_id}] Starting forex refresh task ({mode}) at {datetime.now()}")
-    
+
     # Acquire lock or skip if already running
     if not refresh_manager.forex_lock.acquire(blocking=False):
         logger.warning(f"[{task_id}] Forex refresh already in progress (lock held), skipping ({mode}).")
@@ -109,12 +132,15 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
     try:
         refresh_manager.start_forex_refresh()
 
-        # Fetch user override config from Firestore
+        # Fetch user override config from Firestore (pair disable/direction settings set via UI)
         disabled_combos = set()
         direction_overrides = {}
         try:
-            doc = db.collection("config").document("strategy_overrides").get()
-            if doc.exists:
+            doc = _firestore_call(
+                lambda: db.collection("config").document("strategy_overrides").get(),
+                label="strategy_overrides fetch"
+            )
+            if doc is not None and doc.exists:
                 overrides_data = doc.to_dict()
                 disabled_combos = set(overrides_data.get("disabled", []))
                 direction_overrides = overrides_data.get("direction_overrides", {})
@@ -139,7 +165,12 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
             direction_overrides=direction_overrides
         )
         logger.info(f"[{task_id}] Orchestrator finished.")
-        
+
+        # Refresh the Firestore client after the screener (~60s CPU/IO gap).
+        # The gRPC channel goes stale during the screener; swapping in a fresh client
+        # gives lock checks and portfolio queries a live connection immediately.
+        db.refresh()
+
         # --- Auto-Trading Execution ---
         all_signals = results.get('signals', [])
 
@@ -177,7 +208,7 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
         except Exception as te:
             logger.error(f"[{task_id}] Auto-trade execution failed: {te}")
 
-        # --- Portfolio Exit Monitoring (New: For better exit reasons) ---
+        # --- Portfolio Exit Monitoring ---
         portfolio_exits = []
         auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
         if auth_email:
@@ -197,36 +228,34 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
         diff = EmailService.filter_new_signals(all_signals, results.get('all_prices', {}), portfolio_exits)
         new_entries = diff['entries']
         exits = diff['exits']
-        
+
         if new_entries or exits:
             logger.info(f"[{task_id}] Fetching users for notification...")
-            # Fetch users who have opted in
             users_ref = db.collection('users')
             users = []
             try:
-                # Add timeout/safety log for firestore stream
-                count = 0
-                for doc in users_ref.stream():
-                    count += 1
-                    user_data = doc.to_dict()
-                    email = user_data.get('email')
-                    if email and user_data.get('email_notifications', True): 
-                        users.append(email)
-                logger.info(f"[{task_id}] Found {len(users)} users subscribed (scanned {count}).")
+                docs = _firestore_call(lambda: list(users_ref.stream()), label="users stream")
+                if docs is not None:
+                    for doc in docs:
+                        user_data = doc.to_dict()
+                        email = user_data.get('email')
+                        if email and user_data.get('email_notifications', True):
+                            users.append(email)
+                    logger.info(f"[{task_id}] Found {len(users)} users subscribed.")
             except Exception as dbe:
                 logger.error(f"[{task_id}] Firestore user fetch failed: {dbe}")
-            
+
             if users:
                 if new_entries:
                     logger.info(f"[{task_id}] Sending {len(new_entries)} new entries...")
                     EmailService.send_signal_alert(users, new_entries)
                     logger.info(f"[{task_id}] Entry emails sent.")
-                
+
                 if exits:
                     logger.info(f"[{task_id}] Sending {len(exits)} trade exits...")
                     EmailService.send_exit_alert(users, exits)
                     logger.info(f"[{task_id}] Exit emails sent.")
-            
+
             # Update state to current active signals
             EmailService.save_last_sent_signals(all_signals)
 
@@ -268,7 +297,12 @@ def run_pair_lock_checks():
         try:
             # --- Step 1: check cooldown ---
             try:
-                lock_doc = db.collection("config").document(state_doc_id).get()
+                lock_doc = _firestore_call(
+                    lambda: db.collection("config").document(state_doc_id).get(),
+                    label=f"{tag} cooldown read"
+                )
+                if lock_doc is None:
+                    continue  # timed out — skip this pair this cycle
                 if lock_doc.exists:
                     lock_data = lock_doc.to_dict() or {}
                     cooldown_until_str = lock_data.get("cooldown_until")
@@ -291,12 +325,12 @@ def run_pair_lock_checks():
             )
 
             try:
-                open_docs = list(
-                    portfolio_ref
-                    .where(filter=firestore.FieldFilter("symbol", "==", symbol))
-                    .where(filter=firestore.FieldFilter("status", "==", "OPEN"))
-                    .stream()
-                )
+                q = (portfolio_ref
+                     .where(filter=firestore.FieldFilter("symbol", "==", symbol))
+                     .where(filter=firestore.FieldFilter("status", "==", "OPEN")))
+                open_docs = _firestore_call(lambda: list(q.stream()), label=f"{tag} open trades")
+                if open_docs is None:
+                    continue  # timed out
             except Exception:
                 logger.error(f"{tag}: Firestore query for open trades failed", exc_info=True)
                 continue
@@ -407,13 +441,15 @@ def check_pair_lock_cooldowns():
             )
 
             try:
-                closed_locked_docs = list(
+                q = (
                     portfolio_ref
                     .where(filter=firestore.FieldFilter("symbol", "==", symbol))
                     .where(filter=firestore.FieldFilter("status", "==", "CLOSED"))
                     .where(filter=firestore.FieldFilter("lock_fired", "==", True))
-                    .stream()
                 )
+                closed_locked_docs = _firestore_call(lambda: list(q.stream()), label=f"{tag} closed locked trades")
+                if closed_locked_docs is None:
+                    continue
             except Exception:
                 logger.error(
                     f"{tag}: Firestore query for closed locked trades failed", exc_info=True
@@ -508,8 +544,11 @@ def run_preclose_check():
         # Check global holiday_close_enabled setting — default True (closes positions)
         holiday_close_enabled = True
         try:
-            ts_doc = db.collection("config").document("trade_settings").get()
-            if ts_doc.exists:
+            ts_doc = _firestore_call(
+                lambda: db.collection("config").document("trade_settings").get(),
+                label="trade_settings fetch"
+            )
+            if ts_doc is not None and ts_doc.exists:
                 holiday_close_enabled = ts_doc.to_dict().get("holiday_close_enabled", True)
         except Exception as e:
             logger.warning(f"run_preclose_check: could not read trade_settings: {e}")
@@ -542,12 +581,14 @@ def _close_open_positions_for_pair(pair: str, auth_email: str, now: datetime):
             .document(auth_email)
             .collection("forex_portfolio")
         )
-        open_docs = list(
+        q = (
             portfolio_ref
             .where(filter=firestore.FieldFilter("status", "==", "OPEN"))
             .where(filter=firestore.FieldFilter("symbol", "==", pair))
-            .stream()
         )
+        open_docs = _firestore_call(lambda: list(q.stream()), label=f"pre-close open trades {pair}")
+        if open_docs is None:
+            return
     except Exception as e:
         logger.error(f"Pre-close: Firestore query failed for {pair}: {e}")
         return
