@@ -61,8 +61,7 @@ function ForexList({ onAddStock, onShowToast }) {
       await loadData();
       if (onShowToast) onShowToast({ message: 'Forex refresh complete!', type: 'success' });
     } catch (err) {
-      alert("Refresh failed: " + err.message);
-      if (onShowToast) onShowToast({ message: 'Forex refresh failed', type: 'error' });
+      if (onShowToast) onShowToast({ message: 'Forex refresh failed: ' + err.message, type: 'error' });
     } finally {
       setRefreshing(false);
     }

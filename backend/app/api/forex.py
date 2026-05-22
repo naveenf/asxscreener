@@ -6,7 +6,9 @@ Endpoints for Forex and Commodity signals.
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 import json
+import asyncio
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 from ..services.forex_screener import ForexScreener
 from ..services.oanda_price import OandaPriceService
@@ -20,6 +22,34 @@ router = APIRouter(prefix="/api/forex", tags=["forex"])
 CONFIG_PATH = settings.METADATA_DIR / "forex_pairs.json"
 FOREX_DATA_DIR = settings.DATA_DIR / "forex_raw"
 OUTPUT_PATH = settings.PROCESSED_DATA_DIR / "forex_signals.json"
+
+@router.get("/live-prices")
+async def get_live_prices():
+    """Bulk price + daily change for all active pairs — used by ticker tape."""
+    with open(CONFIG_PATH, 'r') as f:
+        config = json.load(f)
+
+    pairs = config.get("pairs", [])
+
+    def fetch_one(pair):
+        data = OandaPriceService.get_price_and_change(pair["oanda_symbol"])
+        if not data:
+            return None
+        return {
+            "symbol": pair["oanda_symbol"],
+            "name": pair["name"],
+            "type": pair.get("type", "Forex"),
+            **data
+        }
+
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor(max_workers=len(pairs)) as executor:
+        futures = [loop.run_in_executor(executor, fetch_one, pair) for pair in pairs]
+        raw = await asyncio.gather(*futures)
+
+    results = [r for r in raw if r is not None]
+    return {"prices": results, "fetched_at": datetime.utcnow().isoformat() + "Z"}
+
 
 @router.get("/price/{symbol}")
 async def get_forex_price(symbol: str):

@@ -7,6 +7,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
+import { Search, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Header.css';
 
@@ -36,7 +37,7 @@ function Header({ status, onRefresh, refreshing, onSearch }) {
           )}
           
           <button className="search-trigger-btn" onClick={onSearch}>
-            🔍 Analyze
+            <Search size={14} /> Analyze
           </button>
 
           <nav className="nav-links">

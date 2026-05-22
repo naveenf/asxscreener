@@ -1,8 +1,8 @@
 .trade-history {
   padding: 20px;
-  background: var(--bg-card);
-  border-radius: 8px;
-  color: var(--text-primary);
+  background: var(--bg-1);
+  border-radius: var(--radius-md);
+  color: var(--fg-2);
 }
 
 .history-header {
@@ -14,7 +14,12 @@
 
 .history-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-family: var(--font-brand);
+  font-size: 26px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+  line-height: 1.1;
 }
 
 .header-buttons {
@@ -23,42 +28,48 @@
 }
 
 .sync-btn {
-  background: #2196F3;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  background: var(--info-bg);
+  color: var(--info-400);
+  border: 1px solid var(--info-border);
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: var(--t-xs);
+  transition: var(--dur-base) var(--ease-in-out);
 }
 
 .sync-btn:hover {
-  background: #1976D2;
+  background: var(--info-400);
+  color: var(--bg-0);
 }
 
 .sync-btn:disabled {
-  background: #ccc;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .export-btn {
-  background: #4caf50;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  background: var(--pos-bg);
+  color: var(--pos-400);
+  border: 1px solid var(--pos-border);
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: var(--t-xs);
+  transition: var(--dur-base) var(--ease-in-out);
 }
 
 .export-btn:hover {
-  background: #45a049;
+  background: var(--pos-400);
+  color: var(--bg-0);
 }
 
 .export-btn:disabled {
-  background: #ccc;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -66,9 +77,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 15px;
-  border-radius: 6px;
+  background: var(--bg-2);
+  border: var(--border-card);
+  padding: 15px 18px;
+  border-radius: var(--radius-md);
   margin-bottom: 20px;
   align-items: flex-end;
 }
@@ -80,33 +92,52 @@
 }
 
 .filter-group label {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--t-2xs);
+  color: var(--fg-5);
+  text-transform: uppercase;
+  letter-spacing: var(--track-mega);
+  font-weight: 600;
 }
 
 .filter-group input,
 .filter-group select {
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  padding: 8px;
-  border-radius: 4px;
+  background: var(--bg-inset);
+  border: 1px solid var(--line-2);
+  color: var(--fg-2);
+  padding: 7px 10px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
   outline: none;
+  transition: border-color var(--dur-base);
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  border-color: var(--rust-400);
 }
 
 .filter-group input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.8);
+  filter: invert(0.7) sepia(0.3) saturate(0.5) hue-rotate(10deg);
   cursor: pointer;
 }
 
 .load-btn {
-  background: var(--primary-color);
-  color: white;
+  background: var(--rust-400);
+  color: var(--cream-50);
   border: none;
-  padding: 9px 20px;
-  border-radius: 4px;
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-weight: 500;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: var(--t-xs);
+  transition: var(--dur-base) var(--ease-in-out);
+}
+
+.load-btn:hover {
+  background: var(--rust-300);
 }
 
 .table-container {
@@ -116,61 +147,85 @@
 .trades-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
 }
 
 .trades-table th {
   text-align: left;
-  padding: 12px;
-  border-bottom: 2px solid var(--border-color);
-  color: var(--text-secondary);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-1);
+  background: rgba(0,0,0,0.25);
+  color: var(--fg-5);
+  font-family: var(--font-ui);
   font-weight: 600;
+  font-size: var(--t-2xs);
+  letter-spacing: var(--track-mega);
+  text-transform: uppercase;
   cursor: pointer;
 }
 
 .trades-table th:hover {
-  color: var(--text-primary);
+  color: var(--fg-2);
 }
 
 .trades-table td {
-  padding: 12px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line-1);
+  color: var(--fg-2);
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.trades-table tr:hover td {
+  background: rgba(255,255,255,0.02);
 }
 
 .symbol-cell {
-  font-weight: 600;
-  color: var(--accent-color);
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--rust-300);
+  letter-spacing: 0.04em;
 }
 
 .strategy-tag {
-  background: rgba(0, 123, 255, 0.15);
-  color: #007bff;
+  background: var(--info-bg);
+  color: var(--info-400);
+  border: 1px solid var(--info-border);
   padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-ui);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .open-badge {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4caf50;
+  background: var(--pos-bg);
+  color: var(--pos-400);
+  border: 1px solid var(--pos-border);
   padding: 1px 6px;
-  border-radius: 8px;
-  font-size: 0.7rem;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-ui);
+  font-size: var(--t-2xs);
   margin-left: 4px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.03em;
 }
 
 .backfill-btn {
-  background: #ff9800 !important;
+  background: var(--warn-bg) !important;
+  color: var(--warn-400) !important;
+  border: 1px solid var(--warn-border) !important;
 }
 
 .backfill-btn:hover {
-  background: #f57c00 !important;
+  background: var(--warn-400) !important;
+  color: var(--bg-0) !important;
 }
 
 .live-indicator {
-  color: #4caf50;
+  color: var(--pos-400);
   font-size: 0.8rem;
   margin-left: 3px;
   opacity: 0.8;
@@ -180,25 +235,25 @@
   opacity: 0.92;
 }
 
-.positive {
-  color: #4caf50;
-}
+.positive { color: var(--pos-400); }
+.negative { color: var(--neg-400); }
 
-.negative {
-  color: #f44336;
-}
-
-.empty-state, .loading-state, .error-state {
+.empty-state,
+.loading-state {
   text-align: center;
   padding: 40px;
-  color: var(--text-secondary);
+  color: var(--fg-5);
+  font-family: var(--font-ui);
 }
 
 .error-state {
-  color: #f44336;
+  text-align: center;
+  padding: 40px;
+  color: var(--neg-400);
+  font-family: var(--font-ui);
 }
 
-/* Status Toggle Buttons */
+/* Status Toggle */
 .status-toggle {
   display: flex;
   gap: 10px;
@@ -208,32 +263,39 @@
 }
 
 .status-toggle label {
+  font-family: var(--font-ui);
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--fg-5);
   margin-right: 5px;
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--track-wide);
 }
 
 .status-btn {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: 8px 16px;
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--fg-4);
+  border: 1px solid var(--line-2);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  font-family: var(--font-ui);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  transition: var(--dur-base) var(--ease-in-out);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .status-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--primary-color);
+  border-color: var(--line-3);
+  color: var(--fg-2);
 }
 
 .status-btn.active {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
+  background: var(--rust-400);
+  color: var(--cream-50);
+  border-color: var(--rust-400);
 }
 
 @media (max-width: 768px) {
@@ -253,18 +315,19 @@
 }
 
 .keep-toggle input[type="checkbox"] {
-  accent-color: #4f9cf9;
+  accent-color: var(--rust-400);
   width: 13px;
   height: 13px;
   cursor: pointer;
 }
 
 .keep-label {
-  font-size: 0.72rem;
-  color: #888;
+  font-family: var(--font-ui);
+  font-size: var(--t-2xs);
+  color: var(--fg-5);
   white-space: nowrap;
 }
 
 .keep-toggle input:checked + .keep-label {
-  color: #4f9cf9;
+  color: var(--rust-300);
 }

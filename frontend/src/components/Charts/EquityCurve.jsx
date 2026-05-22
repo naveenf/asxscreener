@@ -12,26 +12,26 @@ const EquityCurve = ({ data, title }) => {
           <AreaChart data={data}>
             <defs>
               <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                <stop offset="5%" stopColor="var(--pos-400)" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="var(--pos-400)" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-strong)" />
             <XAxis
               dataKey="date"
-              tick={{fill: '#A89B9B', fontSize: 12}}
+              tick={{fill: 'var(--chart-tick)', fontSize: 12, fontFamily: 'var(--font-mono)'}}
               tickFormatter={(str) => str.split('-').slice(1).join('/')}
             />
-            <YAxis tick={{fill: '#A89B9B', fontSize: 12}} />
+            <YAxis tick={{fill: 'var(--chart-tick)', fontSize: 12, fontFamily: 'var(--font-mono)'}} />
             <Tooltip
-              contentStyle={{backgroundColor: '#2D2424', border: '1px solid #5C3D2E'}}
-              labelStyle={{color: '#E0C097'}}
-              itemStyle={{color: '#E0C097'}}
+              contentStyle={{backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--line-3)', fontFamily: 'var(--font-ui)'}}
+              labelStyle={{color: 'var(--chart-value)', fontFamily: 'var(--font-ui)'}}
+              itemStyle={{color: 'var(--chart-value)', fontFamily: 'var(--font-mono)'}}
             />
             <Area 
               type="monotone" 
               dataKey="cumulative_pnl" 
-              stroke="#82ca9d" 
+              stroke="var(--pos-400)" 
               fillOpacity={1} 
               fill="url(#colorPnl)" 
               name="Cumulative P&L"

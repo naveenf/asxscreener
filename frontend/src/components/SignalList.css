@@ -2,189 +2,201 @@
   width: 100%;
 }
 
+/* Guest banner — full border style, no thick left-accent */
 .guest-banner {
-  background-color: var(--color-bg-panel);
-  border: 1px solid var(--color-primary);
-  border-left: 6px solid var(--color-primary);
+  background: var(--bg-1);
+  border: 1px solid var(--line-3);
   border-radius: var(--radius-md);
-  padding: 24px;
-  margin-bottom: var(--spacing-xl);
+  padding: 20px 24px;
+  margin-bottom: var(--space-5);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--spacing-lg);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  animation: slideInDown 0.5s ease-out;
+  gap: var(--space-4);
 }
 
 .banner-content {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex: 1;
 }
 
 .banner-icon {
-  font-size: 2.5rem;
+  display: none; /* removed: no emoji icons per design system */
 }
 
 .banner-text h3 {
   font-family: var(--font-brand);
-  color: var(--color-primary);
-  margin: 0 0 4px 0;
+  font-size: 18px;
   letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+  margin: 0 0 6px;
+  line-height: 1.1;
 }
 
 .banner-text p {
-  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  color: var(--fg-4);
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--t-sm);
 }
 
 .banner-text strong {
-  color: var(--color-text-white);
+  color: var(--fg-1);
 }
 
 .banner-features {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .feature-pill {
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 6px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line-1);
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--fg-4);
   white-space: nowrap;
 }
 
-@keyframes slideInDown {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
+/* Loading / empty */
 .loading {
   text-align: center;
-  padding: var(--spacing-2xl);
-  color: var(--color-text-secondary);
+  padding: var(--space-7);
+  color: var(--fg-4);
+  font-family: var(--font-ui);
 }
 
 .no-signals {
   text-align: center;
-  padding: var(--spacing-2xl);
-  background: var(--color-bg-card);
-  border: var(--border-card);
+  padding: var(--space-7);
+  background: var(--bg-1);
+  border: 1px dashed var(--line-2);
   border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
+  color: var(--fg-4);
+  font-family: var(--font-ui);
 }
 
-/* Filters Panel - Dark Container from Reference */
+.no-signals h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Filters panel */
 .filters {
-  background-color: var(--color-bg-panel);
-  border: 1px solid var(--color-secondary); /* Cocoa border */
-  border-radius: var(--radius-md);
-  padding: 24px 32px;
-  margin-bottom: var(--spacing-xl);
+  background: var(--bg-1);
+  border: var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: var(--space-5);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--spacing-lg);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  gap: 32px;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
-  min-width: 300px;
+  min-width: 240px;
 }
 
 .filter-label {
-  font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-family: var(--font-ui);
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--color-text-secondary);
-  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--track-mega);
+  color: var(--fg-5);
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-/* Custom Slider - Reference Style */
+/* Slider */
 .score-slider {
+  -webkit-appearance: none;
   width: 100%;
   height: 6px;
-  background: #3D3030; /* Darker track */
+  background: var(--line-1);
   border-radius: var(--radius-pill);
   outline: none;
-  -webkit-appearance: none;
   cursor: pointer;
+  accent-color: var(--rust-400);
 }
 
 .score-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  background: var(--color-text-primary); /* Latte/White Thumb */
+  width: 18px;
+  height: 18px;
+  background: var(--cream-100);
   border-radius: 50%;
   cursor: grab;
-  box-shadow: 0 0 0 4px var(--color-bg-panel); /* Fake spacing */
-  transition: transform 0.1s;
+  box-shadow: 0 0 0 4px var(--bg-1);
+  transition: 0.1s;
 }
 
 .score-slider::-webkit-slider-thumb:active {
   transform: scale(1.1);
-  background: var(--color-primary);
+  background: var(--rust-300);
 }
 
-/* Dropdown - Dark Style */
+/* Dropdown */
 .strategy-select {
-  background-color: #0A0808; /* Near Black */
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-secondary);
-  padding: 10px 16px;
+  background: var(--bg-0);
+  color: var(--fg-2);
+  border: 1px solid var(--line-3);
+  padding: 10px 14px;
   border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  font-size: var(--t-sm);
   cursor: pointer;
   outline: none;
 }
 
 .strategy-select:focus {
-  border-color: var(--color-primary);
+  border-color: var(--rust-400);
 }
 
-/* Section Header */
+/* Section header */
 .section-header {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-1);
 }
 
 .signal-count {
   font-family: var(--font-brand);
-  color: var(--color-primary); /* Rust Orange */
-  font-size: 1.5rem;
+  font-size: 26px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+  line-height: 1.1;
 }
 
+/* Signal grid */
 .signal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
 }
 
 @media (max-width: 768px) {
   .filters {
     flex-direction: column;
     align-items: stretch;
-    padding: var(--spacing-md);
+    padding: var(--space-4);
   }
-  
   .signal-grid {
     grid-template-columns: 1fr;
   }

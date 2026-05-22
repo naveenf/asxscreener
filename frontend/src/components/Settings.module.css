@@ -11,13 +11,14 @@
 .title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--color-text-primary, #f0f0f0);
+  color: var(--fg-1);
+  font-family: var(--font-display);
   margin: 0 0 0.5rem;
 }
 
 .subtitle {
   font-size: 0.875rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   margin: 0;
 }
 
@@ -25,15 +26,15 @@
   display: inline-block;
   margin-left: 0.5rem;
   padding: 0.1rem 0.5rem;
-  background: rgba(255, 165, 0, 0.15);
-  color: orange;
+  background: var(--warn-bg);
+  color: var(--warn-400);
   border-radius: 4px;
   font-size: 0.75rem;
 }
 
 .loading,
 .authMessage {
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   text-align: center;
   padding: 2rem;
 }
@@ -45,21 +46,22 @@
 }
 
 .group {
-  background: var(--color-surface, #1a1a2e);
-  border: 1px solid var(--color-border, #333);
-  border-radius: 8px;
+  background: var(--bg-2);
+  border: var(--border-card);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .pairHeader {
   font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--color-accent, #4f9cf9);
-  background: rgba(79, 156, 249, 0.08);
+  letter-spacing: var(--track-mega);
+  color: var(--rust-300);
+  background: rgba(184,92,56,0.08);
+  font-family: var(--font-ui);
   margin: 0;
   padding: 0.6rem 1rem;
-  border-bottom: 1px solid var(--color-border, #333);
+  border-bottom: 1px solid var(--line-1);
 }
 
 .row {
@@ -67,7 +69,7 @@
   align-items: center;
   padding: 0.6rem 1rem;
   gap: 1rem;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--line-1);
 }
 
 .row:last-child {
@@ -77,12 +79,12 @@
 .strategyName {
   flex: 1;
   font-size: 0.9rem;
-  color: var(--color-text-primary, #f0f0f0);
+  color: var(--fg-2);
 }
 
 .timeframe {
   font-size: 0.75rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   width: 3rem;
   text-align: right;
 }
@@ -109,13 +111,15 @@
   display: inline-block;
   width: 36px;
   height: 20px;
-  background: #444;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
   border-radius: 10px;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .toggle input:checked + .slider {
-  background: #22c55e;
+  background: var(--rust-400);
+  border-color: var(--rust-400);
 }
 
 .slider::after {
@@ -125,19 +129,20 @@
   left: 3px;
   width: 14px;
   height: 14px;
-  background: white;
+  background: var(--cream-300);
   border-radius: 50%;
-  transition: transform 0.2s;
+  transition: transform 0.2s, background 0.2s;
 }
 
 .toggle input:checked + .slider::after {
   transform: translateX(16px);
+  background: var(--cream-50);
 }
 
 .toggleLabel {
   font-size: 0.75rem;
   width: 2.5rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
 }
 
 .footer {
@@ -150,10 +155,11 @@
 
 .saveButton {
   padding: 0.6rem 1.5rem;
-  background: var(--color-accent, #4f9cf9);
-  color: white;
+  background: var(--rust-400);
+  color: var(--cream-50);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -171,7 +177,7 @@
 
 .disabledCount {
   font-size: 0.8rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
 }
 
 /* Direction selector */
@@ -188,10 +194,10 @@
 .directionBtn {
   width: 28px;
   height: 24px;
-  border: 1px solid #444;
-  background: #222;
-  color: #888;
-  border-radius: 4px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-3);
+  color: var(--fg-5);
+  border-radius: var(--radius-xs);
   font-size: 0.85rem;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -206,25 +212,25 @@
 }
 
 .directionBtn:hover:not(:disabled) {
-  border-color: #666;
-  color: #ccc;
+  border-color: var(--line-3);
+  color: var(--fg-2);
 }
 
 .directionBtnActive {
   border-color: transparent;
-  color: #fff;
+  color: var(--cream-50);
 }
 
 .directionBtn_both.directionBtnActive {
-  background: #3b82f6;
+  background: var(--rust-400);
 }
 
 .directionBtn_buy.directionBtnActive {
-  background: #22c55e;
+  background: var(--pos-500);
 }
 
 .directionBtn_sell.directionBtnActive {
-  background: #ef4444;
+  background: var(--neg-500);
 }
 
 /* ------------------------------------------------------------------ */
@@ -232,35 +238,36 @@
 /* ------------------------------------------------------------------ */
 .holidayCard {
   margin-top: 2.5rem;
-  background: var(--color-surface, #1a1a2e);
-  border: 1px solid var(--color-border, #333);
-  border-radius: 8px;
+  background: var(--bg-2);
+  border: var(--border-card);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .holidayCardHeader {
   padding: 0.8rem 1rem;
-  border-bottom: 1px solid var(--color-border, #333);
-  background: rgba(79, 156, 249, 0.05);
+  border-bottom: 1px solid var(--line-1);
+  background: rgba(184,92,56,0.06);
 }
 
 .holidayCardTitle {
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--color-accent, #4f9cf9);
+  color: var(--rust-300);
+  font-family: var(--font-ui);
   margin: 0 0 0.25rem;
 }
 
 .holidayCardSubtitle {
   font-size: 0.8rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   margin: 0;
 }
 
 .holidayEmpty {
   font-size: 0.85rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   padding: 1rem;
   margin: 0;
 }
@@ -274,17 +281,18 @@
 .holidayTable th {
   text-align: left;
   padding: 0.5rem 1rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
+  font-family: var(--font-ui);
   font-weight: 600;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--color-border, #333);
+  border-bottom: 1px solid var(--line-1);
 }
 
 .holidayTable td {
   padding: 0.55rem 1rem;
-  color: var(--color-text-primary, #f0f0f0);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--fg-2);
+  border-bottom: 1px solid var(--line-1);
   vertical-align: middle;
 }
 
@@ -294,20 +302,21 @@
 
 .holidayDate {
   white-space: nowrap;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .holidayAffects {
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   font-size: 0.8rem;
 }
 
 .removeBtn {
   padding: 0.25rem 0.6rem;
   background: transparent;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #ef4444;
-  border-radius: 4px;
+  border: 1px solid var(--neg-bg);
+  color: var(--neg-400);
+  border-radius: var(--radius-xs);
   font-size: 0.75rem;
   cursor: pointer;
   transition: background 0.15s;
@@ -315,7 +324,7 @@
 }
 
 .removeBtn:hover {
-  background: rgba(239, 68, 68, 0.12);
+  background: var(--neg-bg);
 }
 
 .holidayAddRow {
@@ -324,23 +333,25 @@
   align-items: flex-start;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border-top: 1px solid var(--color-border, #333);
+  border-top: 1px solid var(--line-1);
   background: rgba(255,255,255,0.02);
 }
 
 .holidayInput {
   padding: 0.4rem 0.6rem;
-  background: #111;
-  border: 1px solid #444;
-  border-radius: 4px;
-  color: var(--color-text-primary, #f0f0f0);
+  background: var(--bg-inset);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-xs);
+  color: var(--fg-1);
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   min-width: 140px;
+  outline: none;
+  transition: border-color 0.15s;
 }
 
 .holidayInput:focus {
-  outline: none;
-  border-color: var(--color-accent, #4f9cf9);
+  border-color: var(--rust-400);
 }
 
 .affectsGroup {
@@ -354,7 +365,7 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.85rem;
-  color: var(--color-text-primary, #f0f0f0);
+  color: var(--fg-2);
   cursor: pointer;
 }
 
@@ -369,16 +380,17 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.8rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   cursor: pointer;
 }
 
 .addHolidayBtn {
   padding: 0.4rem 1rem;
-  background: var(--color-accent, #4f9cf9);
-  color: white;
+  background: var(--rust-400);
+  color: var(--cream-50);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-ui);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -395,7 +407,7 @@
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  border-top: 1px solid var(--color-border, #333);
+  border-top: 1px solid var(--line-1);
 }
 
 /* Trade Settings row */
@@ -417,12 +429,12 @@
 .tradeSettingLabel {
   font-size: 0.9rem;
   font-weight: 500;
-  color: var(--color-text-primary, #f0f0f0);
+  color: var(--fg-1);
 }
 
 .tradeSettingDesc {
   font-size: 0.8rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   line-height: 1.4;
 }
 
@@ -432,14 +444,14 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.75rem;
-  color: var(--color-text-muted, #888);
+  color: var(--fg-5);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
 }
 
 .keepToggle input[type="checkbox"] {
-  accent-color: var(--color-accent, #4f9cf9);
+  accent-color: var(--rust-400);
   width: 14px;
   height: 14px;
   cursor: pointer;

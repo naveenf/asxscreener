@@ -17,22 +17,22 @@ const StrategyComparison = ({ data, title }) => {
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
           <BarChart data={chartData} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
-            <XAxis type="number" tick={{fill: '#A89B9B', fontSize: 12}} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-strong)" />
+            <XAxis type="number" tick={{fill: 'var(--chart-tick)', fontSize: 12, fontFamily: 'var(--font-mono)'}} />
             <YAxis
               dataKey="name"
               type="category"
-              tick={{fill: '#A89B9B', fontSize: 11}}
+              tick={{fill: 'var(--chart-tick)', fontSize: 11, fontFamily: 'var(--font-ui)'}}
               width={100}
             />
             <Tooltip
-              contentStyle={{backgroundColor: '#2D2424', border: '1px solid #5C3D2E'}}
-              labelStyle={{color: '#E0C097'}}
-              itemStyle={{color: '#E0C097'}}
+              contentStyle={{backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--line-3)', fontFamily: 'var(--font-ui)'}}
+              labelStyle={{color: 'var(--chart-value)', fontFamily: 'var(--font-ui)'}}
+              itemStyle={{color: 'var(--chart-value)', fontFamily: 'var(--font-mono)'}}
             />
-            <Legend formatter={(value) => <span style={{color: '#A89B9B'}}>{value}</span>} />
-            <Bar dataKey="pnl" name="Net P&L ($)" fill="#8884d8" />
-            <Bar dataKey="win_rate" name="Win Rate (%)" fill="#82ca9d" />
+            <Legend formatter={(value) => <span style={{color: 'var(--chart-tick)', fontFamily: 'var(--font-ui)'}}>{value}</span>} />
+            <Bar dataKey="pnl" name="Net P&L ($)" fill="var(--rust-400)" />
+            <Bar dataKey="win_rate" name="Win Rate (%)" fill="var(--pos-400)" />
           </BarChart>
         </ResponsiveContainer>
       </div>

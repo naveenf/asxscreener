@@ -8,7 +8,7 @@ const PeriodBreakdown = ({ data, period, title }) => {
     return (
       <div className="chart-container">
         {title && <h3>{title}</h3>}
-        <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center', color: '#A89B9B' }}>
+        <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--chart-tick)' }}>
           No data — try a wider date range or switch period.
         </div>
       </div>
@@ -38,13 +38,13 @@ const PeriodBreakdown = ({ data, period, title }) => {
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
           <BarChart data={chartData} onClick={(e) => e && e.activePayload && e.activePayload.length > 0 && handleBarClick(e.activePayload[0].payload)}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
-            <XAxis dataKey="bucket" tick={{ fill: '#A89B9B', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#A89B9B', fontSize: 12 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-strong)" />
+            <XAxis dataKey="bucket" tick={{ fill: 'var(--chart-tick)', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
+            <YAxis tick={{ fill: 'var(--chart-tick)', fontSize: 12, fontFamily: 'var(--font-mono)' }} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#2D2424', border: '1px solid #5C3D2E' }}
-              labelStyle={{ color: '#E0C097' }}
-              itemStyle={{ color: '#E0C097' }}
+              contentStyle={{ backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--line-3)', fontFamily: 'var(--font-ui)' }}
+              labelStyle={{ color: 'var(--chart-value)', fontFamily: 'var(--font-ui)' }}
+              itemStyle={{ color: 'var(--chart-value)', fontFamily: 'var(--font-mono)' }}
               formatter={(value) => [`$${value.toFixed(2)}`, 'P&L']}
             />
             <Bar dataKey="pnl" cursor="pointer">
@@ -52,8 +52,8 @@ const PeriodBreakdown = ({ data, period, title }) => {
                 <Cell
                   key={`cell-${index}`}
                   fill={entry.bucket === selectedBucket
-                    ? (entry.pnl >= 0 ? '#86efac' : '#fca5a5')
-                    : (entry.pnl >= 0 ? '#4ADE80' : '#EF4444')}
+                    ? (entry.pnl >= 0 ? 'var(--pos-300)' : 'var(--neg-300)')
+                    : (entry.pnl >= 0 ? 'var(--pos-400)' : 'var(--neg-400)')}
                 />
               ))}
             </Bar>

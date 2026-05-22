@@ -1,90 +1,100 @@
 .header {
-  padding: var(--spacing-xl) 0;
-  margin-bottom: var(--spacing-lg);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--line-1);
+  margin-bottom: var(--space-5);
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  gap: var(--space-5);
   flex-wrap: wrap;
-  gap: var(--spacing-lg);
-  padding: 0 var(--spacing-xl);
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
 }
 
 .header-left h1 {
   font-family: var(--font-brand);
-  font-size: 3rem;
-  color: var(--color-primary);
-  margin: 0;
+  font-size: 1.875rem;
+  letter-spacing: 2px;
   line-height: 1;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  /* Simulating the gradient/texture from the image if possible, 
-     but solid Rust is safer and cleaner */
-  text-shadow: 4px 4px 0px rgba(0,0,0,0.5);
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.45);
 }
 
 .subtitle {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-  margin-top: var(--spacing-xs);
-  opacity: 0.8;
+  font-family: var(--font-ui);
+  font-size: var(--t-xs);
+  color: var(--fg-5);
+  margin-top: 6px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .status-info {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 6px;
 }
 
 .status-pill {
-  background-color: var(--color-bg-panel);
-  border: 1px solid var(--color-secondary);
-  padding: 8px 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--line-3);
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  font-size: 0.85rem;
+  gap: 8px;
+  font-size: var(--t-2xs);
+  color: var(--fg-4);
+  font-family: var(--font-ui);
 }
 
 .status-pill .label {
-  color: var(--color-text-secondary);
+  color: var(--fg-4);
 }
 
 .status-pill .value {
-  color: var(--color-text-white);
-  font-weight: var(--font-weight-bold);
+  color: var(--fg-1);
+  font-weight: 700;
+  font-family: var(--font-mono);
 }
 
 .refresh-button {
-  background-color: var(--color-primary);
-  color: white;
+  background: var(--rust-400);
+  color: var(--cream-50);
   border: none;
-  padding: 8px 24px;
+  padding: 7px 18px;
   border-radius: var(--radius-pill);
-  font-family: var(--font-body);
-  font-weight: var(--font-weight-bold);
-  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: var(--t-xs);
   cursor: pointer;
-  transition: var(--transition-default);
+  transition: var(--dur-base) var(--ease-in-out);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .refresh-button:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(184, 92, 56, 0.3);
+  background: var(--rust-300);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(184,92,56,0.18);
 }
 
 .refresh-button:disabled {
@@ -93,29 +103,32 @@
 }
 
 .search-trigger-btn {
-    background: transparent;
-    border: 1px solid var(--color-secondary);
-    color: var(--color-text-white);
-    padding: 8px 16px;
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  background: transparent;
+  border: 1px solid var(--line-3);
+  color: var(--fg-2);
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  transition: var(--dur-base) var(--ease-in-out);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .search-trigger-btn:hover {
-    background: rgba(255,255,255,0.05);
-    border-color: var(--color-text-white);
+  background: rgba(255,255,255,0.04);
+  border-color: var(--fg-2);
 }
 
 .user-profile {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  margin-right: var(--spacing-sm);
+  gap: 10px;
 }
 
 .user-info {
@@ -126,23 +139,25 @@
 }
 
 .user-name {
-  font-size: 0.85rem;
-  color: var(--color-text-white);
-  font-weight: var(--font-weight-bold);
+  font-family: var(--font-ui);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--fg-1);
 }
 
 .logout-button {
   background: none;
   border: none;
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
+  color: var(--fg-5);
+  font-size: var(--t-2xs);
   cursor: pointer;
   padding: 0;
   text-decoration: underline;
+  font-family: var(--font-ui);
 }
 
 .logout-button:hover {
-  color: var(--color-primary);
+  color: var(--rust-300);
 }
 
 .guest-login {
@@ -154,50 +169,50 @@
 
 .nav-links {
   display: flex;
-  gap: var(--spacing-sm);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 4px;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .nav-link {
   background-color: transparent;
-  color: var(--color-text-secondary);
+  color: var(--fg-4);
   text-decoration: none;
-  padding: 10px 24px;
+  padding: 7px 14px;
   border-radius: var(--radius-pill);
-  font-size: 0.95rem;
-  font-weight: var(--font-weight-bold);
-  transition: all 0.2s ease;
+  font-family: var(--font-ui);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  transition: var(--dur-base) var(--ease-in-out);
   border: none;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
 }
 
 .nav-link:hover {
-  color: var(--color-text-white);
-  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--fg-1);
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .nav-link.active {
-  background-color: var(--color-primary);
-  color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background-color: var(--rust-400);
+  color: var(--cream-50);
+  box-shadow: var(--shadow-md);
 }
 
 .nav-link.active:hover {
-  background-color: var(--color-primary-hover);
+  background-color: var(--rust-300);
   transform: none;
 }
 
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;
-    padding: var(--spacing-md);
+    padding: var(--space-4);
   }
-  
   .header-left h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
 }

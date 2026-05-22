@@ -4,11 +4,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     const value = payload[0].value;
-    const color = value >= 0 ? '#4caf50' : '#f44336';
+    const color = value >= 0 ? 'var(--pos-400)' : 'var(--neg-400)';
     return (
-      <div style={{ backgroundColor: '#2D2424', border: '1px solid #5C3D2E', padding: '8px 12px', borderRadius: 4 }}>
-        <p style={{ color: '#A89B9B', margin: 0, fontSize: 12 }}>{label}</p>
-        <p style={{ color, margin: '4px 0 0', fontWeight: 600 }}>${value.toFixed(2)}</p>
+      <div style={{ backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--line-3)', padding: '8px 12px', borderRadius: 4, fontFamily: 'var(--font-ui)' }}>
+        <p style={{ color: 'var(--chart-tick)', margin: 0, fontSize: 12, fontFamily: 'var(--font-ui)' }}>{label}</p>
+        <p style={{ color, margin: '4px 0 0', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>${value.toFixed(2)}</p>
       </div>
     );
   }
@@ -24,13 +24,13 @@ const MonthlyReturns = ({ data, title }) => {
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
-            <XAxis dataKey="month" tick={{fill: '#A89B9B', fontSize: 12}} />
-            <YAxis tick={{fill: '#A89B9B', fontSize: 12}} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-strong)" />
+            <XAxis dataKey="month" tick={{fill: 'var(--chart-tick)', fontSize: 12, fontFamily: 'var(--font-mono)'}} />
+            <YAxis tick={{fill: 'var(--chart-tick)', fontSize: 12, fontFamily: 'var(--font-mono)'}} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="pnl">
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#4caf50' : '#f44336'} />
+                <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? 'var(--pos-400)' : 'var(--neg-400)'} />
               ))}
             </Bar>
           </BarChart>

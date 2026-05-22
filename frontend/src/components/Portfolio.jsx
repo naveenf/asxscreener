@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fetchForexPrice, checkPortfolioExits, fetchInstantStockPrice, fetchStatus, fetchForexSignals } from '../services/api';
 import Watchlist from './Watchlist';
-import InsiderTrades from './InsiderTrades';
 import ConfirmModal from './ConfirmModal';
 import SellStockModal from './SellStockModal';
 import SellForexModal from './SellForexModal';
@@ -11,7 +11,7 @@ import TradeHistory from './TradeHistory';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import './Portfolio.css';
 
-const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
+const Portfolio = ({ onAddStock, onAddForex, onShowToast }) => {
   const { user, logout } = useAuth();
   const [portfolio, setPortfolio] = useState([]);
   const [forexPortfolio, setForexPortfolio] = useState([]);
@@ -34,8 +34,6 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
   const [loadingTax, setLoadingTax] = useState(false);
   const [expandedFY, setExpandedFY] = useState({}); // { fy: boolean }
 
-  // Insider Trades Filter State
-  const [insiderFilter, setInsiderFilter] = useState('all'); // 'all' | 'portfolio'
 
   const fetchPortfolio = async () => {
     try {
@@ -507,7 +505,7 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
                                                     }}
                                                     title="Instant Price Check"
                                                 >
-                                                    ↻
+                                                    <RefreshCw size={11} />
                                                 </button>
                                             </div>
                                         </td>
@@ -650,7 +648,7 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
                                                     }}
                                                     title="Instant Price Check"
                                                 >
-                                                    ↻
+                                                    <RefreshCw size={11} />
                                                 </button>
                                             </div>
                                         </td>
@@ -716,7 +714,7 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
       )}
       
       {activeView === 'history' && assetClass === 'forex' && (
-          <TradeHistory />
+          <TradeHistory onShowToast={onShowToast} />
       )}
 
       {activeView === 'analytics' && assetClass === 'forex' && (
@@ -838,30 +836,6 @@ const Portfolio = ({ onAddStock, onAddForex, onShowToast, onAnalyze }) => {
       )}
 
       {assetClass === 'asx' && <Watchlist onShowToast={onShowToast} />}
-
-      {assetClass === 'asx' && (
-        <div className="portfolio-insider-section" style={{ marginTop: '30px', borderTop: '1px solid var(--color-border)', paddingTop: '20px' }}>
-            <div className="section-controls" style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                <button 
-                    className={`view-btn ${insiderFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setInsiderFilter('all')}
-                >
-                    All Market Insider Trades
-                </button>
-                <button 
-                    className={`view-btn ${insiderFilter === 'portfolio' ? 'active' : ''}`}
-                    onClick={() => setInsiderFilter('portfolio')}
-                >
-                    My Holdings Only
-                </button>
-            </div>
-            <InsiderTrades 
-                filterTickers={insiderFilter === 'portfolio' ? portfolioTickers : null}
-                title={insiderFilter === 'portfolio' ? "Insider Trades: My Portfolio" : "Significant Market Insider Trades"}
-                onAnalyze={onAnalyze}
-            />
-        </div>
-      )}
 
       {deleteConfirm && (
         <ConfirmModal 

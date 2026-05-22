@@ -53,20 +53,21 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (balance == null) return null;
   return (
     <div style={{
-      background: '#2D2424', border: '1px solid #5C3D2E',
+      background: 'var(--chart-tooltip-bg)', border: '1px solid var(--line-3)',
       padding: '8px 12px', borderRadius: 6, minWidth: 160,
+      fontFamily: 'var(--font-ui)',
     }}>
-      <div style={{ color: '#A89B9B', fontSize: 11, marginBottom: 4 }}>{label}</div>
-      <div style={{ color: '#E0C097', fontWeight: 600 }}>
+      <div style={{ color: 'var(--chart-tick)', fontSize: 11, marginBottom: 4, fontFamily: 'var(--font-ui)' }}>{label}</div>
+      <div style={{ color: 'var(--chart-value)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
         A${balance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </div>
       {depositAmount > 0 && (
-        <div style={{ color: '#60A5FA', fontSize: 11, marginTop: 4 }}>
+        <div style={{ color: 'var(--chart-deposit)', fontSize: 11, marginTop: 4, fontFamily: 'var(--font-mono)' }}>
           +A${depositAmount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} deposited
         </div>
       )}
       {depositAmount < 0 && (
-        <div style={{ color: '#F87171', fontSize: 11, marginTop: 4 }}>
+        <div style={{ color: 'var(--neg-400)', fontSize: 11, marginTop: 4, fontFamily: 'var(--font-mono)' }}>
           −A${Math.abs(depositAmount).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} withdrawn
         </div>
       )}
@@ -79,8 +80,8 @@ const CapitalFlowDot = (props) => {
   const amt = payload?.depositAmount;
   if (!amt) return <g />;
   const isDeposit = amt > 0;
-  const fill   = isDeposit ? '#1D4ED8' : '#7F1D1D';
-  const stroke = isDeposit ? '#60A5FA' : '#F87171';
+  const fill   = isDeposit ? 'var(--chart-deposit-fill)' : 'var(--chart-withdraw-fill)';
+  const stroke = isDeposit ? 'var(--chart-deposit)' : 'var(--neg-400)';
   const sign   = isDeposit ? '+' : '−';
   const abs    = Math.abs(amt);
   const lbl    = abs >= 1000
@@ -89,7 +90,7 @@ const CapitalFlowDot = (props) => {
   return (
     <g>
       <circle cx={cx} cy={cy} r={7} fill={fill} stroke={stroke} strokeWidth={2} opacity={0.9} />
-      <text x={cx} y={cy - 12} textAnchor="middle" fill={stroke} fontSize={10} fontWeight={600}>
+      <text x={cx} y={cy - 12} textAnchor="middle" fill={stroke} fontSize={10} fontWeight={600} fontFamily="var(--font-mono)">
         {lbl}
       </text>
     </g>
@@ -100,7 +101,7 @@ const PortfolioBalance = ({ periodData, startingBalance, deposits = [], period }
   if (!periodData || Object.keys(periodData).length === 0) {
     return (
       <div className="chart-container">
-        <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center', color: '#A89B9B' }}>
+        <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--chart-tick)' }}>
           No data — try a wider date range or switch period.
         </div>
       </div>
@@ -149,7 +150,7 @@ const PortfolioBalance = ({ periodData, startingBalance, deposits = [], period }
   const yDomain = [Math.floor(minVal - padding), Math.ceil(maxVal + padding)];
 
   const isUp = (chartData[chartData.length - 1]?.balance ?? startBalance) >= startBalance;
-  const lineColor = isUp ? '#4ADE80' : '#EF4444';
+  const lineColor = isUp ? 'var(--pos-400)' : 'var(--neg-400)';
   const gradientId = isUp ? 'balanceGradientUp' : 'balanceGradientDown';
 
   const hasDeposits    = Object.values(transferByBucket).some(v => v > 0);
@@ -165,16 +166,16 @@ const PortfolioBalance = ({ periodData, startingBalance, deposits = [], period }
               <stop offset="95%" stopColor={lineColor} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
           <XAxis
             dataKey="label"
-            tick={{ fill: '#A89B9B', fontSize: 11 }}
+            tick={{ fill: 'var(--chart-tick)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
             tickLine={false}
-            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+            axisLine={{ stroke: 'var(--chart-grid-strong)' }}
           />
           <YAxis
             domain={yDomain}
-            tick={{ fill: '#A89B9B', fontSize: 11 }}
+            tick={{ fill: 'var(--chart-tick)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
             tickLine={false}
             axisLine={false}
             tickFormatter={v => `$${(v / 1000).toFixed(1)}k`}
@@ -196,26 +197,26 @@ const PortfolioBalance = ({ periodData, startingBalance, deposits = [], period }
       </ResponsiveContainer>
 
       {(hasDeposits || hasWithdrawals) && (
-        <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 11, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 11, flexWrap: 'wrap', fontFamily: 'var(--font-ui)' }}>
           {hasDeposits && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#60A5FA' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--chart-deposit)' }}>
               <span style={{
                 width: 10, height: 10, borderRadius: '50%',
-                background: '#1D4ED8', border: '2px solid #60A5FA', flexShrink: 0,
+                background: 'var(--chart-deposit-fill)', border: '2px solid var(--chart-deposit)', flexShrink: 0,
               }} />
               Deposit
             </span>
           )}
           {hasWithdrawals && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#F87171' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--neg-400)' }}>
               <span style={{
                 width: 10, height: 10, borderRadius: '50%',
-                background: '#7F1D1D', border: '2px solid #F87171', flexShrink: 0,
+                background: 'var(--chart-withdraw-fill)', border: '2px solid var(--neg-400)', flexShrink: 0,
               }} />
               Withdrawal
             </span>
           )}
-          <span style={{ color: '#6B7280' }}>Balance includes capital flows</span>
+          <span style={{ color: 'var(--fg-5)' }}>Balance includes capital flows</span>
         </div>
       )}
     </div>

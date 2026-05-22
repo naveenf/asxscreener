@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { fetchTradeHistory, setKeepThroughClose } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import '../styles/TradeHistory.css';
 
 const ADMIN_EMAIL = 'naveenf.opt@gmail.com';
 
-const TradeHistory = () => {
+const TradeHistory = ({ onShowToast }) => {
+  const toast = (message, type = 'info') => onShowToast ? onShowToast({ message, type }) : undefined;
   const { user } = useAuth();
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -70,11 +72,11 @@ const TradeHistory = () => {
 
       const result = await response.json();
       setError(null);
-      alert(`✅ Backfilled ${result.backfilled} trades (skipped ${result.skipped} already complete).`);
+      toast(`Backfilled ${result.backfilled} trades (skipped ${result.skipped} already complete).`, 'success');
       if (result.backfilled > 0) setTimeout(() => loadTrades(), 1000);
     } catch (err) {
       setError('Backfill failed');
-      alert('❌ Backfill failed: ' + err.message);
+      toast('Backfill failed: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -100,14 +102,14 @@ const TradeHistory = () => {
       setError(null);
 
       if (result.synced > 0) {
-        alert(`✅ Synced ${result.synced} closed trades from Oanda!\nReload to see updated exit prices and P&L.`);
+        toast(`Synced ${result.synced} closed trades from Oanda.`, 'success');
         setTimeout(() => loadTrades(), 1000);
       } else {
-        alert('No new closed trades to sync from Oanda.');
+        toast('No new closed trades to sync from Oanda.', 'info');
       }
     } catch (err) {
       setError('Failed to sync from Oanda');
-      alert('❌ Sync failed: ' + err.message);
+      toast('Sync failed: ' + err.message, 'error');
       console.error(err);
     } finally {
       setLoading(false);
@@ -123,7 +125,7 @@ const TradeHistory = () => {
     } catch (err) {
       // Revert on failure
       setKeepMap(prev => ({ ...prev, [tradeId]: currentKeep }));
-      alert('Failed to update keep-through-close: ' + err.message);
+      toast('Failed to update keep setting: ' + err.message, 'error');
     }
   };
 
@@ -265,7 +267,7 @@ const TradeHistory = () => {
                     <td>{trade.buy_price.toFixed(5)}</td>
                     <td>
                       {exitPrice != null ? exitPrice.toFixed(5) : '—'}
-                      {isOpen && exitPrice != null && <span className="live-indicator"> ↻</span>}
+                      {isOpen && exitPrice != null && <span className="live-indicator"><RefreshCw size={10} /></span>}
                     </td>
                     <td className={pnl == null ? '' : pnl >= 0 ? 'positive' : 'negative'}>
                       {pnl != null ? `$${pnl.toFixed(2)}` : '—'}

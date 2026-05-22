@@ -9,7 +9,7 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import './SignalCard.css';
 
-function SignalCard({ signal, onAdd, onWatchlist }) {
+function SignalCard({ signal, onAdd, onWatchlist, style }) {
   const { user } = useAuth();
   const getScoreClass = (score) => {
     if (score >= 70) return 'score-high';
@@ -80,7 +80,7 @@ function SignalCard({ signal, onAdd, onWatchlist }) {
   };
 
   return (
-    <div className="signal-card">
+    <div className="signal-card" style={style}>
       {/* Header: Title Left, Score Right */}
       <div className="card-header">
         <div className="card-title-group">

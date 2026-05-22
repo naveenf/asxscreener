@@ -15,7 +15,7 @@
 
   margin-bottom: var(--spacing-lg);
 
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--line-1);
 
   padding-bottom: var(--spacing-sm);
 
@@ -39,11 +39,25 @@
 
 
 
+.last-updated-portfolio {
+
+  font-family: var(--font-mono);
+
+  font-size: var(--t-2xs);
+
+  color: var(--fg-5);
+
+  letter-spacing: 0.04em;
+
+}
+
+
+
 .portfolio-header h2 {
 
   font-family: var(--font-brand);
 
-  color: var(--color-primary);
+  color: var(--rust-400);
 
   margin: 0;
 
@@ -59,9 +73,9 @@
 
 .add-stock-btn {
 
-  background-color: var(--color-primary);
+  background-color: var(--rust-400);
 
-  color: white;
+  color: var(--cream-50);
 
   border: none;
 
@@ -69,9 +83,9 @@
 
   border-radius: var(--radius-pill);
 
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
 
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
 
   font-size: 0.9rem;
 
@@ -85,7 +99,7 @@
 
 .add-stock-btn:hover {
 
-  background-color: var(--color-primary-hover);
+  background-color: var(--rust-300);
 
   transform: translateY(-2px);
 
@@ -98,8 +112,8 @@
 
 
 .exit-badge {
-  background-color: #ff3b30;
-  color: white;
+  background-color: var(--neg-400);
+  color: var(--cream-50);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.6rem;
@@ -118,8 +132,8 @@
 
 .refresh-btn-small {
   background: none;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: var(--color-text-secondary);
+  border: 1px solid var(--line-2);
+  color: var(--fg-4);
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -133,9 +147,9 @@
 }
 
 .refresh-btn-small:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border-color: rgba(255, 255, 255, 0.5);
+  background: var(--bg-3);
+  color: var(--fg-1);
+  border-color: var(--line-3);
   transform: rotate(180deg);
 }
 
@@ -143,13 +157,13 @@
 
   overflow-x: auto;
 
-  background-color: var(--color-bg-panel);
+  background-color: var(--bg-1);
 
   border-radius: var(--radius-lg);
 
-  border: 1px solid var(--color-secondary);
+  border: var(--border-card);
 
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
 
 }
 
@@ -161,7 +175,7 @@
 
   border-collapse: collapse;
 
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
 
   white-space: nowrap;
 
@@ -177,7 +191,7 @@
 
   padding: 10px 8px;
 
-  color: var(--color-text-secondary);
+  color: var(--fg-5);
 
   font-size: 0.7rem;
 
@@ -185,7 +199,9 @@
 
   letter-spacing: 1px;
 
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0,0,0,0.25);
+
+  font-family: var(--font-ui);
 
 }
 
@@ -195,9 +211,9 @@
 
   padding: 10px 8px;
 
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--line-1);
 
-  color: var(--color-text-white);
+  color: var(--fg-2);
 
   vertical-align: middle;
 
@@ -207,9 +223,11 @@
 
 .portfolio-table .ticker {
 
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
 
-  color: var(--color-primary);
+  color: var(--rust-300);
+
+  font-family: var(--font-display);
 
   font-size: 0.85rem;
 
@@ -233,9 +251,9 @@
 
 
 
-.gain-loss.positive { color: #4cd964; }
+.gain-loss.positive { color: var(--pos-400); }
 
-.gain-loss.negative { color: #ff3b30; }
+.gain-loss.negative { color: var(--neg-400); }
 
 
 
@@ -269,11 +287,11 @@
 
 .strategy-badge.triple_trend {
 
-  background: rgba(0, 122, 255, 0.2);
+  background: var(--info-bg);
 
-  color: #0a84ff;
+  color: var(--info-400);
 
-  border: 1px solid rgba(0, 122, 255, 0.4);
+  border: 1px solid var(--info-border);
 
 }
 
@@ -281,11 +299,11 @@
 
 .strategy-badge.mean_reversion {
 
-  background: rgba(175, 82, 222, 0.2);
+  background: rgba(184,92,56,0.1);
 
-  color: #bf5af2;
+  color: var(--rust-300);
 
-  border: 1px solid rgba(175, 82, 222, 0.4);
+  border: 1px solid rgba(184,92,56,0.3);
 
 }
 
@@ -311,11 +329,11 @@
 
 
 
-.trend-signal.BUY { color: #4cd964; }
+.trend-signal.BUY { color: var(--pos-400); }
 
-.trend-signal.HOLD { color: #ffcc00; }
+.trend-signal.HOLD { color: var(--warn-400); }
 
-.trend-signal.EXIT { color: #ff3b30; }
+.trend-signal.EXIT { color: var(--neg-400); }
 
 
 
@@ -323,7 +341,7 @@
 
   font-size: 0.65rem;
 
-  color: var(--color-text-secondary);
+  color: var(--fg-4);
 
   white-space: normal;
 
@@ -339,9 +357,9 @@
 
 }
 
-.annualized-return.positive { color: #4cd964; }
+.annualized-return.positive { color: var(--pos-400); }
 
-.annualized-return.negative { color: #ff3b30; }
+.annualized-return.negative { color: var(--neg-400); }
 
 
 
@@ -371,11 +389,11 @@
 
 .edit-btn {
 
-  background: rgba(184, 92, 56, 0.15);
+  background: rgba(184,92,56,0.15);
 
-  color: var(--color-primary);
+  color: var(--rust-300);
 
-  border: 1px solid rgba(184, 92, 56, 0.3);
+  border: 1px solid rgba(184,92,56,0.3);
 
   width: 28px;
 
@@ -387,7 +405,7 @@
 
   justify-content: center;
 
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
 
   cursor: pointer;
 
@@ -401,9 +419,9 @@
 
 .edit-btn:hover {
 
-  background: var(--color-primary);
+  background: var(--rust-400);
 
-  color: white;
+  color: var(--cream-50);
 
   transform: scale(1.05);
 
@@ -413,11 +431,11 @@
 
 .bin-btn {
 
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--neg-bg);
 
-  color: var(--color-danger);
+  color: var(--neg-400);
 
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid var(--neg-border);
 
   width: 28px;
 
@@ -429,7 +447,7 @@
 
   justify-content: center;
 
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
 
   cursor: pointer;
 
@@ -443,9 +461,9 @@
 
 .bin-btn:hover {
 
-  background: var(--color-danger);
+  background: var(--neg-500);
 
-  color: white;
+  color: var(--cream-50);
 
   transform: scale(1.05);
 
@@ -455,9 +473,9 @@
 
 .delete-btn:hover {
 
-  background: #ff3b30;
+  background: var(--neg-500);
 
-  color: white;
+  color: var(--cream-50);
 
 }
 
@@ -469,7 +487,7 @@
 
   padding: var(--spacing-xl);
 
-  color: var(--color-text-secondary);
+  color: var(--fg-4);
 
 }
 
@@ -481,7 +499,7 @@
 
   padding: 40px;
 
-  color: var(--color-text-secondary);
+  color: var(--fg-4);
 
   font-style: italic;
 
@@ -503,7 +521,7 @@
 
 .group-row {
 
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--bg-inset);
 
   cursor: pointer;
 
@@ -515,7 +533,7 @@
 
 .group-row:hover {
 
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: var(--bg-2);
 
 }
 
@@ -523,7 +541,7 @@
 
 .group-row.expanded {
 
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--bg-3);
 
   border-bottom: none;
 
@@ -533,7 +551,7 @@
 
 .group-row td {
 
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--line-1);
 
   font-weight: 500;
 
@@ -543,7 +561,7 @@
 
 .details-row {
 
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: var(--bg-0);
 
 }
 
@@ -553,7 +571,7 @@
 
     padding: 0 !important;
 
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--line-1);
 
 }
 
@@ -591,7 +609,7 @@
 
     background-color: rgba(0,0,0,0.4);
 
-    color: var(--color-text-secondary);
+    color: var(--fg-5);
 
     padding: 6px;
 
@@ -605,7 +623,7 @@
 
     padding: 6px;
 
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid var(--line-1);
 
 }
 
@@ -613,11 +631,11 @@
 
 .sell-btn {
 
-    background: rgba(255, 159, 10, 0.15);
+    background: var(--warn-bg);
 
-    color: #ff9f0a;
+    color: var(--warn-400);
 
-    border: 1px solid rgba(255, 159, 10, 0.3);
+    border: 1px solid var(--warn-border);
 
     border-radius: 4px;
 
@@ -631,9 +649,9 @@
 
 .sell-btn:hover {
 
-    background: #ff9f0a;
+    background: var(--warn-400);
 
-    color: white;
+    color: var(--cream-50);
 
 }
 
@@ -669,7 +687,9 @@
 
     display: flex;
 
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255,255,255,0.04);
+
+    border: 1px solid rgba(255,255,255,0.06);
 
     border-radius: var(--radius-pill);
 
@@ -689,19 +709,21 @@
 
     border: none;
 
-    color: var(--color-text-secondary);
+    color: var(--fg-4);
 
-    padding: 6px 16px;
+    padding: 5px 14px;
 
     border-radius: var(--radius-pill);
 
     cursor: pointer;
 
-    font-size: 0.85rem;
+    font-family: var(--font-ui);
+
+    font-size: var(--t-xs);
 
     font-weight: 500;
 
-    transition: all 0.2s;
+    transition: all 0.15s;
 
 }
 
@@ -709,9 +731,11 @@
 
 .asset-btn.active {
 
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--rust-400);
 
-    color: white;
+    color: var(--cream-50);
+
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 
 }
 
@@ -721,7 +745,9 @@
 
     display: flex;
 
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+
+    border: 1px solid rgba(255,255,255,0.06);
 
     border-radius: var(--radius-pill);
 
@@ -729,7 +755,7 @@
 
     gap: 4px;
 
-    width: fit-content; /* Fix for too wide */
+    width: fit-content;
 
 }
 
@@ -741,19 +767,21 @@
 
     border: none;
 
-    color: var(--color-text-secondary);
+    color: var(--fg-4);
 
-    padding: 6px 16px;
+    padding: 5px 14px;
 
     border-radius: var(--radius-pill);
 
     cursor: pointer;
 
-    font-size: 0.85rem;
+    font-family: var(--font-ui);
+
+    font-size: var(--t-xs);
 
     font-weight: 500;
 
-    transition: all 0.2s;
+    transition: all 0.15s;
 
 }
 
@@ -761,11 +789,11 @@
 
 .view-btn.active {
 
-    background: var(--color-primary);
+    background: var(--rust-400);
 
-    color: white;
+    color: var(--cream-50);
 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 
 }
 
@@ -787,9 +815,9 @@
 
 .summary-card {
 
-    background: var(--color-bg-panel);
+    background: var(--bg-1);
 
-    border: 1px solid var(--color-secondary);
+    border: var(--border-card);
 
     border-radius: var(--radius-lg);
 
@@ -813,7 +841,7 @@
 
     font-size: 0.9rem;
 
-    color: var(--color-text-secondary);
+    color: var(--fg-5);
 
     text-transform: uppercase;
 
@@ -825,21 +853,25 @@
 
 .card-value {
 
+    font-family: var(--font-mono);
+
     font-size: 1.8rem;
 
-    font-weight: bold;
+    font-weight: 700;
 
-    color: white;
+    font-variant-numeric: tabular-nums;
+
+    color: var(--fg-1);
 
 }
 
 
 
-.card-value.positive { color: #4cd964; }
+.card-value.positive { color: var(--pos-400); }
 
-.card-value.negative { color: #ff3b30; }
+.card-value.negative { color: var(--neg-400); }
 
-.card-value.neutral { color: var(--color-text-white); }
+.card-value.neutral { color: var(--fg-1); }
 
 
 
@@ -861,7 +893,7 @@
 
     font-size: 0.75rem;
 
-    color: var(--color-text-secondary);
+    color: var(--fg-4);
 
     margin-top: -10px;
 

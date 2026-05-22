@@ -132,6 +132,33 @@ class OandaPriceService:
             return None
 
     @classmethod
+    @retry_oanda(retries=2, delay=1)
+    def get_price_and_change(cls, symbol: str) -> Optional[Dict]:
+        """
+        Get current price + daily change % for ticker tape display.
+        Fetches 2 daily candles: candles[0]=prev close, candles[1]=today current.
+        Returns None on any failure so callers can skip gracefully.
+        """
+        api = cls.get_api()
+        if not api:
+            return None
+
+        params = {"count": 2, "granularity": "D", "price": "M"}
+        try:
+            r = instruments.InstrumentsCandles(instrument=symbol, params=params)
+            api.request(r)
+            candles = r.response.get('candles', [])
+            if len(candles) < 2:
+                return None
+            prev_close = float(candles[0]['mid']['c'])
+            current = float(candles[1]['mid']['c'])
+            change = current - prev_close
+            change_pct = (change / prev_close) * 100 if prev_close else 0.0
+            return {"price": current, "prev_close": prev_close, "change": change, "change_pct": change_pct}
+        except Exception:
+            return None
+
+    @classmethod
     @retry_oanda(retries=3, delay=2)
     def get_candles(cls, symbol: str, granularity: str = 'H1', count: int = 250) -> Optional[list]:
         """

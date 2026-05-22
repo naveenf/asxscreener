@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recha
 const WinLossDistribution = ({ data, title }) => {
   if (!data || data.length === 0) return null;
 
-  const COLORS = ['#4caf50', '#f44336'];
+  const COLORS = ['var(--pos-400)', 'var(--neg-400)'];
 
   return (
     <div className="chart-container">
@@ -26,11 +26,11 @@ const WinLossDistribution = ({ data, title }) => {
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{backgroundColor: '#2D2424', border: '1px solid #5C3D2E'}}
-              labelStyle={{color: '#E0C097'}}
-              itemStyle={{color: '#E0C097'}}
+              contentStyle={{backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--line-3)', fontFamily: 'var(--font-ui)'}}
+              labelStyle={{color: 'var(--chart-value)', fontFamily: 'var(--font-ui)'}}
+              itemStyle={{color: 'var(--chart-value)', fontFamily: 'var(--font-mono)'}}
             />
-            <Legend formatter={(value) => <span style={{color: '#A89B9B'}}>{value}</span>} />
+            <Legend formatter={(value) => <span style={{color: 'var(--chart-tick)', fontFamily: 'var(--font-ui)'}}>{value}</span>} />
           </PieChart>
         </ResponsiveContainer>
       </div>

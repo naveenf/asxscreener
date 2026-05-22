@@ -130,6 +130,15 @@ export async function fetchForexPrice(symbol) {
 }
 
 /**
+ * Fetch live prices + daily change for all active pairs (ticker tape)
+ */
+export async function fetchLivePrices() {
+  const response = await fetch(`${API_BASE}/forex/live-prices`);
+  if (!response.ok) throw new Error('Failed to fetch live prices');
+  return response.json();
+}
+
+/**
  * Trigger portfolio exit checks
  */
 export async function checkPortfolioExits() {

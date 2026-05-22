@@ -18,6 +18,7 @@ import AddStockModal from './components/AddStockModal';
 import AddForexModal from './components/AddForexModal';
 import StockSearchModal from './components/StockSearchModal';
 import Toast from './components/Toast';
+import TickerTape from './components/TickerTape';
 import { fetchSignals, fetchStatus, triggerRefresh, fetchRefreshStatus } from './services/api';
 import './App.css';
 
@@ -167,6 +168,8 @@ function App() {
         }}
       />
 
+      <TickerTape />
+
       <main className="main-content">
         {error && (
           <div className="error-message">
@@ -189,15 +192,11 @@ function App() {
           } />
           <Route path="/forex" element={<ForexList onAddStock={(fx) => setSelectedForexToAdd(fx)} onShowToast={setToast} />} />
           <Route path="/portfolio" element={
-            <Portfolio 
-              key={portfolioKey} 
-              onAddStock={(stock) => setSelectedStockToAdd(stock)} 
+            <Portfolio
+              key={portfolioKey}
+              onAddStock={(stock) => setSelectedStockToAdd(stock)}
               onAddForex={(fx) => setSelectedForexToAdd(fx)}
               onShowToast={setToast}
-              onAnalyze={(ticker) => {
-                setSearchModalTicker(ticker);
-                setShowSearchModal(true);
-              }}
             />
           } />
           <Route path="/insider-trades" element={

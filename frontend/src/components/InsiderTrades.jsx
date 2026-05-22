@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import './InsiderTrades.css';
 
-function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant Insider Trades" }) {
+function InsiderTrades({ onAnalyze }) {
+  const { user } = useAuth();
+
   const [groups, setGroupedTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTickers, setExpandedTickers] = useState(new Set());
@@ -10,6 +13,10 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [refreshError, setRefreshError] = useState(null);
+
+  // 'all' | 'portfolio' — "My Holdings" filter
+  const [viewFilter, setViewFilter] = useState('all');
+  const [portfolioTickers, setPortfolioTickers] = useState(null); // null = not yet loaded
 
   const fetchTrades = async (silent = false) => {
     try {
@@ -38,9 +45,30 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
     }
   };
 
+  const fetchPortfolioTickers = async () => {
+    try {
+      const token = localStorage.getItem('google_token');
+      const response = await axios.get('/api/portfolio', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const tickers = [...new Set(
+        response.data.filter(p => p.status === 'OPEN').map(p => p.ticker)
+      )];
+      setPortfolioTickers(tickers);
+    } catch {
+      setPortfolioTickers([]);
+    }
+  };
+
   useEffect(() => {
     fetchTrades();
   }, []);
+
+  useEffect(() => {
+    if (viewFilter === 'portfolio' && portfolioTickers === null) {
+      fetchPortfolioTickers();
+    }
+  }, [viewFilter]);
 
   const toggleExpand = (ticker) => {
     const newExpanded = new Set(expandedTickers);
@@ -60,14 +88,14 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
     }).format(value);
   };
 
+  const activeFilter = viewFilter === 'portfolio' ? portfolioTickers : null;
+
   const sortedGroups = useMemo(() => {
     let filtered = [...groups];
-    
-    // Apply ticker filter if provided
-    if (filterTickers && filterTickers.length > 0) {
-      filtered = filtered.filter(g => filterTickers.includes(g.ticker));
-    } else if (filterTickers && filterTickers.length === 0) {
-      return []; // Empty filter list means show nothing
+
+    if (activeFilter !== null) {
+      if (activeFilter.length === 0) return [];
+      filtered = filtered.filter(g => activeFilter.includes(g.ticker));
     }
 
     let sorted = filtered;
@@ -94,11 +122,15 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
         break;
     }
     return sorted;
-  }, [groups, sortOption, filterTickers]);
+  }, [groups, sortOption, activeFilter]);
 
   if (loading) {
     return <div className="loading">Loading insider trades...</div>;
   }
+
+  const title = viewFilter === 'portfolio'
+    ? 'Insider Trades: My Holdings'
+    : 'Significant Insider Trades';
 
   return (
     <div className="insider-trades-container">
@@ -126,11 +158,28 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
           </button>
         </div>
 
+        {user && (
+          <div className="view-toggle">
+            <button
+              className={`view-btn ${viewFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setViewFilter('all')}
+            >
+              All Market
+            </button>
+            <button
+              className={`view-btn ${viewFilter === 'portfolio' ? 'active' : ''}`}
+              onClick={() => setViewFilter('portfolio')}
+            >
+              My Holdings
+            </button>
+          </div>
+        )}
+
         <div className="sort-controls">
           <label htmlFor="sort-select">Sort By:</label>
-          <select 
+          <select
             id="sort-select"
-            value={sortOption} 
+            value={sortOption}
             onChange={(e) => setSortOption(e.target.value)}
             className="sort-select"
           >
@@ -146,8 +195,8 @@ function InsiderTrades({ onAnalyze, filterTickers = null, title = "Significant I
       {sortedGroups.length === 0 ? (
         <div className="no-trades">
           <p>
-            {filterTickers 
-              ? "No significant director trades detected for your holdings." 
+            {viewFilter === 'portfolio'
+              ? "No significant director trades detected for your current holdings."
               : "No significant on-market director trades detected in the last 30 days."}
           </p>
         </div>

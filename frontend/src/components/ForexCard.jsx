@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './SignalCard.css';
 
@@ -79,7 +80,7 @@ function ForexCard({ signal, onAdd }) {
   return (
     <div className={`signal-card ${signal.is_power_signal ? 'power-signal-border' : ''}`}>
       {signal.is_power_signal && (
-        <div className="power-badge">⚡ POWER SIGNAL</div>
+        <div className="power-badge"><Zap size={10} /> POWER SIGNAL</div>
       )}
       
       <div className="card-header">
@@ -101,14 +102,14 @@ function ForexCard({ signal, onAdd }) {
 
       {/* Trade Setup Row (SL/TP) */}
       {(signal.stop_loss || signal.take_profit) && (
-        <div className="trade-setup-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px', padding: '0 8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-            <span style={{ color: '#888' }}>SL:</span>
-            <span style={{ fontFamily: 'monospace', color: '#ff6b6b' }}>{formatPrice(signal.stop_loss)}</span>
+        <div className="trade-setup-grid">
+          <div className="trade-setup-item">
+            <span className="trade-setup-label">SL</span>
+            <span className="trade-setup-sl">{formatPrice(signal.stop_loss)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-            <span style={{ color: '#888' }}>TP:</span>
-            <span style={{ fontFamily: 'monospace', color: '#4ecdc4' }}>{formatPrice(signal.take_profit)}</span>
+          <div className="trade-setup-item">
+            <span className="trade-setup-label">TP</span>
+            <span className="trade-setup-tp">{formatPrice(signal.take_profit)}</span>
           </div>
         </div>
       )}

@@ -1,85 +1,230 @@
 /*
- * ASX Stock Screener - RUSTIC INDUSTRIAL Theme
+ * ASX Screener Pro — Design System Tokens
+ * "RUSTIC INDUSTRIAL" warm-dark theme, refined.
  *
- * Based on uidesigntheme.jpg reference.
- *
- * Palette:
- * - #2D2424 (Dark Coffee) - Card Backgrounds
- * - #5C3D2E (Cocoa) - Secondary/Borders
- * - #B85C38 (Rust) - Primary Accent/Highlights
- * - #E0C097 (Latte) - Text/Light Accents
+ * Token hierarchy:
+ *   1. Canvas layers (bg-0 → bg-3, bg-inset)
+ *   2. Line work (line-1 → line-3)
+ *   3. Brand: rust ramp
+ *   4. Latte: cream text ramp
+ *   5. Semantic: pos / neg / warn / info
+ *   6. Typography (fonts, scale, weights)
+ *   7. Spacing / radii / shadows / motion
+ *   8. Legacy aliases (backward-compat for old --color-* names)
  */
 
 :root {
-  /* ========================================
-     PRIMARY COLORS - From Reference
-     ======================================== */
-  --color-primary: #B85C38;           /* Rust - Primary Action/Brand */
-  --color-primary-hover: #D46A42;     /* Lighter Rust */
-  
-  --color-secondary: #5C3D2E;         /* Cocoa - Borders/Separators */
-  --color-secondary-hover: #6E4937;
-  
-  --color-accent: #E0C097;            /* Latte - Text Highlight/Icons */
-  
-  /* ========================================
-     BACKGROUND COLORS
-     ======================================== */
-  --color-bg-main: #0A0808;           /* Near Black - Main Background */
-  --color-bg-card: #2D2424;           /* Dark Coffee - Card Background */
-  --color-bg-panel: #1A1616;          /* Darker panel for filters */
-  
-  /* ========================================
-     TEXT COLORS
-     ======================================== */
-  --color-text-primary: #E0C097;      /* Latte - Main Text */
-  --color-text-secondary: #A89B9B;    /* Muted Gray-Brown */
-  --color-text-muted: #5C3D2E;        /* Darker text for inactive */
-  --color-text-white: #FFFFFF;        /* Pure white for critical data */
 
-  /* ========================================
-     SEMANTIC COLORS
-     ======================================== */
-  --color-success: #4ADE80;           /* Green for good scores */
-  --color-warning: #B85C38;           /* Rust for warning/medium */
-  --color-danger: #EF4444;            /* Red for bad */
+  /* ═══════════════════════════════════════════
+     1. CANVAS — warm-black layers
+     ═══════════════════════════════════════════ */
+  --bg-0:        #0B0807;   /* page (deepest) */
+  --bg-1:        #14100E;   /* base surface */
+  --bg-2:        #1C1714;   /* card / panel */
+  --bg-3:        #251D19;   /* raised / hover */
+  --bg-inset:    #0E0A09;   /* recessed well (tables, indicator grids) */
 
-  /* ========================================
-     TYPOGRAPHY
-     ======================================== */
-  --font-brand: 'Bungee Spice', cursive;
-  --font-body: 'JetBrains Mono', monospace;
+  /* ═══════════════════════════════════════════
+     2. LINE WORK — borders & hairlines
+     ═══════════════════════════════════════════ */
+  --line-1:      #2A211C;   /* hairline divider */
+  --line-2:      #3A2C25;   /* card border default */
+  --line-3:      #5C3D2E;   /* strong border / focus rest */
 
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-bold: 700;
+  /* ═══════════════════════════════════════════
+     3. BRAND — rust ramp (orange-brown)
+     ═══════════════════════════════════════════ */
+  --rust-50:    #FBE6D6;
+  --rust-100:   #F3C8A6;
+  --rust-200:   #E8A276;
+  --rust-300:   #D87E4D;
+  --rust-400:   #B85C38;   /* PRIMARY */
+  --rust-500:   #9B4A2D;
+  --rust-600:   #7A3823;
+  --rust-700:   #4F2316;
 
-  /* ========================================
-     SPACING
-     ======================================== */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-2xl: 3rem;
+  /* ═══════════════════════════════════════════
+     4. LATTE — warm neutrals (text / cream)
+     ═══════════════════════════════════════════ */
+  --cream-50:    #FBF5EB;   /* highest-contrast text */
+  --cream-100:   #ECD9BA;   /* primary text */
+  --cream-200:   #C8A87A;   /* numeric / data text */
+  --cream-300:   #A89B86;   /* secondary text */
+  --cream-400:   #7E6E5E;   /* tertiary / labels */
+  --cream-500:   #564A41;   /* muted / disabled */
+  --cream-600:   #3A322C;   /* very-muted strokes */
 
-  /* ========================================
-     BORDERS & SHADOWS
-     ======================================== */
-  --border-card: 2px solid #5C3D2E;
-  --border-light: 1px solid rgba(224, 192, 151, 0.1);
-  
-  --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  /* ═══════════════════════════════════════════
+     5. SEMANTIC
+     ═══════════════════════════════════════════ */
+  --pos-300:    #86EFAC;
+  --pos-400:    #4ADE80;
+  --pos-500:    #22B563;
+  --pos-bg:     rgba(74, 222, 128, 0.10);
+  --pos-border: rgba(74, 222, 128, 0.25);
+
+  --neg-300:    #FCA5A5;
+  --neg-400:    #F87171;
+  --neg-500:    #DC4646;
+  --neg-bg:     rgba(248, 113, 113, 0.10);
+  --neg-border: rgba(248, 113, 113, 0.25);
+
+  --warn-400:   #F5B544;
+  --warn-bg:    rgba(245, 181, 68, 0.10);
+  --warn-border:rgba(245, 181, 68, 0.25);
+
+  --info-400:   #79B8E5;
+  --info-bg:    rgba(121, 184, 229, 0.10);
+  --info-border:rgba(121, 184, 229, 0.25);
+
+  /* ═══════════════════════════════════════════
+     6. FOREGROUND LAYERS (semantic text tokens)
+     ═══════════════════════════════════════════ */
+  --fg-1: var(--cream-50);    /* highest contrast — numbers, key values */
+  --fg-2: var(--cream-100);   /* primary text */
+  --fg-3: var(--cream-200);   /* numeric / dense data */
+  --fg-4: var(--cream-300);   /* secondary text */
+  --fg-5: var(--cream-400);   /* tertiary / labels */
+  --fg-6: var(--cream-500);   /* muted / disabled */
+  --fg-accent: var(--rust-300);
+
+  /* ═══════════════════════════════════════════
+     7. TYPOGRAPHY
+     ═══════════════════════════════════════════ */
+  --font-brand:    'Bungee Spice', 'Oswald', system-ui, sans-serif;
+  --font-display:  'Oswald', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-ui:       'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:     'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-mono-alt: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* --font-body kept pointing to mono so existing font-family: var(--font-body) lines work */
+  --font-body: var(--font-mono);
+
+  /* Weights */
+  --w-regular: 400;
+  --w-medium:  500;
+  --w-semi:    600;
+  --w-bold:    700;
+  --w-black:   800;
+
+  /* Type scale */
+  --t-2xs: 0.6875rem;   /* 11 — eyebrow / micro label */
+  --t-xs:  0.75rem;     /* 12 — table head, mini label */
+  --t-sm:  0.8125rem;   /* 13 — secondary body */
+  --t-md:  0.9375rem;   /* 15 — body */
+  --t-lg:  1.125rem;    /* 18 — emphasised body */
+  --t-xl:  1.375rem;    /* 22 — card title */
+  --t-2xl: 1.75rem;     /* 28 — section title */
+  --t-3xl: 2.25rem;     /* 36 — page hero */
+  --t-4xl: 3rem;        /* 48 — display */
+
+  /* Tracking */
+  --track-tight:  -0.01em;
+  --track-normal: 0;
+  --track-wide:   0.04em;
+  --track-mega:   0.14em;
+
+  /* Line heights */
+  --lh-tight: 1.05;
+  --lh-snug:  1.2;
+  --lh-base:  1.45;
+  --lh-loose: 1.6;
+
+  /* ═══════════════════════════════════════════
+     8. SPACING
+     ═══════════════════════════════════════════ */
+  --space-0:  0;
+  --space-1:  0.25rem;   /* 4  */
+  --space-2:  0.5rem;    /* 8  */
+  --space-3:  0.75rem;   /* 12 */
+  --space-4:  1rem;      /* 16 */
+  --space-5:  1.5rem;    /* 24 */
+  --space-6:  2rem;      /* 32 */
+  --space-7:  3rem;      /* 48 */
+  --space-8:  4rem;      /* 64 */
+
+  /* ═══════════════════════════════════════════
+     9. RADII
+     ═══════════════════════════════════════════ */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
   --radius-pill: 9999px;
 
-  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(184, 92, 56, 0.1);
+  /* ═══════════════════════════════════════════
+     10. BORDERS
+     ═══════════════════════════════════════════ */
+  --border-card:   1px solid var(--line-2);
+  --border-strong: 1px solid var(--line-3);
+  --border-hair:   1px solid var(--line-1);
 
-  /* ========================================
-     TRANSITIONS
-     ======================================== */
-  --transition-default: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* ═══════════════════════════════════════════
+     11. SHADOWS — warm, low, never neon
+     ═══════════════════════════════════════════ */
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md:    0 6px 16px rgba(0,0,0,0.35);
+  --shadow-lg:    0 18px 40px rgba(0,0,0,0.5);
+  --shadow-inset: inset 0 0 0 1px rgba(255,255,255,0.02);
+  --shadow-glow:  0 0 0 1px var(--rust-500), 0 8px 24px rgba(184,92,56,0.18);
+  /* legacy alias */
+  --shadow-card:  var(--shadow-md);
+
+  /* ═══════════════════════════════════════════
+     12. MOTION
+     ═══════════════════════════════════════════ */
+  --ease-out:    cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:    120ms;
+  --dur-base:    180ms;
+  --dur-slow:    280ms;
+  --transition-default: var(--dur-base) var(--ease-in-out);
+
+  /* ═══════════════════════════════════════════
+     13. CHART TOKENS — single source for all chart hardcodes
+     ═══════════════════════════════════════════ */
+  --chart-tooltip-bg:    #2D2424;          /* tooltip box background */
+  --chart-grid:          rgba(255,255,255,0.08);
+  --chart-grid-strong:   rgba(255,255,255,0.15);
+  --chart-tick:          var(--cream-300); /* axis tick labels */
+  --chart-value:         var(--cream-100); /* tooltip value text */
+  --chart-deposit:       #60A5FA;          /* capital inflow marker */
+  --chart-deposit-fill:  #1D4ED8;          /* capital inflow dot bg */
+  --chart-withdraw-fill: #7F1D1D;          /* capital outflow dot bg */
+
+  /* ═══════════════════════════════════════════
+     14. LEGACY ALIASES — backward compat
+     ═══════════════════════════════════════════ */
+  --color-primary:        var(--rust-400);
+  --color-primary-hover:  var(--rust-300);
+  --color-secondary:      var(--line-3);
+  --color-secondary-hover:var(--line-2);
+  --color-accent:         var(--cream-100);
+
+  --color-bg-main:        var(--bg-0);
+  --color-bg-panel:       var(--bg-1);
+  --color-bg-card:        var(--bg-2);
+
+  --color-text-primary:   var(--cream-100);
+  --color-text-secondary: var(--cream-300);
+  --color-text-muted:     var(--cream-400);
+  --color-text-white:     var(--cream-50);
+
+  --color-success:        var(--pos-400);
+  --color-warning:        var(--warn-400);
+  --color-danger:         var(--neg-400);
+
+  /* Font weight aliases */
+  --font-weight-normal: var(--w-regular);
+  --font-weight-medium: var(--w-medium);
+  --font-weight-bold:   var(--w-bold);
+
+  /* Spacing aliases */
+  --spacing-xs:  var(--space-1);
+  --spacing-sm:  var(--space-2);
+  --spacing-md:  var(--space-4);
+  --spacing-lg:  var(--space-5);
+  --spacing-xl:  var(--space-6);
+  --spacing-2xl: var(--space-7);
 }

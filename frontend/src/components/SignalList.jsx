@@ -16,7 +16,29 @@ function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilt
   if (loading) {
     return (
       <div className="signal-list-container">
-        <div className="loading">Loading signals...</div>
+        <div className="signal-grid">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="signal-card-skeleton">
+              <div className="skel-header">
+                <div className="skel-title-group">
+                  <div className="skel-line skel-title" />
+                  <div className="skel-line skel-subtitle" />
+                </div>
+                <div className="skel-score" />
+              </div>
+              <div className="skel-line skel-price" />
+              <div className="skel-indicators">
+                {Array.from({ length: 3 }).map((_, j) => (
+                  <div key={j} className="skel-indicator">
+                    <div className="skel-line" />
+                    <div className="skel-line" />
+                  </div>
+                ))}
+              </div>
+              <div className="skel-line skel-badge" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -31,9 +53,8 @@ function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilt
       {!user && (
         <div className="guest-banner">
           <div className="banner-content">
-            <span className="banner-icon">💹</span>
             <div className="banner-text">
-              <h3>Unlock Full Potential</h3>
+              <h3>Save Signals to a Portfolio</h3>
               <p>Log in to track these signals in your <strong>Personal Portfolio</strong> and <strong>Watchlist</strong>.</p>
             </div>
           </div>
@@ -88,12 +109,13 @@ function SignalList({ signals, loading, minScore, onMinScoreChange, strategyFilt
         </div>
       ) : (
         <div className="signal-grid">
-          {signals.map((signal) => (
-            <SignalCard 
-              key={`${signal.ticker}-${signal.strategy}`} 
-              signal={signal} 
+          {signals.map((signal, index) => (
+            <SignalCard
+              key={`${signal.ticker}-${signal.strategy}`}
+              signal={signal}
               onAdd={onAddStock}
               onWatchlist={onAddWatchlist}
+              style={{ animationDelay: `${index * 40}ms` }}
             />
           ))}
         </div>

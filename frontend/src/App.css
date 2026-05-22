@@ -5,12 +5,17 @@
 }
 
 body {
-  font-family: var(--font-body);
-  background-color: var(--color-bg-main);
-  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  background-color: var(--bg-0);
+  color: var(--fg-2);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+button { font-family: inherit; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+input, select { font-family: inherit; }
 
 .app {
   min-height: 100vh;
@@ -20,25 +25,28 @@ body {
 
 .main-content {
   flex: 1;
-  max-width: 1200px;
+  max-width: 1280px;
   width: 100%;
   margin: 0 auto;
-  padding: var(--spacing-xl);
+  padding: 0 var(--space-6) var(--space-7);
 }
 
 .error-message {
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid var(--color-danger);
+  background-color: var(--neg-bg);
+  border: 1px solid var(--neg-border);
   border-radius: var(--radius-sm);
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-  color: var(--color-danger);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  color: var(--neg-400);
+  font-family: var(--font-ui);
+  font-size: var(--t-sm);
 }
 
 .footer {
   text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--color-text-secondary);
-  font-size: 0.8rem;
-  opacity: 0.6;
+  padding: var(--space-6);
+  color: var(--fg-5);
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-mega);
+  text-transform: uppercase;
 }
