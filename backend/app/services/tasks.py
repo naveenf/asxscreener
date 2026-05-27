@@ -383,9 +383,18 @@ def run_pair_lock_checks():
                             f"{lock_sl:.{sl_precision}f} (+{lock_to_r}R)"
                         )
 
-                        modify_result = OandaPriceService.modify_trade_sl(
-                            oanda_trade_id, lock_sl, precision=sl_precision
-                        )
+                        try:
+                            modify_result = OandaPriceService.modify_trade_sl(
+                                oanda_trade_id, lock_sl, precision=sl_precision
+                            )
+                        except Exception as mod_err:
+                            if "NO_SUCH_TRADE" in str(mod_err):
+                                logger.info(
+                                    f"{tag}: trade {oanda_trade_id} already closed before lock "
+                                    f"could fire — skipping"
+                                )
+                                continue
+                            raise
 
                         if modify_result is None:
                             logger.error(
