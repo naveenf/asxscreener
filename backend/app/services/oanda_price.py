@@ -860,6 +860,7 @@ class OandaPriceService:
                             continue
                         amount = float(txn.get("amount", 0))
                         time_str = txn.get("time", "")
+                        # Use UTC date to match account_balance_history document IDs (also UTC).
                         txn_date = date_type.fromisoformat(time_str[:10]) if time_str else None
                         if txn_date:
                             transfers.append({"date": txn_date, "amount": amount})
