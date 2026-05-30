@@ -488,20 +488,23 @@ async def get_trade_analytics(
         oanda_summary = OandaPriceService.get_account_summary()
         current_balance_aud = float(oanda_summary.get('balance', 0)) if oanda_summary else 0
 
-        # Fetch fund transfers BEFORE the estimation fallback so deposits can be
-        # subtracted — otherwise current_balance_aud already includes deposits and
-        # the graph would count them twice (once in starting balance, once as a flow).
+        # Fetch deposits in period upfront — needed for both the starting-balance
+        # estimate and the Modified Dietz denominator.
+        # Exclude roi_start itself: if we have a balance snapshot, it already
+        # captures any deposit made on that day.
         period_start_dt = date.fromisoformat(roi_start)
-        period_end_dt = date.fromisoformat(roi_end)
-        transfers_from = (period_start_dt + timedelta(days=1)).isoformat()
-        fund_transfers = OandaPriceService.get_fund_transfers(transfers_from, roi_end)
+        period_end_dt   = date.fromisoformat(roi_end)
+        transfers_from  = (period_start_dt + timedelta(days=1)).isoformat()
+        fund_transfers  = OandaPriceService.get_fund_transfers(transfers_from, roi_end)
 
         if starting_balance_aud == 0 and current_balance_aud > 0:
-            total_deposits_in_period = sum(tf["amount"] for tf in fund_transfers)
-            estimated = current_balance_aud - net_pnl - total_deposits_in_period
+            # current_balance = starting_balance + net_pnl + deposits_in_period
+            # → starting_balance = current_balance − net_pnl − deposits_in_period
+            total_deposits = sum(tf["amount"] for tf in fund_transfers)
+            estimated = current_balance_aud - net_pnl - total_deposits
             if estimated > 0:
                 starting_balance_aud = estimated
-                logger.info(f"No balance snapshot for {roi_start}; estimated starting balance ${estimated:.2f} (deposits subtracted: ${total_deposits_in_period:.2f})")
+                logger.info(f"No balance snapshot for {roi_start}; estimated starting balance ${estimated:.2f} (deposits deducted: ${total_deposits:.2f})")
         total_days = max((period_end_dt - period_start_dt).days, 1)
         weighted_deposits = 0.0
         for tf in fund_transfers:
