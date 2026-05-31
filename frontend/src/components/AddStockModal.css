@@ -171,6 +171,66 @@
   cursor: not-allowed;
 }
 
+.ticker-input-wrapper {
+  position: relative;
+}
+
+.ticker-input-wrapper input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ticker-input-wrapper .suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  z-index: 100;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.ticker-input-wrapper .suggestion-item {
+  padding: 9px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line-1);
+}
+
+.ticker-input-wrapper .suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.ticker-input-wrapper .suggestion-item:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.ticker-input-wrapper .suggestion-ticker {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--t-sm);
+  color: var(--rust-300);
+}
+
+.ticker-input-wrapper .suggestion-name {
+  font-size: var(--t-xs);
+  color: var(--fg-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: 10px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
