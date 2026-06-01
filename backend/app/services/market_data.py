@@ -57,7 +57,7 @@ def get_current_prices(tickers: List[str]) -> Dict[str, float]:
     try:
         # Fetch data for all tickers
         # Use grouping='ticker' to ensure consistent structure for single/multi tickers
-        data = yf.download(yf_tickers, period="1d", progress=False, group_by='ticker')
+        data = yf.download(yf_tickers, period="5d", progress=False, group_by='ticker')
         
         prices = {}
         
@@ -100,7 +100,7 @@ def validate_and_get_price(ticker: str) -> float:
             return float(price)
         
         # Fallback to history
-        hist = t.history(period="1d")
+        hist = t.history(period="5d")
         if not hist.empty:
             return float(hist['Close'].iloc[-1])
             

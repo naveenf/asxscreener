@@ -39,21 +39,18 @@ async def get_current_user_email(authorization: str = Header(...)) -> str:
 
 def calculate_metrics(item_data, current_price):
     """Calculate watchlist metrics."""
-    if not current_price:
-        return None, None, None
-        
-    added_price = item_data['added_price']
-    
-    change_absolute = current_price - added_price
-    change_percent = (change_absolute / added_price * 100) if added_price > 0 else 0
-    
     added_at = item_data['added_at']
-    # Ensure added_at is offset-aware or offset-naive consistently
     if added_at.tzinfo is None:
         added_at = added_at.replace(tzinfo=timezone.utc)
-        
     days_in_watchlist = (datetime.now(timezone.utc) - added_at).days
-    
+
+    if not current_price:
+        return None, None, days_in_watchlist
+
+    added_price = item_data['added_price']
+    change_absolute = current_price - added_price
+    change_percent = (change_absolute / added_price * 100) if added_price > 0 else 0
+
     return change_absolute, change_percent, days_in_watchlist
 
 @router.get("", response_model=List[WatchlistItemResponse])
