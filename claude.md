@@ -98,11 +98,11 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 | Filter | Description |
 |--------|-------------|
 | `di_persist` | DI must exceed threshold for N consecutive candles. Use 2 for choppy pairs (JP225, NAS100 15m, UK100, EUR_USD); keep 1 for fast-moving (XAG 5m, BCO). |
-| `adx_min` | ADX floor. JP225 uses 20, NAS100 uses 25. |
+| `adx_min` | ADX floor. JP225 uses 20, NAS100 uses 30. |
 | `adx_rising` | ADX must be rising vs previous candle. XAU uses this. |
-| `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 12R), NAS100=1.0. |
-| `di_slope` | DI+ must be rising over last 2 candles — targets fading-momentum entries. Safe for most pairs. |
-| `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,8,21,22,23] (pre-London + post-NYSE), USD_JPY=[15,16,17,18,19,20,21] (NY open + evening), BCO=[20,21,22,23] (post-NY thin session). |
+| `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 12R), NAS100=1.2. |
+| `di_slope` | DI+ must be rising vs 2 candles ago (live: `iloc[-1] > iloc[-3]`). Safe for most pairs. |
+| `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,8,20,21,22,23] (pre-London + late NY + post-NYSE), USD_JPY=[15,16,17,18,19,20,21] (NY open + evening), BCO=[20,21,22,23] (post-NY thin session). |
 | `di_spread_min` | Min DI+/DI- gap — rejects marginal crossings. |
 | `body_ratio_min` | Min candle body/range ratio — rejects doji candles. |
 
@@ -162,7 +162,7 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 | XAG_USD | SmaScalping | 5m | 6.30 | 115.7% | 26.5% | -6.79% | 1.0% | 12.0 | Lock 3R→+2R, cooldown=5c (Apr 24, 2026) |
 | JP225_USD | SmaScalping | 5m | 5.87 | 52.5% | 35.0% | -5.85% | 1.0% | 1.5 | |
 | EUR_USD | SmaScalping | 15m | 5.56 | 56.2% | 29.5% | -10.47% | 1.0% | 6.0 | Monitor: all profit in Jan 2026, all other months negative |
-| NAS100_USD | SmaScalping | 15m | 4.31 | 37.4% | 39.0% | -5.85% | 1.0% | 2.5 | |
+| NAS100_USD | SmaScalping | 15m | 14.36 | 34.1% | 66.7% | -1.99% | 1.0% | 3.5 | Retuned Jun 9, 2026: DI>35, adx=30, atr=1.2, RR=3.5, add hour 20. Low trade count (15/3mo) — monitor closely. |
 | BCO_USD | SmaScalping | 15m | 2.44 | 36.0% | 36.1% | -10.49% | 1.0% | 5.0 | Lock 2R→+1R, cooldown=6c (Apr 24, 2026) |
 | USD_JPY | SmaScalping | 15m | 2.85 | 50.54% | 34.5% | -8.65% | 0.5% | 3.0 | Regime broken since Feb 2026 — 3 consecutive negative months |
 
@@ -172,7 +172,7 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 |-------|-----|-----|---------|---------|--------|-------|
 | UK100_GBP | 35 | 3.5 | 2 | `atr_ratio=1.2, avoid_hours=[15,16,17,18,19]` | 19 | Replaces PVTScalping 1h (Sharpe 2.99). Blocks post-UK-close dead volume. Low trade count — monitor closely. RR reduced from 6.0 → 3.5 (Apr 1, 2026 sweep). |
 | EUR_USD | 25 | 6.0 | 2 | `atr_ratio=1.0, avoid_hours=[20,21,22,23]` | 44 | Strongest new addition — 44 trades, clean 2-filter config. Blocks NY/pre-London dead zone. MaxDD -10.47% elevated — use 1% risk. RR=6.0 confirmed optimal. |
-| NAS100_USD | 30 | 2.5 | 2 | `di_slope=true, adx_min=25, atr_ratio=1.0, avoid_hours=[7,8,21,22,23]` | 59 | Replaces NewBreakout (Sharpe 3.36, never triggered live). Mirrors old 5m filter set + adx_min=25. MaxDD -5.85% — best of all active pairs. RR reduced from 3.0 → 2.5 (Apr 1, 2026 sweep). |
+| NAS100_USD | 35 | 3.5 | 2 | `di_slope=true, adx_min=30, atr_ratio=1.2, avoid_hours=[7,8,20,21,22,23]` | 15 | Retuned Jun 9, 2026 after live underperformance (Sharpe 1.22, WR 32.7% on Mar–Jun 2026 data). Filter sweep: DI>35, adx=30, atr=1.2, RR=3.5 — profitable every month in BT. Low trade count — monitor closely. |
 
 **Archived (configs preserved in `best_strategies_archived.json`, not running):**
 
@@ -210,11 +210,11 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 
 - When adding strategies: run backtest sweep → save CSV to `data/` → update `best_strategies.json` + `forex_pairs.json` → update CLAUDE.md active table
 
-**Active backtest data:** `data/backtest_sma_15m_all_pairs.csv`, `data/backtest_noise_filter_sweep.csv`, `data/backtest_sma_nas100_15m_filter_sweep.csv`, `data/backtest_bco_strategy_compare.csv`, `data/backtest_sma_jpy_pairs.csv`, `data/backtest_sma_all_pairs_exit_mode.csv`, `data/backtest_rr_sweep.csv`, `data/backtest_usdjpy_15m_production_trades.csv`, `data/backtest_bco_noise_filter_sweep.csv`, `data/backtest_prod_full.csv`
+**Active backtest data:** `data/backtest_sma_15m_all_pairs.csv`, `data/backtest_noise_filter_sweep.csv`, `data/backtest_sma_nas100_15m_filter_sweep.csv`, `data/backtest_bco_strategy_compare.csv`, `data/backtest_sma_jpy_pairs.csv`, `data/backtest_sma_all_pairs_exit_mode.csv`, `data/backtest_rr_sweep.csv`, `data/backtest_usdjpy_15m_production_trades.csv`, `data/backtest_bco_noise_filter_sweep.csv`, `data/backtest_prod_full.csv`, `data/backtest_nas100_investigation.csv`
 
-**Scripts:** `scripts/backtest_bco_noise_filter_sweep.py` (BCO filter sweep), `scripts/backtest_prod_vs_live_comparison.py` (live vs BT comparison for all pairs)
+**Scripts:** `scripts/backtest_bco_noise_filter_sweep.py` (BCO filter sweep), `scripts/backtest_prod_vs_live_comparison.py` (live vs BT comparison for all pairs), `scripts/backtest_nas100_investigation.py` (NAS100 filter sweep — re-run when more data arrives)
 
-**Last Updated:** April 24, 2026 — XAG_USD + BCO_USD live lock mechanism implemented (BCO: Lock 2R→+1R, cooldown=90 min; Sharpe 1.67→2.44). Lock functions generalised into `run_pair_lock_checks` / `check_pair_lock_cooldowns` in `tasks.py`; new pairs added via `PAIR_LOCK_CONFIGS` dict. XAG_USD live lock mechanism implemented: when trade reaches +3R unrealized, SL moved to +2R via Oanda `TradeCRCDO`; after locked trade closes, new XAG entries blocked for 25 min (5 candles × 5min, timestamp-based in Firestore `config/lock_state_XAG_USD`). BT: Sharpe near-neutral (4.98 vs 5.15 base) but ROI +25pp boost; 3 trades that reached 3–8R then reversed to -1R rescued at +2R without sacrificing TP-bound trades. Cooldown prevents re-entry inflation (spent-momentum market). Weekend expiry is natural via timestamp — no cooldown bleeds into Monday open. Exit mode sweep (Apr 24): ratcheting SL and SMA20-triggered trailing SL tested and rejected — all pairs worse. Monthly breakdown: EUR_USD all profit in Jan 2026 (Sharpe 10.15), all other months negative — monitor for suspension. USD_JPY broken since Feb 2026 (3 consecutive negative months, BT WR 22.6% in-window) — risk_pct remains 0.5% temporary reduction. Previous: April 11, 2026 — BCO_USD retuned: `atr_ratio_min=1.0` + `avoid_hours=[20,21,22,23]`, RR 4.0→5.0; Sharpe 1.62→2.14, MaxDD -12.42%→-8.78%. April 2, 2026 — USD_JPY migrated to 15m. April 1, 2026 — EUR_AUD suspended. RR sweep: XAU_USD 5.0→3.5, JP225_USD 5.0→1.5, UK100_GBP 6.0→3.5, NAS100_USD 3.0→2.5. March 27, 2026 — NAS100_USD, EUR_USD, UK100_GBP migrated to SmaScalping 15m.
+**Last Updated:** June 9, 2026 — NAS100_USD retuned after live underperformance (Sharpe 1.22 on Mar–Jun 2026 window). New config: DI>35, adx_min=30, atr_ratio=1.2, RR=3.5, avoid_hours add hour 20. BT: Sharpe 14.36, WR 66.7%, ROI +34.1%, MaxDD -1.99%, profitable every month (Mar–Jun 2026). Trade count low (15/3mo) — monitor 4–6 weeks before further tuning. Also fixed: di_slope lookback mismatch between backtest scripts (was comparing to i-1, now i-2 to match live detector's `iloc[-1] > iloc[-3]`). Full sweep: `data/backtest_nas100_investigation.csv`, script: `scripts/backtest_nas100_investigation.py`. Previous: April 24, 2026 — XAG_USD + BCO_USD live lock mechanism implemented (BCO: Lock 2R→+1R, cooldown=90 min; Sharpe 1.67→2.44). Lock functions generalised into `run_pair_lock_checks` / `check_pair_lock_cooldowns` in `tasks.py`; new pairs added via `PAIR_LOCK_CONFIGS` dict. XAG_USD live lock mechanism implemented: when trade reaches +3R unrealized, SL moved to +2R via Oanda `TradeCRCDO`; after locked trade closes, new XAG entries blocked for 25 min (5 candles × 5min, timestamp-based in Firestore `config/lock_state_XAG_USD`). BT: Sharpe near-neutral (4.98 vs 5.15 base) but ROI +25pp boost; 3 trades that reached 3–8R then reversed to -1R rescued at +2R without sacrificing TP-bound trades. Cooldown prevents re-entry inflation (spent-momentum market). Weekend expiry is natural via timestamp — no cooldown bleeds into Monday open. Exit mode sweep (Apr 24): ratcheting SL and SMA20-triggered trailing SL tested and rejected — all pairs worse. Monthly breakdown: EUR_USD all profit in Jan 2026 (Sharpe 10.15), all other months negative — monitor for suspension. USD_JPY broken since Feb 2026 (3 consecutive negative months, BT WR 22.6% in-window) — risk_pct remains 0.5% temporary reduction. Previous: April 11, 2026 — BCO_USD retuned: `atr_ratio_min=1.0` + `avoid_hours=[20,21,22,23]`, RR 4.0→5.0; Sharpe 1.62→2.14, MaxDD -12.42%→-8.78%. April 2, 2026 — USD_JPY migrated to 15m. April 1, 2026 — EUR_AUD suspended. RR sweep: XAU_USD 5.0→3.5, JP225_USD 5.0→1.5, UK100_GBP 6.0→3.5, NAS100_USD 3.0→2.5. March 27, 2026 — NAS100_USD, EUR_USD, UK100_GBP migrated to SmaScalping 15m.
 
 ---
 

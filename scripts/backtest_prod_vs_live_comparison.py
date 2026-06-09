@@ -52,10 +52,10 @@ PROD_CONFIGS = {
         avoid_hours={21, 22, 23},
     ),
     "NAS100_USD": dict(
-        tf="15_Min", rr=2.5, risk_pct=0.01,
-        di=30.0, persist=2, adx_min=25.0, adx_rising=False,
-        atr_ratio=1.0, di_slope=True, di_spread=0.0,
-        avoid_hours={7, 8, 21, 22, 23},
+        tf="15_Min", rr=3.5, risk_pct=0.01,
+        di=35.0, persist=2, adx_min=30.0, adx_rising=False,
+        atr_ratio=1.2, di_slope=True, di_spread=0.0,
+        avoid_hours={7, 8, 20, 21, 22, 23},
     ),
     "UK100_GBP": dict(
         tf="15_Min", rr=3.5, risk_pct=0.01,
