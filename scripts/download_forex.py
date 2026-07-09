@@ -132,6 +132,7 @@ def update_dataset(api, symbol, oanda_symbol, granularity, label):
             start_time = last_date
             print(f"  [{label}] Found existing data. Last: {last_date}. Appending...")
         except Exception as e:
+            existing_df = None
             print(f"  [{label}] Error reading existing file: {e}. Starting fresh.")
     
     # 2. Fetch Data
