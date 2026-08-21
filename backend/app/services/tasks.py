@@ -60,16 +60,50 @@ PRECLOSE_BLOCKED_PAIRS: set = set()
 _preclose_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
-# Profit-lock configs
+# Stop-move configs
 # ---------------------------------------------------------------------------
-# lock_at_r  : fire lock when trade unrealized P&L reaches this many R
-# lock_to_r  : move SL to this many R from entry when lock fires
-# cooldown_min: minutes to block new entries after a locked trade closes
+# All keys optional except sl_precision; a pair may configure either stage or both.
+# lock_at_r   : fire profit lock when unrealized P&L reaches this many R
+# lock_to_r   : move SL to this many R from entry when the lock fires
+# be_at_r     : fire breakeven move when unrealized P&L reaches this many R
+# be_to_r     : move SL to this many R from entry when breakeven fires
+#               (negative = just below entry, which survives noise better)
+# cooldown_min: minutes to block new entries after a LOCKED trade closes
 # sl_precision: decimal places for Oanda SL price formatting
 PAIR_LOCK_CONFIGS = {
-    "XAG_USD": {"lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25,  "sl_precision": 3},
-    "BCO_USD": {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90,  "sl_precision": 3},
+    # Profit lock: late trigger, moves SL into profit. Protects a large winner
+    # from reversing. Followed by a cooldown (spent-momentum guard).
+    "XAG_USD":   {"lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25, "sl_precision": 3},
+    "BCO_USD":   {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3},
+    # Breakeven: early trigger, moves SL to a small loss. JP225's 1.5R target
+    # leaves no big winner to protect; the pain is the sheer count of full -1R
+    # losses, so this caps them instead. No cooldown — nothing is locked in.
+    # Validated Aug 2026: Sharpe 2.53->5.63, MaxDD -6.83%->-2.28%, full -1R
+    # losses 100%->15% of trades. Does NOT generalise — see the sweep in
+    # data/backtest_breakeven_sweep.csv before adding this to another pair.
+    "JP225_USD": {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1},
 }
+
+
+def decide_stop_move(lock_cfg, r_current, be_fired, lock_fired):
+    """Decide which stop-move stage, if any, should fire for an open trade.
+
+    Returns (stage, to_r) with stage "lock" or "be", or None to leave the stop
+    alone. The lock stage is tested first so a candle that jumps past both
+    thresholds moves straight to the profit lock rather than to breakeven.
+    """
+    if lock_fired:
+        return None
+
+    lock_at_r = lock_cfg.get("lock_at_r")
+    if lock_at_r is not None and r_current >= lock_at_r:
+        return "lock", lock_cfg["lock_to_r"]
+
+    be_at_r = lock_cfg.get("be_at_r")
+    if be_at_r is not None and not be_fired and r_current >= be_at_r:
+        return "be", lock_cfg["be_to_r"]
+
+    return None
 
 def run_stock_refresh_task():
     """Logic for stock refresh."""
@@ -271,15 +305,20 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
 
 def run_pair_lock_checks():
     """
-    Profit-lock check for all pairs in PAIR_LOCK_CONFIGS.
+    Stop-move check for all pairs in PAIR_LOCK_CONFIGS.
+
+    Two stage types, either or both configurable per pair (see decide_stop_move):
+      - "lock"  profit lock  — late trigger, SL into profit, starts a cooldown
+      - "be"    breakeven    — early trigger, SL to a small loss, no cooldown
 
     Runs before signal execution each refresh cycle:
-      1. For each configured pair, reads config/lock_state_{symbol} from Firestore.
-         If a cooldown is active (cooldown_until > now), adds the symbol to
-         PRECLOSE_BLOCKED_PAIRS so no new entries are placed this cycle.
-      2. Scans all OPEN trades for each pair where lock_fired is falsy.
-         If a trade has reached lock_at_r unrealized profit, moves its Oanda SL
-         to lock_to_r and flags the Firestore doc with lock_fired=True.
+      1. For pairs that have a cooldown, reads config/lock_state_{symbol} from
+         Firestore. If a cooldown is active (cooldown_until > now), adds the
+         symbol to PRECLOSE_BLOCKED_PAIRS so no new entries are placed.
+      2. Scans OPEN trades for each pair and asks decide_stop_move which stage
+         should fire. Moves the Oanda SL accordingly and flags the Firestore doc
+         with lock_fired=True or be_fired=True. Only lock_fired starts a
+         cooldown, since a breakeven move locks in nothing.
     """
     global PRECLOSE_BLOCKED_PAIRS
 
@@ -288,32 +327,32 @@ def run_pair_lock_checks():
         return
 
     for symbol, lock_cfg in PAIR_LOCK_CONFIGS.items():
-        lock_at_r    = lock_cfg["lock_at_r"]
-        lock_to_r    = lock_cfg["lock_to_r"]
         sl_precision = lock_cfg["sl_precision"]
+        has_cooldown = lock_cfg.get("cooldown_min", 0) > 0
         state_doc_id = f"lock_state_{symbol}"
-        tag          = f"{symbol} lock"
+        tag          = f"{symbol} stop-move"
 
         try:
-            # --- Step 1: check cooldown ---
+            # --- Step 1: check cooldown (only pairs with a profit lock have one) ---
             try:
-                lock_doc = _firestore_call(
-                    lambda: db.collection("config").document(state_doc_id).get(),
-                    label=f"{tag} cooldown read"
-                )
-                if lock_doc is None:
-                    continue  # timed out — skip this pair this cycle
-                if lock_doc.exists:
-                    lock_data = lock_doc.to_dict() or {}
-                    cooldown_until_str = lock_data.get("cooldown_until")
-                    if cooldown_until_str:
-                        cooldown_until = datetime.fromisoformat(cooldown_until_str)
-                        if datetime.now(timezone.utc) < cooldown_until:
-                            logger.info(
-                                f"{tag}: cooldown active until {cooldown_until_str} — "
-                                f"blocking {symbol} entries this cycle"
-                            )
-                            PRECLOSE_BLOCKED_PAIRS.add(symbol)
+                if has_cooldown:
+                    lock_doc = _firestore_call(
+                        lambda: db.collection("config").document(state_doc_id).get(),
+                        label=f"{tag} cooldown read"
+                    )
+                    if lock_doc is None:
+                        continue  # timed out — skip this pair this cycle
+                    if lock_doc.exists:
+                        lock_data = lock_doc.to_dict() or {}
+                        cooldown_until_str = lock_data.get("cooldown_until")
+                        if cooldown_until_str:
+                            cooldown_until = datetime.fromisoformat(cooldown_until_str)
+                            if datetime.now(timezone.utc) < cooldown_until:
+                                logger.info(
+                                    f"{tag}: cooldown active until {cooldown_until_str} — "
+                                    f"blocking {symbol} entries this cycle"
+                                )
+                                PRECLOSE_BLOCKED_PAIRS.add(symbol)
             except Exception:
                 logger.error(f"{tag}: failed to read {state_doc_id} from Firestore", exc_info=True)
 
@@ -343,6 +382,9 @@ def run_pair_lock_checks():
 
                     if data.get("lock_fired"):
                         continue
+                    # a breakeven-only pair is finished once its BE has fired
+                    if data.get("be_fired") and lock_cfg.get("lock_at_r") is None:
+                        continue
 
                     buy_price      = data.get("buy_price")
                     stop_loss      = data.get("stop_loss")
@@ -366,21 +408,32 @@ def run_pair_lock_checks():
 
                     if direction == "BUY":
                         r_current = (current_price - float(buy_price)) / risk_distance
-                        lock_sl   = float(buy_price) + lock_to_r * risk_distance
                     else:
                         r_current = (float(buy_price) - current_price) / risk_distance
-                        lock_sl   = float(buy_price) - lock_to_r * risk_distance
 
                     logger.info(
                         f"{tag}: trade {oanda_trade_id} — R={r_current:.2f}, "
                         f"entry={buy_price}, price={current_price}, rdist={risk_distance:.4f}"
                     )
 
-                    if r_current >= lock_at_r:
+                    decision = decide_stop_move(
+                        lock_cfg,
+                        r_current=r_current,
+                        be_fired=bool(data.get("be_fired")),
+                        lock_fired=bool(data.get("lock_fired")),
+                    )
+
+                    if decision is not None:
+                        stage, to_r = decision
+                        if direction == "BUY":
+                            lock_sl = float(buy_price) + to_r * risk_distance
+                        else:
+                            lock_sl = float(buy_price) - to_r * risk_distance
+
                         logger.info(
-                            f"{tag}: FIRING lock for trade {oanda_trade_id} "
-                            f"(R={r_current:.2f} >= {lock_at_r}) — moving SL to "
-                            f"{lock_sl:.{sl_precision}f} (+{lock_to_r}R)"
+                            f"{tag}: FIRING {stage} for trade {oanda_trade_id} "
+                            f"(R={r_current:.2f}) — moving SL to "
+                            f"{lock_sl:.{sl_precision}f} ({to_r:+}R)"
                         )
 
                         try:
@@ -390,8 +443,8 @@ def run_pair_lock_checks():
                         except Exception as mod_err:
                             if "NO_SUCH_TRADE" in str(mod_err):
                                 logger.info(
-                                    f"{tag}: trade {oanda_trade_id} already closed before lock "
-                                    f"could fire — skipping"
+                                    f"{tag}: trade {oanda_trade_id} already closed before "
+                                    f"{stage} could fire — skipping"
                                 )
                                 continue
                             raise
@@ -403,15 +456,19 @@ def run_pair_lock_checks():
                             )
                             continue
 
+                        # Only the profit lock sets lock_fired — that flag is what
+                        # check_pair_lock_cooldowns keys off to start a cooldown.
+                        # A breakeven move locks in nothing, so it must not.
+                        flag = "lock_fired" if stage == "lock" else "be_fired"
                         doc.reference.update({
-                            "lock_fired":    True,
-                            "lock_sl":       lock_sl,
-                            "lock_fired_at": datetime.now(timezone.utc).isoformat(),
+                            flag:            True,
+                            f"{stage}_sl":   lock_sl,
+                            f"{flag}_at":    datetime.now(timezone.utc).isoformat(),
                             "updated_at":    datetime.now(timezone.utc),
                         })
                         logger.info(
                             f"{tag}: Firestore doc {doc.id} updated — "
-                            f"lock_fired=True, lock_sl={lock_sl:.{sl_precision}f}"
+                            f"{flag}=True, {stage}_sl={lock_sl:.{sl_precision}f}"
                         )
 
                 except Exception:
@@ -438,7 +495,9 @@ def check_pair_lock_cooldowns():
         return
 
     for symbol, lock_cfg in PAIR_LOCK_CONFIGS.items():
-        cooldown_min = lock_cfg["cooldown_min"]
+        cooldown_min = lock_cfg.get("cooldown_min", 0)
+        if cooldown_min <= 0:
+            continue  # breakeven-only pair — nothing is locked in, no cooldown
         state_doc_id = f"lock_state_{symbol}"
         tag          = f"{symbol} lock"
 

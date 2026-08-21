@@ -143,9 +143,10 @@ const AnalyticsDashboard = () => {
               subtext="Gross Win / Loss"
             />
             <KpiCard
-              label="Avg R:R"
-              value={summary.avg_rr != null && summary.avg_rr !== 0 ? summary.avg_rr.toFixed(2) : '—'}
-              subtext="Per trade"
+              label="Avg Monthly"
+              value={summary.avg_monthly_pct != null && summary.avg_monthly_pct !== 0 ? `${summary.avg_monthly_pct >= 0 ? '+' : ''}${summary.avg_monthly_pct.toFixed(2)}%` : '—'}
+              subtext="Month-on-month"
+              variant={summary.avg_monthly_pct > 0 ? 'pos' : summary.avg_monthly_pct < 0 ? 'neg' : undefined}
             />
             <KpiCard
               label="Best Trade"

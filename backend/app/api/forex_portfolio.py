@@ -451,7 +451,7 @@ async def get_trade_analytics(
                     "best_trade": 0, "worst_trade": 0, "profit_factor": 0,
                     "current_balance_aud": 0, "starting_balance_aud": 0,
                     "deposits_in_period": [], "modified_dietz_denominator": 0,
-                    "avg_rr": 0, "close_types": {}, "max_drawdown_pct": 0,
+                    "avg_rr": 0, "avg_monthly_pct": 0, "close_types": {}, "max_drawdown_pct": 0,
                     "win_days": 0, "loss_days": 0, "max_win_streak": 0, "max_loss_streak": 0
                 },
                 "by_strategy": {}, "by_month": {}, "daily_breakdown": {}, "equity_curve": [],
@@ -665,6 +665,21 @@ async def get_trade_analytics(
             'yearly':  _compute_period_breakdown(trades_list, 'yearly'),
         }
         period_breakdown = period_breakdowns.get(period or 'monthly', {})
+
+        # 7b. Month-on-month % gain/loss (running balance walk, chronological)
+        avg_monthly_pct = 0
+        monthly_buckets = period_breakdowns['monthly']
+        if monthly_buckets and starting_balance_aud > 0:
+            running_balance = starting_balance_aud
+            monthly_pcts = []
+            for bucket in sorted(monthly_buckets.keys()):
+                bucket_pnl = monthly_buckets[bucket]['pnl']
+                pct = (bucket_pnl / running_balance * 100) if running_balance > 0 else 0
+                monthly_buckets[bucket]['pnl_pct'] = round(pct, 2)
+                monthly_pcts.append(pct)
+                running_balance += bucket_pnl
+            avg_monthly_pct = sum(monthly_pcts) / len(monthly_pcts) if monthly_pcts else 0
+        summary['avg_monthly_pct'] = round(avg_monthly_pct, 2)
 
         # 8. Backtest comparison
         backtest_ref = _load_backtest_reference()
