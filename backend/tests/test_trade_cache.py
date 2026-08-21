@@ -139,3 +139,34 @@ def test_frame_to_records_converts_missing_values_to_none():
 
 def test_frame_to_records_on_empty_frame_returns_empty_list():
     assert frame_to_records(pd.DataFrame()) == []
+
+
+def test_frame_to_records_gives_every_row_every_column_seen_anywhere():
+    """The cache is a DataFrame, which forces a uniform schema — unlike a raw
+    Firestore doc.to_dict(), where a field can be genuinely absent. Once ANY
+    cached trade has a field, every row gets that column, None-filled for
+    trades that never had it.
+
+    This bit a real caller: `data.get('exit_signal', False)` only applies the
+    default when the KEY is absent, not when it's present-as-None. Once
+    exit_signal came from this cache, a trade that never had the field in
+    Firestore got None instead of the intended False default, and failed a
+    strict `exit_signal: bool` pydantic field. Callers pulling a cached field
+    into a non-Optional-with-default type must coalesce with
+    `data.get(k) or default`, not `data.get(k, default)`.
+    """
+    existing = pd.DataFrame()
+    new_records = [
+        {"_doc_id": "a", "symbol": "XAU_USD"},  # never had exit_signal in Firestore
+        {"_doc_id": "b", "symbol": "XAG_USD", "exit_signal": True},
+    ]
+    merged = dedupe_and_merge(existing, new_records)
+    records = frame_to_records(merged)
+
+    by_id = {r["_doc_id"]: r for r in records}
+    assert by_id["a"]["exit_signal"] is None  # not absent — explicitly None
+    assert by_id["b"]["exit_signal"] is True
+
+    # the failure mode this test guards against:
+    assert by_id["a"].get("exit_signal", False) is None  # WRONG — bypasses the default
+    assert (by_id["a"].get("exit_signal") or False) is False  # correct coalesce

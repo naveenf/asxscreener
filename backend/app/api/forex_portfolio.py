@@ -376,7 +376,15 @@ async def get_trade_history(
                 notes=data.get('notes'),
                 strategy=data.get('strategy'),
                 timeframe=data.get('timeframe'),
-                exit_signal=data.get('exit_signal', False),
+                # `or False` (not `.get('exit_signal', False)`) — this endpoint
+                # now reads from the CSV cache, a DataFrame that forces a
+                # uniform schema: once ANY cached trade has exit_signal, every
+                # row gets that column, with None for docs that never had the
+                # field in Firestore. .get(key, default) only applies the
+                # default when the KEY is absent, not when it's present-as-
+                # None, so it returned None here and failed the model's
+                # strict `exit_signal: bool` field.
+                exit_signal=data.get('exit_signal') or False,
                 exit_reason=data.get('exit_reason'),
                 current_price=metrics['current_price'],
                 gain_loss_aud=metrics['gain_loss_aud'] if data.get('status') == 'OPEN' else None,
