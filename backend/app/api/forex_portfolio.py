@@ -496,6 +496,7 @@ async def get_trade_analytics(
         period_end_dt   = date.fromisoformat(roi_end)
         transfers_from  = (period_start_dt + timedelta(days=1)).isoformat()
         fund_transfers  = OandaPriceService.get_fund_transfers(transfers_from, roi_end)
+        financing_charges = OandaPriceService.get_financing_charges(roi_start, roi_end)
 
         if starting_balance_aud == 0 and current_balance_aud > 0:
             # current_balance = starting_balance + net_pnl + deposits_in_period
@@ -666,18 +667,39 @@ async def get_trade_analytics(
         }
         period_breakdown = period_breakdowns.get(period or 'monthly', {})
 
-        # 7b. Month-on-month % gain/loss (running balance walk, chronological)
+        # 7b. Month-on-month % gain/loss (running balance walk, chronological).
+        # Matches the Portfolio Balance chart's running total (PortfolioBalance.jsx):
+        # deposits/withdrawals are folded into the running balance in the bucket
+        # they land, same as the chart draws them. A transfer is excluded from
+        # that month's OWN return (it isn't trading P&L) but raises the base
+        # for every subsequent month, same as the chart's cumulative curve.
+        # Financing charges ARE trading-adjacent cost (Oanda debits/credits the
+        # account for holding positions overnight), so — unlike a deposit —
+        # they're folded into the return itself, not just the base. Confirmed
+        # against a live Oanda statement Aug 2026: trade P&L alone overstated
+        # the account's real monthly change by the financing amount.
         avg_monthly_pct = 0
         monthly_buckets = period_breakdowns['monthly']
+        deposits_by_month: dict = {}
+        for tf in fund_transfers:
+            key = tf["date"].isoformat()[:7]
+            deposits_by_month[key] = deposits_by_month.get(key, 0.0) + tf["amount"]
+        financing_by_month: dict = {}
+        for fc in financing_charges:
+            key = fc["date"].isoformat()[:7]
+            financing_by_month[key] = financing_by_month.get(key, 0.0) + fc["amount"]
         if monthly_buckets and starting_balance_aud > 0:
             running_balance = starting_balance_aud
             monthly_pcts = []
             for bucket in sorted(monthly_buckets.keys()):
                 bucket_pnl = monthly_buckets[bucket]['pnl']
-                pct = (bucket_pnl / running_balance * 100) if running_balance > 0 else 0
+                bucket_financing = financing_by_month.get(bucket, 0.0)
+                bucket_change = bucket_pnl + bucket_financing
+                pct = (bucket_change / running_balance * 100) if running_balance > 0 else 0
                 monthly_buckets[bucket]['pnl_pct'] = round(pct, 2)
+                monthly_buckets[bucket]['financing'] = round(bucket_financing, 2)
                 monthly_pcts.append(pct)
-                running_balance += bucket_pnl
+                running_balance += bucket_change + deposits_by_month.get(bucket, 0.0)
             avg_monthly_pct = sum(monthly_pcts) / len(monthly_pcts) if monthly_pcts else 0
         summary['avg_monthly_pct'] = round(avg_monthly_pct, 2)
 
