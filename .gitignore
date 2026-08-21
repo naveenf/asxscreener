@@ -71,6 +71,7 @@ data/processed/
 data/app.db
 data/metadata/stock_list_backup_*.json
 data/metadata/stock_list_test*.json
+data/cache/
 
 # Debug and test scripts
 debug_exit.py

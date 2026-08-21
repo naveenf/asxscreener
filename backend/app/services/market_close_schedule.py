@@ -29,21 +29,41 @@ BLOCK_MINUTES_BEFORE = 65
 CLOSE_MINUTES_BEFORE = 60
 
 
+_HOLIDAYS_CACHE_TTL = timedelta(hours=24)
+_holidays_cache: Dict[str, Optional[object]] = {"data": None, "fetched_at": None}
+
+
 def fetch_holidays() -> List[dict]:
     """
-    Fetch the market_holidays document from Firestore.
+    Fetch the market_holidays document from Firestore, cached in-memory for
+    _HOLIDAYS_CACHE_TTL. This is called every ~5 minutes by the pre-close cron
+    job (see run_preclose_check) but holidays are static reference data that
+    essentially never changes intra-day — refetching every cycle was 288
+    avoidable Firestore reads/day for one document that's usually unchanged.
+
     Returns a list of holiday dicts: {date, label, affects}.
-    Returns [] on any error (Firestore unavailable, doc missing, etc.).
+    On a failed refresh, serves the last known-good cached value instead of
+    silently returning [] — treating a transient Firestore error as "no
+    holidays" could make the pre-close job trade through an actual holiday.
+    Returns [] only if there is no cached value yet AND the fetch fails.
     """
+    now = datetime.now(timezone.utc)
+    fetched_at = _holidays_cache["fetched_at"]
+    if fetched_at is not None and (now - fetched_at) < _HOLIDAYS_CACHE_TTL:
+        return _holidays_cache["data"]
+
     try:
         from ..firebase_setup import db
         doc = db.collection("config").document("market_holidays").get()
-        if not doc.exists:
-            return []
-        data = doc.to_dict()
-        return data.get("holidays", [])
+        holidays = doc.to_dict().get("holidays", []) if doc.exists else []
+        _holidays_cache["data"] = holidays
+        _holidays_cache["fetched_at"] = now
+        return holidays
     except Exception as e:
-        logger.warning(f"fetch_holidays: could not read Firestore: {e}")
+        if _holidays_cache["data"] is not None:
+            logger.warning(f"fetch_holidays: refresh failed, serving stale cache: {e}")
+            return _holidays_cache["data"]
+        logger.warning(f"fetch_holidays: could not read Firestore, no cache available: {e}")
         return []
 
 

@@ -146,6 +146,7 @@ from ..models.forex_portfolio_schema import ForexPortfolioItemCreate, ForexPortf
 from ..config import settings
 from ..services.portfolio_monitor import PortfolioMonitor
 from ..services.oanda_price import OandaPriceService
+from ..services.trade_cache import get_forex_trades_cached
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/forex-portfolio")
@@ -315,21 +316,24 @@ async def get_trade_history(
     - strategy: Filter by specific strategy
     """
     try:
-        portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
+        # Local per-user cache, delta-synced from Firestore by updated_at —
+        # avoids re-reading the entire trade history on every load regardless
+        # of the filters applied below. Shared with analytics/backfill. See
+        # trade_cache.py.
+        cache_dir = settings.DATA_DIR / 'cache'
+        cached_trades = get_forex_trades_cached(email, db, cache_dir)
 
-        # Build query - only filter by status if explicitly specified (not None)
-        query = portfolio_ref
+        # Apply status/symbol/strategy filters client-side (was Firestore-side)
+        filtered = cached_trades
         if status:
-            query = query.where(filter=FieldFilter('status', '==', status))
+            filtered = [t for t in filtered if t.get('status') == status]
         if symbol:
-            query = query.where(filter=FieldFilter('symbol', '==', symbol))
+            filtered = [t for t in filtered if t.get('symbol') == symbol]
         if strategy:
-            query = query.where(filter=FieldFilter('strategy', '==', strategy))
-            
-        docs = query.stream()
+            filtered = [t for t in filtered if t.get('strategy') == strategy]
 
         # Materialise docs so we can pre-fetch live prices in one batch call
-        all_docs = [(doc.id, doc.to_dict()) for doc in docs]
+        all_docs = [(t['_doc_id'], t) for t in filtered]
 
         forex_data = get_forex_data()
         signals = forex_data.get('signals', [])
@@ -412,19 +416,19 @@ async def get_trade_analytics(
     Return comprehensive trade analytics with period breakdown and backtest comparison.
     """
     try:
-        portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
-
-        # We only want CLOSED trades for analytics
-        query = portfolio_ref.where(filter=FieldFilter('status', '==', 'CLOSED'))
-        docs = query.stream()
+        # Local per-user cache, delta-synced from Firestore by updated_at —
+        # avoids re-reading the entire trade history on every load. Cache
+        # holds all statuses (shared with trade-history/backfill endpoints);
+        # analytics only wants CLOSED. See trade_cache.py.
+        cache_dir = settings.DATA_DIR / 'cache'
+        all_trades = get_forex_trades_cached(email, db, cache_dir)
+        closed_trades = [t for t in all_trades if t.get('status') == 'CLOSED']
 
         forex_data = get_forex_data()
         signals = forex_data.get('signals', [])
 
         trades_list = []
-        for doc in docs:
-            data = doc.to_dict()
-
+        for data in closed_trades:
             sell_date_str = data.get('sell_date')
             if not sell_date_str:
                 continue
@@ -1159,15 +1163,21 @@ async def backfill_sell_prices(
     that are missing sell_price (e.g. trades that were closed before the sync fix).
     """
     try:
+        # Candidates are found from the local cache (delta-synced, cheap) —
+        # avoids re-reading every CLOSED trade just to find the handful still
+        # missing sell_price. Only the actual writes below still hit Firestore.
+        cache_dir = settings.DATA_DIR / 'cache'
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
-        closed_docs = list(portfolio_ref.where(filter=FieldFilter('status', '==', 'CLOSED')).stream())
+        cached_trades = get_forex_trades_cached(email, db, cache_dir)
 
         SYNC_START = date(2026, 2, 19)
         backfilled = 0
         skipped = 0
 
-        for doc in closed_docs:
-            data = doc.to_dict()
+        for data in cached_trades:
+            if data.get('status') != 'CLOSED':
+                skipped += 1
+                continue
 
             # Only process trades opened on or after the sync feature launch date
             buy_date_str = data.get('buy_date') or ''
@@ -1208,7 +1218,7 @@ async def backfill_sell_prices(
             except Exception:
                 sell_date_str = data.get('sell_date') or datetime.utcnow().strftime("%Y-%m-%d")
 
-            doc.reference.update({
+            portfolio_ref.document(data['_doc_id']).update({
                 'sell_price': exit_price,
                 'sell_date': sell_date_str,
                 'pnl': ct.get('pnl', 0.0),
@@ -1302,14 +1312,18 @@ async def backfill_close_type(
         raise HTTPException(status_code=403, detail="Admin only")
 
     try:
+        # Same candidate-finding-from-cache approach as backfill-sell-prices.
+        cache_dir = settings.DATA_DIR / 'cache'
         portfolio_ref = db.collection('users').document(email).collection('forex_portfolio')
-        closed_docs = list(portfolio_ref.where(filter=FieldFilter('status', '==', 'CLOSED')).stream())
+        cached_trades = get_forex_trades_cached(email, db, cache_dir)
 
         updated = 0
         skipped = 0
 
-        for doc in closed_docs:
-            data = doc.to_dict()
+        for data in cached_trades:
+            if data.get('status') != 'CLOSED':
+                skipped += 1
+                continue
             if data.get('close_type'):
                 skipped += 1
                 continue
@@ -1319,7 +1333,7 @@ async def backfill_close_type(
                 continue
 
             close_type = OandaPriceService.get_trade_close_type(trade_id)
-            doc.reference.update({'close_type': close_type, 'updated_at': datetime.utcnow()})
+            portfolio_ref.document(data['_doc_id']).update({'close_type': close_type, 'updated_at': datetime.utcnow()})
             updated += 1
             logger.info(f"Backfilled close_type={close_type} for trade {trade_id}")
 
