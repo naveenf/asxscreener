@@ -105,7 +105,10 @@ def pairs_to_close_now(close_pairs, holiday_close_enabled, always_close_pairs=No
 PAIR_LOCK_CONFIGS = {
     # Profit lock: late trigger, moves SL into profit. Protects a large winner
     # from reversing. Followed by a cooldown (spent-momentum guard).
-    "XAG_USD":   {"lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25, "sl_precision": 3},
+    # XAG_USD had a 3R->+2R lock while it ran 5m/RR12. Removed Aug 24, 2026 with
+    # the 15m/RR3.0 migration: the take-profit IS 3R there, so the lock could
+    # never fire before TP. Re-add only with a threshold swept against the new
+    # config — do not restore the 3R values.
     "BCO_USD":   {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3},
     # Breakeven: early trigger, moves SL to a small loss. JP225's 1.5R target
     # leaves no big winner to protect; the pain is the sheer count of full -1R

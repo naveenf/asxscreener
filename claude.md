@@ -57,156 +57,200 @@ asx-screener/
 │       ├── best_strategies.json  # Strategy config map (source of truth)
 │       ├── forex_pairs.json
 │       └── stock_list.json
-├── scripts/
-│   ├── backtest_sma_15m_all_pairs.py      # 15m pair exploration sweep
-│   ├── backtest_noise_filter_sweep.py     # Filter sweep for active pairs
-│   ├── backtest_bco_strategy_compare.py   # BCO config derivation
-│   ├── backtest_jp225_time_filter.py      # JP225 time filter validation
-│   ├── backtest_sma_all_pairs_exit_mode.py # Exit mode validation (SMA20 disabled)
-│   ├── backtest_sma_jpy_pairs.py          # USD_JPY config sweep
-│   ├── backtest_rr_sweep.py               # R:R sweep across all active pairs
-│   ├── backtest_bco_noise_filter_sweep.py # BCO noise filter sweep
-│   ├── backtest_prod_vs_live_comparison.py # Live vs BT comparison for all pairs
-│   └── download_forex.py                  # Data fetcher
+├── scripts/                    # Backtest sweeps — see Documentation Organization
+│   └── download_forex.py       # Data fetcher
 └── docs/analysis/              # Backtest reports
 ```
 
 ---
 
-## Trading Strategies (Active)
+## Trading Strategies
 
-| # | Strategy | Key Indicators | Pairs |
-|---|----------|---------------|-------|
-| 1 | **SMA Scalping** | SMA20/50/100 stack, DI+/DI-, ATR SL floor | XAU, XAG, JP225, NAS100, USD_JPY, BCO, UK100, EUR_USD |
+All 8 active pairs run **SmaScalping** only (SMA20/50/100 stack, DI+/DI-, ATR SL floor).
+Everything else — HeikenAshi, DailyORB, SilverSniper, PVTScalping, NewBreakout — is archived
+in `data/metadata/best_strategies_archived.json` and not running.
 
-All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, PVTScalping, and NewBreakout are archived — see archived table below.
+### Core mechanics
+
+**Entry (LONG):** Price > SMA20/50/100 · DI+ > DI- · DI+ > threshold for N candles · ADX ≥ adx_min · entry not below 2-candle lows
+**Stop loss:** `max(structural_distance, 1×ATR)` — the ATR floor prevents noise-triggered stops.
+**Exit:** Broker-level SL and TP placed on Oanda at entry. A trade closes **only** on SL or TP.
+No trailing exit — SMA20 trailing was validated harmful on every pair (60–89% of trades cut
+short, avg-R collapsing below 0.25R). Do not re-enable `check_exit` for SmaScalping.
+
+### Filter reference
+
+Configured per-pair in `best_strategies.json`.
+
+| Filter | Meaning |
+|--------|---------|
+| `di_persist` | DI must exceed threshold for N consecutive candles. **Timeframe-sensitive** — 2 candles is 30 min on 15m but only 10 min on 5m, so the same value behaves differently. |
+| `adx_min` | ADX floor. |
+| `adx_rising` | ADX must be rising vs the previous candle. |
+| `atr_ratio_min` | ATR ≥ N × its 20-bar average — gates on volatility regime. |
+| `di_slope` | DI must be rising vs 2 candles ago (live: `iloc[-1] > iloc[-3]`). |
+| `avoid_hours` | Block entry during these UTC hours. |
+| `di_spread_min` | Minimum DI+/DI- gap — rejects marginal crossings. |
+| `body_ratio_min` | Minimum candle body/range ratio — rejects dojis. |
 
 ---
 
-**Suspended (live underperformance):** AUD_USD (live WR 20% vs 34.8% BT), USD_CAD (0% WR, Sharpe -0.49), GBP_JPY (live WR 12.5% vs BT 27.8%; 15m BT Sharpe 4.69 base — not yet deployed), EUR_AUD (full dataset Sharpe -0.07 vs BT 4.52; over-fitted on short Dec 2025–Feb 2026 window — suspended Apr 1, 2026).
-**USD_JPY migrated to 15m (Apr 2, 2026):** Full sweep confirmed 15m outperforms 5m — Sharpe 2.85 vs 1.37, MaxDD -8.65% vs -18.63%, Avg-R 0.45 vs 0.18 (trades: `data/backtest_usdjpy_15m_production_trades.csv`). Config: DI>30, RR=3.0, persist=1, avoid_hours=[15–21]; adx_min and di_spread_min removed (no benefit on 15m).
-**NOT deployed:** AU200_AUD (Sharpe 2.10, MaxDD -9.22%).
+## Active Configuration
 
-### SMA Scalping Rules & Gotchas
+Source of truth is `best_strategies.json` (+ `forex_pairs.json` for the pair list). This table
+mirrors it — if they disagree, the JSON wins.
 
-**Core entry (LONG):** Price > SMA20/50/100 · DI+ > DI- · DI+ > threshold for N candles · ADX ≥ adx_min · entry not below 2-candle lows
-**Stop Loss:** `max(structural_distance, 1×ATR)` — ATR floor prevents noise-triggered stops.
-**Exit mechanism:** Broker-level SL and TP orders placed on Oanda at entry — trade closes **only** when SL or TP is hit. SMA20 trailing exit is disabled for all SmaScalping pairs. Backtesting showed SMA20 exit cut 60–89% of trades short before TP, reducing Sharpe by 2–5 points per pair (validated Mar 6, 2026 — see `data/backtest_sma_all_pairs_exit_mode.csv`).
+| Asset | TF | RR | risk | DI> | persist | Other filters | Sharpe | MaxDD% |
+|-------|----|----|------|-----|---------|---------------|--------|--------|
+| XAU_USD | 15m | 3.5 | 1.5% | 35 | 2 | `adx_rising`, `avoid[8,9]` | 6.48 | -7.73 |
+| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `di_slope` | 4.60 † | -6.28 |
+| JP225_USD | 5m | 1.5 | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]` | 5.87 | -5.85 |
+| NAS100_USD | 15m | 3.5 | 1.0% | 35 | 2 | `adx_min=30`, `atr_ratio=1.2`, `di_slope`, `avoid[7,8,20-23]` | 14.36 ‡ | -1.99 |
+| UK100_GBP | 15m | 3.5 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `avoid[15-19]` | 8.45 ‡ | -3.94 |
+| BCO_USD | 15m | 2.5 | 1.0% | 30 | 1 | `adx_min=15`, `atr_ratio=1.0`, `avoid[20-23]` | 1.47 † | -17.91 |
+| EUR_USD | 15m | 6.0 | 1.0% | 25 | 2 | `atr_ratio=1.0`, `avoid[20-23]` | 5.56 ‡ | -10.47 |
+| USD_JPY | 15m | 3.0 | 0.5% | 30 | 1 | `avoid[15-21]` | 2.85 ‡ | -8.65 |
 
-**Optional noise filters** (configured per-pair in `best_strategies.json`):
+† Measured with gapped stops priced at the true post-weekend open. **Not comparable** to the
+other rows, which use the legacy backtester that books every stop at exactly -1R (see the
+gap-pricing warning below). Lower ≠ worse.
+‡ Live performance has diverged from these figures — see *Live divergence* below.
 
-| Filter | Description |
-|--------|-------------|
-| `di_persist` | DI must exceed threshold for N consecutive candles. Use 2 for choppy pairs (JP225, NAS100 15m, UK100, EUR_USD); keep 1 for fast-moving (XAG 5m, BCO). |
-| `adx_min` | ADX floor. JP225 uses 20, NAS100 uses 30. |
-| `adx_rising` | ADX must be rising vs previous candle. XAU uses this. |
-| `atr_ratio_min` | ATR ≥ N × 20-bar average. XAG=1.2 (needs volatile regimes for 12R), NAS100=1.2. |
-| `di_slope` | DI+ must be rising vs 2 candles ago (live: `iloc[-1] > iloc[-3]`). Safe for most pairs. |
-| `avoid_hours` | Block entry during specified UTC hours. XAU=[8,9] (London open), XAG=[14,15,16] (London-NY overlap), NAS100=[7,8,20,21,22,23] (pre-London + late NY + post-NYSE), USD_JPY=[15,16,17,18,19,20,21] (NY open + evening), BCO=[20,21,22,23] (post-NY thin session). |
-| `di_spread_min` | Min DI+/DI- gap — rejects marginal crossings. |
-| `body_ratio_min` | Min candle body/range ratio — rejects doji candles. |
+**Disabled at runtime** via the Settings page (Firestore `config/strategy_overrides`, not the
+JSON): **EUR_USD** and **USD_JPY**, both for sustained negative live returns. Their configs are
+retained above so re-enabling needs no re-derivation.
 
-**R:R sweep findings (Apr 1, 2026 — `data/backtest_rr_sweep.csv`):**
+### Live divergence (as of Aug 2026, 927 trades since Mar 10)
 
-| Pair | Old RR | New RR | Notes |
-|------|--------|--------|-------|
-| XAU_USD | 5.0 | 3.5 | Sharpe improves significantly (5.41→7.96); plateau at 3.5–4.0 |
-| JP225_USD | 5.0 | 1.5 | WR jumps 29%→52%; drawdown risk decreases at lower RR |
-| UK100_GBP | 6.0 | 3.5 | Sharpe nearly unchanged (8.45→8.04); reduces TP distance |
-| NAS100_USD | 3.0 | 2.5 | Marginal Sharpe difference; 2.5 improves trade frequency |
-| EUR_USD | 6.0 | 6.0 | Confirmed optimal — lower values destroy Sharpe |
-| XAG_USD | 12.0 | 12.0 | High-RR tail regime; Sharpe rises monotonically to 11.0–12.0 |
-| BCO_USD | 4.0 | 5.0 | Noise filter sweep Apr 11, 2026: atr_ratio=1.0 + avoid[20-23] added; Sharpe 1.62→2.14, MaxDD -12.42%→-8.78% |
-| USD_JPY | 2.5 | 3.0 | Migrated to 15m Apr 2, 2026; 15m sweep peak at RR=3.0 |
+Backtest Sharpe has consistently over-predicted live results. Live P&L by pair:
+XAU +$3,128 · JP225 +$1,183 · XAG +$1,020 · NAS100 -$89 · EUR_USD -$95 · BCO -$97 ·
+USD_JPY -$302 · UK100 -$460.
 
-**Live stop-move mechanism (XAG_USD + BCO_USD lock Apr 24, 2026; JP225_USD breakeven Aug 2026):**
-- Config lives in `PAIR_LOCK_CONFIGS` dict in `tasks.py` — add an entry there to enable a stage on any new pair. Two independent stage types, either or both configurable per pair; decision logic is the pure function `decide_stop_move()` in `tasks.py` (tested in `backend/tests/test_stop_stage_decision.py`):
-  - **Profit lock** (`lock_at_r`/`lock_to_r`): late trigger, moves SL into profit, protects a large winner from reversing. Sets `lock_fired` on the trade doc and starts a cooldown (spent-momentum guard — blocks new entries on that pair for `cooldown_min`).
-  - **Breakeven** (`be_at_r`/`be_to_r`): early trigger, moves SL to a small loss (near entry). Caps the frequency of full -1R losses on pairs with a small TP where there's no big winner to protect. Sets `be_fired`, no cooldown — nothing was locked in, so blocking re-entry has no rationale.
-- Firestore state per pair: `config/lock_state_{symbol}` → `{ cooldown_until: ISO_timestamp }` (merge=True) — only written for pairs with `cooldown_min` set
-- XAG_USD: Lock 3R→+2R, cooldown=25 min (5×5m candles). Rationale: 3 trades reached 3–8R then reversed to -1R; lock rescues at +2R without affecting TP-bound trades.
-- BCO_USD: Lock 2R→+1R, cooldown=90 min (6×15m candles). BT: Sharpe 1.67→2.44, ROI +12pp. 20 trades rescued per dataset from 2R reversals.
-- JP225_USD: Breakeven 0.25R→-0.1R, no cooldown (Aug 2026). BT on 5m, May–Aug 2026 window: Sharpe 2.53→5.63, ROI +23.6%→+44.8%, MaxDD -6.83%→-2.28%, full -1R losses 100%→15% of trades, positive in all 4 months tested. Rationale: JP225's target is only 1.5R, so there's no big winner to protect the way XAG/BCO's lock does — the pain is the sheer count of trades reaching the full -1R stop, which breakeven caps early instead. See `scripts/backtest_breakeven_sweep.py` / `data/backtest_breakeven_sweep.csv`.
-- Do NOT apply lock at lower thresholds for XAG (1.5R or 2R on 5m) — re-entries catch continuation; cooldown counterproductive below 3R on 5m
-- XAU, NAS100, UK100: lock sweep showed no improvement — all configs worse than baseline; do not add
-- **Breakeven does NOT generalise** — swept across all 8 active pairs (Aug 2026, `data/backtest_breakeven_sweep.csv`): only 3/8 pairs beat baseline on both Sharpe and ROI across the 20-config grid (JP225 16/20, XAG 7/20, EUR_USD 8/20 — but EUR_USD's baseline is already broken, see below). XAU, UK100, USD_JPY: 0/20. NAS100: 3/20. BCO: 0/20. Do not add breakeven to any pair without re-running this sweep — do not extrapolate from JP225.
-- **Exploratory, NOT applied to production** (Aug 2026 analysis, scripts/data since removed — no improvement found): (1) A retuned XAG lock (3.5R→+2.45R vs the live 3.0R→+2.0R) scored higher on a 3.3-month 5m window (Sharpe 3.25 vs 2.54) but was not adopted — too little data to justify changing a working live mechanism. (2) Shortening XAG's RR from 12 to 3–6 with a scaled lock was evaluated as an alternative to the hard-to-hold 12R target; not adopted — the 12R+lock config remains superior on Sharpe/ROI, the short-RR version was only more "comfortable" to hold. (3) A manual-SL-intervention impact study (comparing live trades against untouched signal SL/TP) found user-side early exits cost XAG an estimated $1.2k–$4.9k over 5 months and were roughly neutral-to-positive on XAU — informational only, no code change.
-- Weekend behavior: cooldown timestamps expire naturally; no bleed into Monday open
+Root cause is **execution, not signal**: realised payoff (avg win ÷ avg loss) sits at ~1.5 on
+every pair regardless of the configured R:R, because winners get closed manually well before
+TP. The higher the target, the less often it is reached — JP225's 1.5R target is hit on 47% of
+wins, XAG's old 12R on 1.5%. **The pairs whose targets match actual holding behaviour are the
+profitable ones.** Set `target_rr` to what will actually be held, not to what maximises a
+backtest.
 
-**Weekend flat (BCO_USD only, Aug 24, 2026):**
-- Config lives in `WEEKEND_FLAT_CONFIGS` in `tasks.py`; window decided by the pure function `should_flatten_for_weekend()` (tested in `backend/tests/test_weekend_flat_decision.py`). `run_weekend_flat_checks()` runs before signal execution: adds the pair to `PRECLOSE_BLOCKED_PAIRS` and closes any OPEN trade at market via `OandaPriceService.close_trade()` (Oanda `TradeClose`). Trades stamped `weekend_flat_closed=True`.
-- Window: **Friday ≥19:00 UTC through end of Sunday UTC.** 19:00 is deliberate — the FX week closes 17:00 America/New_York, which is 21:00 UTC under EDT and 22:00 UTC under EST, so a 19:00 cutoff keeps a 2–3h buffer in both regimes and the rule needs **no DST handling**. Do not "tighten" this to a later hour; it will drift into the close twice a year.
-- Rationale: a broker SL cannot protect across the Sunday re-open gap — it fills at the gapped open, not the stop price. Caps BCO's worst trade at **-1.24R vs -4.27R** held. Paired with RR 2.5: Sharpe 1.37→1.47, ROI 42.1%→46.7%, 9/11 months positive. Cost: MaxDD -11.4%→-17.9%.
-- **The tail cap is the justification, not the Sharpe.** The Sharpe surface across RR is spiky (RR 2.0 flat = 0.26, RR 2.5 flat = 1.47, RR 5.0 flat = 0.30) — that is noise. The worst-trade improvement holds at every RR.
-- ⚠️ **Do NOT extend to another pair on gap size alone.** Weekend gaps are large on every pair (median 1.23–2.73 ATR against a 1×ATR stop floor), but they cut **both ways**, and weekend-held trades have been the *best* trades on 7 of 8 pairs (XAG +5.48 avg R, UK100 +2.38, EUR_USD +1.75, XAU +1.66, BCO +1.29, vs non-weekend trades at -0.69 to +0.88). USD_JPY is the only pair where weekend holds lose (-0.16R), and it is already disabled. The deciding number for any new pair is **average R of weekend-held trades**, from `data/weekend_held_trade_isolation.csv` — not the gap magnitude. Flatting at BCO's old RR 5.0 was strongly harmful (Sharpe 1.26→0.30).
-- ⚠️ **Backtest gap-pricing bug:** every other script in `scripts/` books a stopped-out trade at exactly -1R, because it tests bar high/low against the SL price. A weekend gap opens *past* the stop, so real fills are worse (worst observed: NAS100 -2.55R, BCO -2.16R, EUR_USD -1.94R, XAU -1.45R). Every Sharpe recorded elsewhere in this file is therefore mildly optimistic. `scripts/backtest_weekend_gap_impact.py` prices gaps correctly — copy its `is_gap_bar` handling into any future work on stops or tail risk.
+---
 
-**BCO_USD noise filter gotchas (Apr 11, 2026 sweep — `data/backtest_bco_noise_filter_sweep.csv`):**
-- `avoid[0-5]` (pre-London) is harmful — blocks London open where BCO trends
-- `adx_min >= 20` destroys edge (Sharpe -0.83 at adx=25)
-- `atr_ratio=1.5` is destructive — too tight, WR collapses to 4.5%
-- `di_spread=10` is inert — DI>30 already enforces this implicitly
+## Stop-Move Stages
 
-**⚠️ Do NOT apply:**
-- `sma_ordered` to NAS100 or XAG — destroys Sharpe (NAS100: 2.67→-1.04). SMAs lag on fast moves.
-- `di_slope` to USD_JPY — harmful (-1.02 Sharpe).
-- `di_persist=2` to USD_JPY — harmful (Sharpe 1.69→0.89, MaxDD balloons to -18.4%).
-- `di_threshold` above 30 for USD_JPY — DI spread too tight on JPY; di=35 produces negative ROI.
-- `adx_min` above 15 for USD_JPY — adx_min=20+ over-filters (Sharpe 1.69→1.15); sweet spot is 15.
+Config: `PAIR_LOCK_CONFIGS` in `tasks.py`. Decision logic is the pure function
+`decide_stop_move()` (tested in `backend/tests/test_stop_stage_decision.py`). Two stage types,
+either or both per pair. Firestore state: `config/lock_state_{symbol}` → `{cooldown_until}`,
+written only for pairs with `cooldown_min`.
+
+- **Profit lock** (`lock_at_r`/`lock_to_r`) — late trigger, moves SL into profit to protect a
+  large winner from reversing. Sets `lock_fired`, starts a cooldown blocking new entries
+  (spent-momentum guard).
+- **Breakeven** (`be_at_r`/`be_to_r`) — early trigger, moves SL to a small loss. For pairs with
+  a small TP and no fat tail to protect, where the pain is the *count* of full -1R losses. Sets
+  `be_fired`, no cooldown — nothing was locked in, so blocking re-entry has no rationale.
+
+| Pair | Stage | Justification |
+|------|-------|---------------|
+| BCO_USD | Lock 2R→+1R, cooldown 90 min | Sharpe 1.67→2.44; ~20 trades per dataset rescued from 2R reversals |
+| JP225_USD | Breakeven 0.25R→-0.1R, no cooldown | Sharpe 2.53→5.63, MaxDD -6.83%→-2.28%; full -1R losses cut from 100%→15% of trades |
+
+**Neither generalises.** Breakeven was swept across all 8 pairs
+(`data/backtest_breakeven_sweep.csv`): only JP225 clears convincingly (16/20 configs). XAU,
+UK100, USD_JPY: 0/20. BCO: 0/20. The lock sweep showed no improvement for XAU, NAS100 or UK100.
+Re-run the sweep before adding either to a new pair; do not extrapolate.
+
+**XAG has no lock.** Its 3R→+2R lock was removed with the 15m/RR3.0 migration — the take-profit
+*is* 3R there, so the lock could never fire. Re-add only with a threshold swept against the
+current config.
+
+---
+
+## Weekly Pre-Close
+
+Positions are flattened before the weekly close by `run_preclose_check()` in `tasks.py`
+(scheduled every 5 min in `main.py`), driven by `market_close_schedule.py`:
+
+- `WEEKLY_CLOSE_UTC` — per-pair Friday close time (most pairs 21:00 UTC; UK100 16:30; JP225 06:00)
+- Entries blocked from **65 min** before close, positions closed from **60 min** before
+- Holiday-aware, and each trade can opt out with `keep_through_close=True`
+
+**Global toggle:** `config/trade_settings` → `holiday_close_enabled` (default True). When off,
+ordinary pre-close flattening is deferred so positions can be carried through a holiday —
+**entries stay blocked either way**.
+
+**`ALWAYS_CLOSE_PAIRS` (`tasks.py`) overrides that toggle.** Currently `{"BCO_USD"}`. Decision
+logic is the pure function `pairs_to_close_now()` (tested in
+`backend/tests/test_preclose_always_close.py`). Per-trade `keep_through_close` still wins.
+
+**Why BCO is forced:** its weekend gaps are **2.73 ATR at the median** against a 1×ATR stop
+floor, and 61% of weekends gap more than 2 ATR. A broker stop fills at the gapped open, not the
+stop price, so the position is unprotected regardless of the toggle. Live cost: the Apr 12 /
+Jun 7 / Aug 2 2026 gaps took **-$639 across three trades** against a ~-$50 typical loss. Worst
+trade **-4.27R held vs -1.24R closed**. The toggle being off is why the Jun 7 and Aug 2 losses
+happened despite the pre-close job existing since Apr 17, 2026.
+
+⚠️ **Do NOT extend `ALWAYS_CLOSE_PAIRS` on gap size alone.** Gaps are large on every pair
+(median 1.23–2.73 ATR) but they cut **both ways**. Weekend-held trades are the *best* trades on
+7 of 8 pairs (XAG +5.48 avg R, UK100 +2.38, EUR_USD +1.75, XAU +1.66, BCO +1.29, vs non-weekend
+trades at -0.69 to +0.88); USD_JPY is the only other pair where holding loses (-0.16R). The
+deciding number is **average R of weekend-held trades**
+(`data/weekend_held_trade_isolation.csv`), never the gap magnitude.
+
+⚠️ **`OandaPriceService.close_trade()` catches its own exceptions** (including 404) and returns
+`None` on failure, or a response containing `orderRejectTransaction` on rejection. Callers in
+`trade_closer.py` and `_close_open_positions_for_pair` depend on that contract — do not add a
+second `close_trade` or change it to raise.
+
+
+## Methodology Warnings
+
+**Gap-pricing bug.** Every script in `scripts/` except `backtest_weekend_gap_impact.py` and
+`backtest_xag_15m_filter_sweep.py` books a stopped-out trade at exactly -1R, because it tests bar
+high/low against the SL price. A weekend gap opens *past* the stop, so real fills are worse
+(observed: NAS100 -2.55R, BCO -2.16R, EUR_USD -1.94R, XAU -1.45R). Every Sharpe in this file not
+marked † is therefore mildly optimistic. Copy the `is_gap_bar` handling for any work on stops or
+tail risk.
+
+**Promotion bar.** This repo has repeatedly promoted configs on short windows that then failed
+live — EUR_AUD (BT Sharpe 4.52 → -0.07 full dataset), NAS100 (14.36 on 15 trades → negative
+live), UK100 (8.45 → -$460 live). Before deploying a swept config, require: **≥60 trades**,
+**positive mean R in both halves** of a split-half out-of-sample check, and a **contiguous
+plateau** of passing neighbours rather than an isolated peak. When a sweep tests hundreds of
+cells, the top row is a hypothesis, not a result — confirm it with a per-parameter marginal
+analysis that holds up independently of the ranking.
+
+---
+
+## ⚠️ Do NOT Apply
+
+- `sma_ordered` to NAS100 or XAG — destroys Sharpe (NAS100 2.67→-1.04). SMAs lag on fast moves.
+- `di_slope`, `di_persist=2`, `di_threshold`>30, or `adx_min`>15 to **USD_JPY** — all harmful;
+  DI spread is too tight on JPY.
+- `di_persist=2` to XAG **on 5m** — kills the edge (+86%→+10%). This is 5m-specific: XAG on 15m
+  and NAS100 on 15m both run persist=2 in production, where 2 candles is 30 min rather than 10.
 - `rsi_filter` on any 5m pair — adds noise.
-- `di_persist=2` to XAG (5m) — kills edge (XAG: +86%→+10%). Note: NAS100 15m uses persist=2 in production — the restriction was validated on 5m only.
-- SMA20 trailing exit — validated harmful on all tested pairs; 60–89% of trades exit early, avg-R collapses to <0.25R vs 0.96–2.44R with fixed TP. Do not re-enable `check_exit` for SmaScalping in `portfolio_monitor.py` or `oanda_trade_service.py`.
-- Ratcheting SL (1R→0.5R lock, 2R→1R lock) — tested Apr 24, 2026 across all 8 pairs; all worse. XAG most harmed (Sharpe 5.55→-0.11). Cutting early into fixed-RR structure destroys the fat-tail wins that justify low WR. Do not re-test. Note: JP225's Aug 2026 breakeven stage (0.25R→-0.1R) is a related-but-distinct mechanism — it moves to a small *loss* very early rather than locking *profit*, and only helps on small-TP pairs with no fat tail to protect. It does not contradict this finding; see the breakeven generalisation sweep above before applying it elsewhere.
-- SMA20-triggered trailing SL (5c and 10c lookback) — tested Apr 24, 2026; all pairs worse. Same root cause as ratcheting: early exits cut right tail.
+- `adx_min ≥ 20` or `atr_ratio = 1.5` to BCO — the first destroys the edge (Sharpe -0.83 at 25),
+  the second collapses WR to 4.5%. `avoid[0-5]` also harmful (blocks the London open where BCO
+  trends). `di_spread=10` is inert — DI>30 already implies it.
+- **Ratcheting SL** (1R→0.5R, 2R→1R) and **SMA20-triggered trailing SL** — tested across all 8
+  pairs, all worse (XAG 5.55→-0.11). Cutting early into a fixed-RR structure destroys the
+  fat-tail wins that justify a low win rate. Do not re-test. JP225's breakeven stage is distinct:
+  it moves to a small *loss* very early rather than locking *profit*, and only helps where there
+  is no fat tail to protect.
 
 ---
 
-## Active Strategy Configuration (Apr 24, 2026)
+## Not Running
 
-8 active pairs, all running SmaScalping. EUR_AUD suspended Apr 1, 2026. BCO retuned Apr 11 (atr_ratio=1.0, avoid[20-23], RR=5.0). USD_JPY risk_pct halved to 0.5% Apr 11 (JPY regime shift — temporary). XAG_USD + BCO_USD live lock mechanism added Apr 24 (see PAIR_LOCK_CONFIGS in tasks.py). Other strategies archived in `data/metadata/best_strategies_archived.json`.
+**Suspended for live underperformance:** AUD_USD (live WR 20% vs BT 34.8%), USD_CAD (0% live WR),
+GBP_JPY (live WR 12.5% vs BT 27.8%), EUR_AUD (full-dataset Sharpe -0.07 vs BT 4.52 — overfitted
+to a short Dec 2025–Feb 2026 window).
+**Never deployed:** AU200_AUD (BT Sharpe 2.10).
+**Archived strategies:** all non-SmaScalping configs, preserved in `best_strategies_archived.json`.
 
-**Active pairs** (`best_strategies.json` + `forex_pairs.json`):
-
-| Asset | Strategy | TF | Sharpe | ROI% | WR% | MaxDD% | risk_pct | RR | Notes |
-|-------|----------|----|--------|------|-----|--------|----------|----|-------|
-| UK100_GBP | SmaScalping | 15m | 8.45 | 42.7% | 42.1% | -3.94% | 1.0% | 3.5 | |
-| XAU_USD | SmaScalping | 15m | 6.48 | 39.9% | 35.5% | -7.73% | 1.5% | 3.5 | |
-| XAG_USD | SmaScalping | 5m | 6.30 | 115.7% | 26.5% | -6.79% | 1.0% | 12.0 | Lock 3R→+2R, cooldown=5c (Apr 24, 2026) |
-| JP225_USD | SmaScalping | 5m | 5.87 | 52.5% | 35.0% | -5.85% | 1.0% | 1.5 | Breakeven 0.25R→-0.1R, no cooldown (Aug 2026) |
-| EUR_USD | SmaScalping | 15m | 5.56 | 56.2% | 29.5% | -10.47% | 1.0% | 6.0 | Monitor: all profit in Jan 2026, all other months negative |
-| NAS100_USD | SmaScalping | 15m | 14.36 | 34.1% | 66.7% | -1.99% | 1.0% | 3.5 | Retuned Jun 9, 2026: DI>35, adx=30, atr=1.2, RR=3.5, add hour 20. Low trade count (15/3mo) — monitor closely. |
-| BCO_USD | SmaScalping | 15m | 1.47 | 46.7% | 34.7% | -17.91% | 1.0% | 2.5 | Lock 2R→+1R, cooldown=6c. RR 5.0→2.5 + weekend flat (Aug 24, 2026). Sharpe measured with gapped stops priced honestly — not comparable to the 2.44 it replaces |
-| USD_JPY | SmaScalping | 15m | 2.85 | 50.54% | 34.5% | -8.65% | 0.5% | 3.0 | Regime broken since Feb 2026 — 3 consecutive negative months |
-
-**New 15m SmaScalping configs (added Mar 27, 2026):**
-
-| Asset | DI> | RR | persist | Filters | Trades | Notes |
-|-------|-----|-----|---------|---------|--------|-------|
-| UK100_GBP | 35 | 3.5 | 2 | `atr_ratio=1.2, avoid_hours=[15,16,17,18,19]` | 19 | Replaces PVTScalping 1h (Sharpe 2.99). Blocks post-UK-close dead volume. Low trade count — monitor closely. RR reduced from 6.0 → 3.5 (Apr 1, 2026 sweep). |
-| EUR_USD | 25 | 6.0 | 2 | `atr_ratio=1.0, avoid_hours=[20,21,22,23]` | 44 | Strongest new addition — 44 trades, clean 2-filter config. Blocks NY/pre-London dead zone. MaxDD -10.47% elevated — use 1% risk. RR=6.0 confirmed optimal. |
-| NAS100_USD | 35 | 3.5 | 2 | `di_slope=true, adx_min=30, atr_ratio=1.2, avoid_hours=[7,8,20,21,22,23]` | 15 | Retuned Jun 9, 2026 after live underperformance (Sharpe 1.22, WR 32.7% on Mar–Jun 2026 data). Filter sweep: DI>35, adx=30, atr=1.2, RR=3.5 — profitable every month in BT. Low trade count — monitor closely. |
-
-**Archived (configs preserved in `best_strategies_archived.json`, not running):**
-
-| Asset | Strategy | Sharpe | Reason archived |
-|-------|----------|--------|-----------------|
-| UK100_GBP | PVTScalping | 2.99 | Replaced by SmaScalping 15m (Sharpe 8.45) Mar 27, 2026 |
-| NAS100_USD | NewBreakout | 3.36 | Replaced by SmaScalping 15m (Sharpe 4.31) Mar 27, 2026 — never triggered in live trading |
-| XAG_USD | PVTScalping | 4.95 | Reducing strategy clutter |
-| XAG_USD | DailyORB | 1.99 | Reducing strategy clutter |
-| XAG_USD | SilverSniper | 1.53 | Reducing strategy clutter |
-| NAS100_USD | PVTScalping | 6.24 | Replaced by NewBreakout, then SmaScalping 15m |
-| NAS100_USD | SmaScalping (5m) | 3.28 | Replaced by NewBreakout Mar 14 (JP225 correlation), then back to SmaScalping 15m Mar 27 |
-| XAU_USD | HeikenAshi | 2.35 | Reducing strategy clutter |
-| USD_CHF | NewBreakout | 1.94 | Low Sharpe; insufficient live data |
-| AUD_USD | SmaScalping | — | Suspended: live WR 20% vs BT 34.8% |
-| USD_CAD | SmaScalping | — | Suspended: 0% live WR, Sharpe -0.49 |
-| GBP_JPY | SmaScalping | — | Suspended 5m: live WR 12.5% vs BT 27.8%. 15m BT Sharpe 4.69 (base) / 6.57 (filtered) — not yet deployed, insufficient live data. |
-| EUR_AUD | SmaScalping | 4.52 (BT only) | Suspended Apr 1, 2026: full dataset Sharpe -0.07 vs BT 4.52. Over-fitted on short Dec 2025–Feb 2026 window. |
-| USD_JPY | SmaScalping 5m | 1.37 (live BT) | Replaced by 15m Apr 2, 2026: 5m Sharpe 1.37, MaxDD -18.63%. 15m Sharpe 2.85, MaxDD -8.65%. |
-
-**Suspended (Mar 3, 2026):** AUD_USD, USD_CAD suspended for live underperformance. BCO_USD re-added Mar 19, 2026. JP225 HeikenAshi archived Mar 3, 2026. EUR_AUD suspended Apr 1, 2026.
-
+`best_strategies.json` and `forex_pairs.json` must stay in sync — a pair present in
+`forex_pairs.json` without a `best_strategies.json` entry silently runs a `TrendFollowing`
+fallback that the Settings page cannot toggle.
 ---
 
 
@@ -222,11 +266,51 @@ All 8 active pairs run SmaScalping only. Heiken Ashi, Daily ORB, Silver Sniper, 
 
 - When adding strategies: run backtest sweep → save CSV to `data/` → update `best_strategies.json` + `forex_pairs.json` → update CLAUDE.md active table
 
-**Active backtest data:** `data/backtest_sma_15m_all_pairs.csv`, `data/backtest_noise_filter_sweep.csv`, `data/backtest_sma_nas100_15m_filter_sweep.csv`, `data/backtest_bco_strategy_compare.csv`, `data/backtest_sma_jpy_pairs.csv`, `data/backtest_sma_all_pairs_exit_mode.csv`, `data/backtest_rr_sweep.csv`, `data/backtest_usdjpy_15m_production_trades.csv`, `data/backtest_bco_noise_filter_sweep.csv`, `data/backtest_prod_full.csv`, `data/backtest_nas100_investigation.csv`, `data/backtest_breakeven_sweep.csv`, `data/backtest_bco_rr_sweep.csv`, `data/backtest_weekend_gap_impact.csv`, `data/weekend_held_trade_isolation.csv`
+**Adding or changing a strategy:** run the sweep → save CSV to `data/` → update
+`best_strategies.json` (+ `forex_pairs.json` if new) → update the Active Configuration table
+above. Clear the superseded rows rather than appending; this file describes the current system,
+not its history. Git carries the history.
 
-**Scripts:** `scripts/backtest_bco_noise_filter_sweep.py` (BCO filter sweep), `scripts/backtest_prod_vs_live_comparison.py` (live vs BT comparison for all pairs), `scripts/backtest_nas100_investigation.py` (NAS100 filter sweep — re-run when more data arrives), `scripts/backtest_breakeven_sweep.py` (breakeven-stage sweep across all 8 active pairs — re-run before adding breakeven to any pair beyond JP225), `scripts/backtest_bco_rr_sweep.py` (BCO R:R sweep with split-half OOS check), `scripts/backtest_weekend_gap_impact.py` (weekend gap impact, prices gapped stops at the true open — the only script that does)
+**Sweep scripts** (`scripts/`):
 
-**Last Updated:** Aug 24, 2026 — BCO_USD RR 5.0→2.5 + weekend flat (Friday ≥19:00 UTC through Sunday). Driven by live trade history (927 trades, Mar–Aug 2026): realised payoff ratio sits at ~1.5 on every pair regardless of configured R:R, because high targets are almost never reached (XAG 12R reached on 1.5% of wins, EUR_USD 6R on 0.0%, BCO 5R on 7.3%, vs JP225's 1.5R on 47.3%). Pairs whose targets match actual holding behaviour (XAU, JP225) are the profitable ones. BCO at RR 2.5: Sharpe 1.37→1.47, ROI 42.1%→46.7%, 9/11 months positive, worst trade -4.27R→-1.24R; MaxDD -11.4%→-17.9%. Implemented via `WEEKEND_FLAT_CONFIGS` + `should_flatten_for_weekend()` + `run_weekend_flat_checks()` in `tasks.py` and `OandaPriceService.close_trade()`; tested in `backend/tests/test_weekend_flat_decision.py`. Two findings worth not re-deriving: (1) weekend flat does NOT generalise — weekend-held trades are the best trades on 7 of 8 pairs; BCO qualifies only in combination with the 2.5R target. (2) A gap-pricing bug affects every other backtest script (stops booked at exactly -1R when real gapped fills reach -2.55R). Next up, not yet deployed: XAG_USD looks stronger on 15m at a low R:R than on its live 5m/12R config, but that is a timeframe migration — its filters were fitted on 5m and need re-sweeping on 15m before any change. EUR_USD was also checked across RR 1.0–6.0 and no config survives a split-half OOS check (its only positive month is Jan 2026), which confirms the existing suspension. Previous: Aug 21, 2026 — JP225_USD breakeven stop stage added (0.25R→-0.1R, no cooldown): Sharpe 2.53→5.63, ROI +23.6%→+44.8%, MaxDD -6.83%→-2.28% on 5m May–Aug 2026 data. Implemented via `decide_stop_move()` in `tasks.py` (generalises `run_pair_lock_checks`/`check_pair_lock_cooldowns` to support both profit-lock and breakeven stages per pair), tested in `backend/tests/test_stop_stage_decision.py`. Swept breakeven across all 8 active pairs first — does not generalise (only JP225, XAG, EUR_USD show any benefit; XAG's is not robust enough to adopt, EUR_USD's baseline is already broken). Also explored and NOT applied: a retuned XAG lock (3.5R→+2.45R), a shortened XAG RR (3–6 instead of 12) as an easier-to-hold alternative, and a manual-SL-intervention cost study on XAG/XAU/JP225 — none changed production config; see git history for the analysis if needed. Previous: June 9, 2026 — NAS100_USD retuned after live underperformance (Sharpe 1.22 on Mar–Jun 2026 window). New config: DI>35, adx_min=30, atr_ratio=1.2, RR=3.5, avoid_hours add hour 20. BT: Sharpe 14.36, WR 66.7%, ROI +34.1%, MaxDD -1.99%, profitable every month (Mar–Jun 2026). Trade count low (15/3mo) — monitor 4–6 weeks before further tuning. Also fixed: di_slope lookback mismatch between backtest scripts (was comparing to i-1, now i-2 to match live detector's `iloc[-1] > iloc[-3]`). Full sweep: `data/backtest_nas100_investigation.csv`, script: `scripts/backtest_nas100_investigation.py`. Previous: April 24, 2026 — XAG_USD + BCO_USD live lock mechanism implemented (BCO: Lock 2R→+1R, cooldown=90 min; Sharpe 1.67→2.44). Lock functions generalised into `run_pair_lock_checks` / `check_pair_lock_cooldowns` in `tasks.py`; new pairs added via `PAIR_LOCK_CONFIGS` dict. XAG_USD live lock mechanism implemented: when trade reaches +3R unrealized, SL moved to +2R via Oanda `TradeCRCDO`; after locked trade closes, new XAG entries blocked for 25 min (5 candles × 5min, timestamp-based in Firestore `config/lock_state_XAG_USD`). BT: Sharpe near-neutral (4.98 vs 5.15 base) but ROI +25pp boost; 3 trades that reached 3–8R then reversed to -1R rescued at +2R without sacrificing TP-bound trades. Cooldown prevents re-entry inflation (spent-momentum market). Weekend expiry is natural via timestamp — no cooldown bleeds into Monday open. Exit mode sweep (Apr 24): ratcheting SL and SMA20-triggered trailing SL tested and rejected — all pairs worse. Monthly breakdown: EUR_USD all profit in Jan 2026 (Sharpe 10.15), all other months negative — monitor for suspension. USD_JPY broken since Feb 2026 (3 consecutive negative months, BT WR 22.6% in-window) — risk_pct remains 0.5% temporary reduction. Previous: April 11, 2026 — BCO_USD retuned: `atr_ratio_min=1.0` + `avoid_hours=[20,21,22,23]`, RR 4.0→5.0; Sharpe 1.62→2.14, MaxDD -12.42%→-8.78%. April 2, 2026 — USD_JPY migrated to 15m. April 1, 2026 — EUR_AUD suspended. RR sweep: XAU_USD 5.0→3.5, JP225_USD 5.0→1.5, UK100_GBP 6.0→3.5, NAS100_USD 3.0→2.5. March 27, 2026 — NAS100_USD, EUR_USD, UK100_GBP migrated to SmaScalping 15m.
+| Script | Purpose |
+|--------|---------|
+| `backtest_xag_15m_filter_sweep.py` | Full filter grid, gap-priced + OOS-gated. **Use this as the template for new sweeps.** |
+| `backtest_weekend_gap_impact.py` | Weekend gap cost per pair; prices gapped stops at the true open |
+| `backtest_bco_rr_sweep.py` | BCO R:R sweep with split-half OOS check |
+| `backtest_breakeven_sweep.py` | Breakeven stage across all 8 pairs — re-run before adding it anywhere |
+| `backtest_bco_noise_filter_sweep.py` | BCO filter sweep |
+| `backtest_nas100_investigation.py` | NAS100 filter sweep — re-run as more data arrives |
+| `backtest_prod_vs_live_comparison.py` | Live vs backtest comparison, all pairs |
+
+Their outputs live alongside in `data/backtest_*.csv` plus
+`data/weekend_held_trade_isolation.csv`.
+
+---
+
+## Recent Changes
+
+**Aug 24, 2026 — XAG_USD migrated 5m/RR12 → 15m/RR3.0.** The 12R target was never reached
+(1.5% of live wins); on 10 months of 15m data it scored Sharpe 0.09 / ROI +1.0% with an 8.3% win
+rate. New config: `di_persist` 1→2, `avoid_hours` [14,15,16] dropped, RR 12→3.0; DI>35,
+`atr_ratio=1.2`, `di_slope` unchanged. Result: Sharpe 4.60, ROI +64.5%, MaxDD -6.28% (halved),
+10/11 months positive, OOS halves +0.41R / +0.77R. `di_persist=2` is the lever — reverting it
+alone drops Sharpe to 1.62. Chosen from a 5,792-cell sweep but confirmed independently by
+per-parameter marginals and a contiguous plateau (RR 2.5–3.5 all score 4.3–4.9). XAG holds over
+weekends (flatting costs 4.60→3.07) and its 3R profit lock was removed as unreachable.
+Sweep: `scripts/backtest_xag_15m_filter_sweep.py`.
+
+**Aug 24, 2026 — BCO_USD RR 5.0→2.5, and forced into `ALWAYS_CLOSE_PAIRS`.** The 5R target was
+reached on 7.3% of live wins; RR 2.5 scores Sharpe 1.37 vs 1.26 with 35% more trades and 8/11
+months positive. Separately, BCO now closes before the weekly close even when
+`holiday_close_enabled` is off — see Weekly Pre-Close. That toggle being off is why the Jun 7 and
+Aug 2 2026 gap losses happened despite the pre-close job existing since April.
+
+**Aug 21, 2026 — JP225_USD breakeven stage** (0.25R→-0.1R). See Stop-Move Stages.
+
+Older changes (NAS100 retune Jun 2026, XAG/BCO locks Apr 2026, USD_JPY 15m migration Apr 2026,
+the Mar 2026 move to SmaScalping 15m) are in git history.
+
 
 ---
 

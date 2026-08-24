@@ -1,36 +1,40 @@
 """Tests for the stop-move stage decision used by run_pair_lock_checks.
 
 Covers the two mechanisms in production:
-  - profit lock  (XAG_USD, BCO_USD): late trigger, moves SL into profit
-  - breakeven    (JP225_USD):        early trigger, moves SL to a small loss
+  - profit lock  (BCO_USD):    late trigger, moves SL into profit
+  - breakeven    (JP225_USD):  early trigger, moves SL to a small loss
+
+LOCK_3R is a generic 3R fixture, not a live pair: XAG_USD's 3R lock was removed
+with its 15m/RR3.0 migration (the take-profit is 3R there, so it could never
+fire). It stays as a fixture because decide_stop_move is pair-agnostic.
 """
 import pytest
 
 from backend.app.services.tasks import decide_stop_move
 
-XAG   = {"lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25, "sl_precision": 3}
-BCO   = {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3}
-JP225 = {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1}
-BOTH  = {"be_at_r": 0.25, "be_to_r": -0.1,
+LOCK_3R = {"lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25, "sl_precision": 3}
+BCO     = {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3}
+JP225   = {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1}
+BOTH    = {"be_at_r": 0.25, "be_to_r": -0.1,
          "lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25, "sl_precision": 3}
 
 
 # ── profit lock ──────────────────────────────────────────────────────────────
 def test_lock_fires_when_r_reaches_threshold():
-    assert decide_stop_move(XAG, r_current=3.0, be_fired=False, lock_fired=False) == ("lock", 2.0)
+    assert decide_stop_move(LOCK_3R, r_current=3.0, be_fired=False, lock_fired=False) == ("lock", 2.0)
 
 
 def test_lock_does_not_fire_below_threshold():
-    assert decide_stop_move(XAG, r_current=2.99, be_fired=False, lock_fired=False) is None
+    assert decide_stop_move(LOCK_3R, r_current=2.99, be_fired=False, lock_fired=False) is None
 
 
 def test_lock_does_not_refire_once_fired():
-    assert decide_stop_move(XAG, r_current=5.0, be_fired=False, lock_fired=True) is None
+    assert decide_stop_move(LOCK_3R, r_current=5.0, be_fired=False, lock_fired=True) is None
 
 
 def test_pair_without_breakeven_stage_ignores_small_r():
-    """XAG must never move to breakeven — that was shown to destroy its edge."""
-    assert decide_stop_move(XAG, r_current=0.5, be_fired=False, lock_fired=False) is None
+    """A lock-only pair must never move to breakeven — that destroys the edge."""
+    assert decide_stop_move(LOCK_3R, r_current=0.5, be_fired=False, lock_fired=False) is None
 
 
 def test_bco_lock_uses_its_own_levels():
