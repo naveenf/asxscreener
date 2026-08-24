@@ -522,6 +522,33 @@ class OandaPriceService:
 
     @classmethod
     @retry_oanda(retries=2, delay=1)
+    def close_trade(cls, trade_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Close an open trade at market via TradeClose.
+
+        Used by the weekend flat (see WEEKEND_FLAT_CONFIGS in tasks.py) — the
+        broker SL cannot protect a position across the Sunday re-open gap, so
+        configured pairs are flattened before the close instead.
+
+        Args:
+            trade_id: Oanda trade ID to close
+
+        Returns:
+            Response dict on success, None on failure
+        """
+        api = cls.get_api()
+        account_id = settings.OANDA_ACCOUNT_ID
+        if not api or not account_id:
+            logger.error("OANDA API or Account ID not available for close_trade")
+            return None
+
+        logger.info(f"OANDA: Closing trade {trade_id} at market")
+        r = trades.TradeClose(accountID=account_id, tradeID=trade_id)
+        api.request(r)
+        return r.response
+
+    @classmethod
+    @retry_oanda(retries=2, delay=1)
     def get_trade_details(cls, trade_id: str) -> Optional[Dict[str, Any]]:
         """
         Fetch details of a specific trade by ID.

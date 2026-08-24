@@ -128,9 +128,9 @@
     "strategies": [
       {
         "strategy": "SmaScalping",
-        "sharpe": 2.14,
+        "sharpe": 1.47,
         "timeframe": "15m",
-        "target_rr": 5.0,
+        "target_rr": 2.5,
         "params": {
           "di_threshold": 30.0,
           "di_persist": 1,
