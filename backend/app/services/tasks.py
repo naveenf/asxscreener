@@ -110,6 +110,14 @@ PAIR_LOCK_CONFIGS = {
     # never fire before TP. Re-add only with a threshold swept against the new
     # config — do not restore the 3R values.
     "BCO_USD":   {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3},
+    # NAS100_USD added Aug 25, 2026 to cut drawdown on a pair that is not
+    # currently earning live (-$89 realised). BT on 15m Oct 2025-Aug 2026:
+    # MaxDD -10.47%->-5.44%, ROI +27.8%->+32.8%, WR 35.4%->52.3%, months
+    # positive 7/11->9/11. 149 of 151 stage configs cut drawdown, so the effect
+    # is structural rather than a lucky cell. Breakeven was also viable here but
+    # not adopted — one mechanism is enough on the pair whose backtests have
+    # diverged most from live. See data/backtest_stop_stage_sweep.csv.
+    "NAS100_USD": {"lock_at_r": 1.5, "lock_to_r": 0.5, "cooldown_min": 90, "sl_precision": 1},
     # Breakeven: early trigger, moves SL to a small loss. JP225's 1.5R target
     # leaves no big winner to protect; the pain is the sheer count of full -1R
     # losses, so this caps them instead. No cooldown — nothing is locked in.

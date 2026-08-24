@@ -152,12 +152,27 @@ written only for pairs with `cooldown_min`.
 | Pair | Stage | Justification |
 |------|-------|---------------|
 | BCO_USD | Lock 2R→+1R, cooldown 90 min | Sharpe 1.67→2.44; ~20 trades per dataset rescued from 2R reversals |
+| NAS100_USD | Lock 1.5R→+0.5R, cooldown 90 min | MaxDD -10.47%→-5.44%, ROI +27.8%→+32.8%, WR 35.4%→52.3%, months positive 7/11→9/11 |
 | JP225_USD | Breakeven 0.25R→-0.1R, no cooldown | Sharpe 2.53→5.63, MaxDD -6.83%→-2.28%; full -1R losses cut from 100%→15% of trades |
 
-**Neither generalises.** Breakeven was swept across all 8 pairs
-(`data/backtest_breakeven_sweep.csv`): only JP225 clears convincingly (16/20 configs). XAU,
-UK100, USD_JPY: 0/20. BCO: 0/20. The lock sweep showed no improvement for XAU, NAS100 or UK100.
-Re-run the sweep before adding either to a new pair; do not extrapolate.
+**Neither stage generalises — sweep before adding one.** Run
+`scripts/backtest_stop_stage_sweep.py` (self-contained; gap-priced, OOS-gated) against the pair's
+current config. Results so far (`data/backtest_stop_stage_sweep.csv`, 151 configs per pair):
+
+| Pair | Outcome |
+|------|---------|
+| NAS100_USD | **149/151 configs cut drawdown** — structural, not a lucky cell. Adopted lock 1.5R→+0.5R. |
+| XAG_USD | 82/151 cut drawdown but only **1/151** held ROI, and none passed OOS. Median ROI 64.5%→39.3% for no DD gain. Do not add. |
+| XAU_USD | Only **3/151** cut drawdown; the median makes it *worse* (-7.28%→-9.97%). Harmful on both axes. Do not add. |
+| All 8 pairs (breakeven, Aug 2026) | Only JP225 clears convincingly. XAU, UK100, USD_JPY, BCO: 0/20. |
+
+**NAS100 caveats.** Trade count rises 48→65 because early exits free capacity in a
+one-position-at-a-time simulator, so this is not a pure like-for-like. Cooldown is not modelled
+either — treat lock rows as an upper bound. And NAS100 is the pair whose backtests have diverged
+most from live (-$89 realised against a recorded 14.36 Sharpe), so this was adopted as **risk
+reduction on a pair that is not currently earning**, not as an ROI upgrade. Breakeven was also
+viable here (BE 1.0→0.0 + lock 1.5→0.5 gave MaxDD -4.49%) but deliberately not adopted — one
+mechanism is enough on this pair.
 
 **XAG has no lock.** Its 3R→+2R lock was removed with the 15m/RR3.0 migration — the take-profit
 *is* 3R there, so the lock could never fire. Re-add only with a threshold swept against the
@@ -278,7 +293,7 @@ not its history. Git carries the history.
 | `backtest_xag_15m_filter_sweep.py` | Full filter grid, gap-priced + OOS-gated. **Use this as the template for new sweeps.** |
 | `backtest_weekend_gap_impact.py` | Weekend gap cost per pair; prices gapped stops at the true open |
 | `backtest_bco_rr_sweep.py` | BCO R:R sweep with split-half OOS check |
-| `backtest_breakeven_sweep.py` | Breakeven stage across all 8 pairs — re-run before adding it anywhere |
+| `backtest_stop_stage_sweep.py` | Profit-lock / breakeven stages, gap-priced + OOS-gated — re-run before adding a stage to any pair |
 | `backtest_bco_noise_filter_sweep.py` | BCO filter sweep |
 | `backtest_nas100_investigation.py` | NAS100 filter sweep — re-run as more data arrives |
 | `backtest_prod_vs_live_comparison.py` | Live vs backtest comparison, all pairs |
@@ -289,6 +304,13 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 ---
 
 ## Recent Changes
+
+**Aug 25, 2026 — NAS100_USD profit lock 1.5R→+0.5R, cooldown 90 min.** Adopted to cut drawdown
+on a pair that is not earning live: MaxDD -10.47%→-5.44%, ROI +27.8%→+32.8%, WR 35.4%→52.3%,
+9/11 months positive. Swept XAG and XAU at the same time — both rejected, see Stop-Move Stages.
+Also replaced `backtest_breakeven_sweep.py`, which was dead code (it imported
+`backtest_lock_sweep_v2`, deleted Aug 2026, so it crashed on run), with the self-contained
+`backtest_stop_stage_sweep.py`.
 
 **Aug 24, 2026 — XAG_USD migrated 5m/RR12 → 15m/RR3.0.** The 12R target was never reached
 (1.5% of live wins); on 10 months of 15m data it scored Sharpe 0.09 / ROI +1.0% with an 8.3% win

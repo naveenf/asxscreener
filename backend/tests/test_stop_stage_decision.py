@@ -1,7 +1,7 @@
 """Tests for the stop-move stage decision used by run_pair_lock_checks.
 
 Covers the two mechanisms in production:
-  - profit lock  (BCO_USD):    late trigger, moves SL into profit
+  - profit lock  (BCO_USD, NAS100_USD): late trigger, moves SL into profit
   - breakeven    (JP225_USD):  early trigger, moves SL to a small loss
 
 LOCK_3R is a generic 3R fixture, not a live pair: XAG_USD's 3R lock was removed
@@ -14,6 +14,7 @@ from backend.app.services.tasks import decide_stop_move
 
 LOCK_3R = {"lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25, "sl_precision": 3}
 BCO     = {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3}
+NAS100  = {"lock_at_r": 1.5, "lock_to_r": 0.5, "cooldown_min": 90, "sl_precision": 1}
 JP225   = {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1}
 BOTH    = {"be_at_r": 0.25, "be_to_r": -0.1,
          "lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25, "sl_precision": 3}
@@ -75,3 +76,22 @@ def test_breakeven_fires_first_when_only_it_is_reached():
 
 def test_lock_still_fires_after_breakeven_already_fired():
     assert decide_stop_move(BOTH, r_current=3.0, be_fired=True, lock_fired=False) == ("lock", 2.0)
+
+
+# ── NAS100 profit lock (added Aug 25, 2026) ──────────────────────────────────
+def test_nas100_lock_fires_at_its_lower_trigger():
+    """NAS100 locks at 1.5R, earlier than BCO's 2R — confirm it is not sharing BCO's."""
+    assert decide_stop_move(NAS100, r_current=1.5, be_fired=False, lock_fired=False) == ("lock", 0.5)
+
+
+def test_nas100_lock_does_not_fire_below_trigger():
+    assert decide_stop_move(NAS100, r_current=1.49, be_fired=False, lock_fired=False) is None
+
+
+def test_nas100_never_moves_to_breakeven():
+    """Breakeven was viable for NAS100 in the sweep but deliberately not adopted."""
+    assert decide_stop_move(NAS100, r_current=0.5, be_fired=False, lock_fired=False) is None
+
+
+def test_nas100_lock_does_not_refire():
+    assert decide_stop_move(NAS100, r_current=3.0, be_fired=False, lock_fired=True) is None
