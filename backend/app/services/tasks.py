@@ -59,6 +59,38 @@ PRECLOSE_BLOCKED_PAIRS: set = set()
 # Simple flag to prevent concurrent pre-close checks
 _preclose_lock = threading.Lock()
 
+# Pairs that must be flattened before the weekly close even when the global
+# holiday_close_enabled toggle is off. That toggle is a convenience for holding
+# positions through a holiday; it is not a judgement that a pair is safe to
+# carry over a weekend.
+#
+# BCO_USD: weekend gaps are 2.73 ATR at the median against a 1xATR stop floor —
+# 61% of weekends gap more than 2 ATR. A broker stop fills at the gapped open,
+# not the stop price, so holding across the weekend is unprotected regardless of
+# the toggle. Live: the Apr 12 / Jun 7 / Aug 2 2026 gaps cost -$639 across three
+# trades, versus a -$50 typical loss. Worst trade -4.27R held vs -1.24R closed.
+#
+# Do NOT extend this on gap size alone. Gaps are large on every pair but cut
+# both ways, and weekend-held trades have been the best trades on 7 of 8 pairs
+# (see data/weekend_held_trade_isolation.csv). The deciding number is average R
+# of weekend-held trades, and only BCO's is poor enough to justify forcing the
+# close. Per-trade keep_through_close still overrides this.
+ALWAYS_CLOSE_PAIRS: set = {"BCO_USD"}
+
+
+def pairs_to_close_now(close_pairs, holiday_close_enabled, always_close_pairs=None):
+    """Which pairs in the pre-close 'close' phase should actually be flattened.
+
+    When holiday_close_enabled is on, everything in the close window closes.
+    When it is off, only ALWAYS_CLOSE_PAIRS do — the toggle defers ordinary
+    holiday closes but must not leave a gap-exposed pair carrying the weekend.
+    """
+    if holiday_close_enabled:
+        return set(close_pairs)
+    if always_close_pairs is None:
+        always_close_pairs = ALWAYS_CLOSE_PAIRS
+    return set(close_pairs) & set(always_close_pairs)
+
 # ---------------------------------------------------------------------------
 # Stop-move configs
 # ---------------------------------------------------------------------------
@@ -83,49 +115,6 @@ PAIR_LOCK_CONFIGS = {
     # data/backtest_breakeven_sweep.csv before adding this to another pair.
     "JP225_USD": {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1},
 }
-
-# ---------------------------------------------------------------------------
-# Weekend flat configs
-# ---------------------------------------------------------------------------
-# Pairs listed here are flattened before the weekend and blocked from new
-# entries until the market reopens, so no position carries the Sunday re-open
-# gap. Value is the Friday UTC hour at which the window starts.
-#
-# Why 19:00 UTC: the FX week closes 17:00 America/New_York, which is 21:00 UTC
-# under EDT and 22:00 UTC under EST. A 19:00 UTC cutoff leaves a 2h buffer in
-# summer and 3h in winter, so the rule needs no DST handling and cannot drift
-# into the close.
-#
-# BCO_USD only. Weekend gaps are large on every pair (BCO median 2.73 ATR vs a
-# 1xATR stop floor), but they cut both ways, and holding through them has been
-# net positive on 7 of 8 pairs — see data/weekend_held_trade_isolation.csv.
-# Do NOT extend this to another pair on the gap size alone; the deciding number
-# is the average R of weekend-held trades for that pair.
-#
-# BCO is included because it pairs with the 2.5R target (Aug 2026): at RR 2.5
-# trades resolve fast enough that flatting forfeits little, and it caps the
-# worst trade at -1.24R vs -4.27R held. Sharpe 1.37->1.47, ROI 42.1%->46.7%,
-# 9/11 months positive. Cost is MaxDD -11.4%->-17.9%. The Sharpe edge is inside
-# the noise band and is not the justification — the tail cap is.
-WEEKEND_FLAT_CONFIGS = {
-    "BCO_USD": {"friday_utc_hour": 19},
-}
-
-
-def should_flatten_for_weekend(flat_cfg, now_utc):
-    """Whether a pair with a weekend-flat config is inside its weekend window.
-
-    True from the Friday cutoff hour through the end of Sunday UTC. The FX week
-    reopens 22:00-23:00 UTC Sunday, so the tail of Sunday stays blocked rather
-    than opening a position into the first thin hour after the gap.
-    """
-    if not flat_cfg:
-        return False
-
-    weekday = now_utc.weekday()          # Mon=0 .. Fri=4, Sat=5, Sun=6
-    if weekday == 4:
-        return now_utc.hour >= flat_cfg["friday_utc_hour"]
-    return weekday in (5, 6)
 
 
 def decide_stop_move(lock_cfg, r_current, be_fired, lock_fired):
@@ -262,12 +251,6 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
                 )
             all_signals = filtered_signals
 
-        # --- Weekend Flat (block + close before the Sunday gap, BCO) ---
-        try:
-            run_weekend_flat_checks()
-        except Exception as wf_e:
-            logger.error(f"[{task_id}] Weekend flat check failed (non-critical): {wf_e}", exc_info=True)
-
         # --- Profit-Lock Check (cooldown gate + SL move for XAG, BCO) ---
         try:
             run_pair_lock_checks()
@@ -350,101 +333,6 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
         refresh_manager.complete_forex_refresh(error=str(e))
     finally:
         refresh_manager.forex_lock.release()
-
-
-def run_weekend_flat_checks():
-    """
-    Weekend flat for all pairs in WEEKEND_FLAT_CONFIGS.
-
-    Runs before signal execution each refresh cycle. For each configured pair
-    that is inside its weekend window (see should_flatten_for_weekend):
-      1. Adds the symbol to PRECLOSE_BLOCKED_PAIRS so no new entries are placed
-         until the market reopens.
-      2. Closes any OPEN trade for that pair at market via Oanda TradeClose.
-
-    A broker stop cannot protect a position across the Sunday re-open gap — it
-    is filled at the gapped open, not at the stop price. Flattening trades that
-    exposure for the small cost of forfeiting the rest of the move.
-
-    Trades are stamped weekend_flat_closed=True. The next portfolio sync marks
-    them CLOSED; until it does, a repeat cycle inside the same window may see
-    the doc as OPEN, so NO_SUCH_TRADE from Oanda is treated as success.
-    """
-    global PRECLOSE_BLOCKED_PAIRS
-
-    auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
-    if not auth_email:
-        return
-
-    now_utc = datetime.now(timezone.utc)
-
-    for symbol, flat_cfg in WEEKEND_FLAT_CONFIGS.items():
-        tag = f"{symbol} weekend-flat"
-
-        if not should_flatten_for_weekend(flat_cfg, now_utc):
-            continue
-
-        # Block first — if the close below fails, entries still must not open.
-        PRECLOSE_BLOCKED_PAIRS.add(symbol)
-        logger.info(f"{tag}: weekend window active — blocking {symbol} entries this cycle")
-
-        try:
-            portfolio_ref = (
-                db.collection("users")
-                .document(auth_email)
-                .collection("forex_portfolio")
-            )
-            q = (portfolio_ref
-                 .where(filter=firestore.FieldFilter("symbol", "==", symbol))
-                 .where(filter=firestore.FieldFilter("status", "==", "OPEN")))
-            open_docs = _firestore_call(lambda: list(q.stream()), label=f"{tag} open trades")
-            if open_docs is None:
-                continue  # timed out — retry next cycle, still inside the window
-
-            for doc in open_docs:
-                try:
-                    data = doc.to_dict()
-                    if data.get("weekend_flat_closed"):
-                        continue
-
-                    oanda_trade_id = data.get("oanda_trade_id")
-                    if not oanda_trade_id:
-                        logger.warning(f"{tag}: doc {doc.id} has no oanda_trade_id — skipping")
-                        continue
-
-                    logger.info(f"{tag}: closing trade {oanda_trade_id} before the weekend gap")
-
-                    try:
-                        close_result = OandaPriceService.close_trade(oanda_trade_id)
-                    except Exception as close_err:
-                        if "NO_SUCH_TRADE" in str(close_err):
-                            logger.info(
-                                f"{tag}: trade {oanda_trade_id} already closed — "
-                                f"stamping doc {doc.id}"
-                            )
-                            close_result = {"alreadyClosed": True}
-                        else:
-                            raise
-
-                    if close_result is None:
-                        logger.error(
-                            f"{tag}: close_trade returned None for {oanda_trade_id} "
-                            f"— will retry next cycle"
-                        )
-                        continue
-
-                    doc.reference.update({
-                        "weekend_flat_closed":    True,
-                        "weekend_flat_closed_at": now_utc.isoformat(),
-                        "updated_at":             now_utc,
-                    })
-                    logger.info(f"{tag}: Firestore doc {doc.id} stamped weekend_flat_closed=True")
-
-                except Exception:
-                    logger.error(f"{tag}: unexpected error processing doc {doc.id}", exc_info=True)
-
-        except Exception:
-            logger.error(f"{tag}: run_weekend_flat_checks failed for {symbol}", exc_info=True)
 
 
 def run_pair_lock_checks():
@@ -765,14 +653,21 @@ def run_preclose_check():
         except Exception as e:
             logger.warning(f"run_preclose_check: could not read trade_settings: {e}")
 
+        closing = pairs_to_close_now(close_pairs, holiday_close_enabled)
         if not holiday_close_enabled:
-            logger.info(
-                f"run_preclose_check: holiday_close_enabled=False — "
-                f"skipping position close for {close_pairs} (entries still blocked)"
-            )
-            return
+            deferred = close_pairs - closing
+            if deferred:
+                logger.info(
+                    f"run_preclose_check: holiday_close_enabled=False — "
+                    f"skipping position close for {deferred} (entries still blocked)"
+                )
+            if closing:
+                logger.info(
+                    f"run_preclose_check: holiday_close_enabled=False but {closing} "
+                    f"is in ALWAYS_CLOSE_PAIRS — closing anyway (weekend gap risk)"
+                )
 
-        for pair in close_pairs:
+        for pair in closing:
             _close_open_positions_for_pair(pair, auth_email, now)
 
     except Exception as e:
