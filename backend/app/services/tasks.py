@@ -521,91 +521,119 @@ def run_pair_lock_checks():
             logger.error(f"{tag}: run_pair_lock_checks failed for {symbol}", exc_info=True)
 
 
+# How far back check_pair_lock_cooldowns looks for newly-closed locked trades.
+# The query filters on updated_at ALONE so it uses Firestore's automatic
+# single-field index — adding symbol/status/lock_fired to the query would need a
+# composite index, and this collection has no versioned index config. Everything
+# else is filtered client-side by select_cooldown_candidates.
+#
+# Sized well above the ~5 min refresh cadence so a restart or a few missed cycles
+# cannot skip a cooldown. Cost is bounded by trades touched in the window, not by
+# account history: this query previously returned every locked trade ever, on
+# every cycle, per pair — roughly 14k reads/day and growing.
+COOLDOWN_LOOKBACK_MIN = 360  # 6 hours
+
+
+def select_cooldown_candidates(trades, pair_lock_configs):
+    """Pick the trades that should trigger a cooldown write.
+
+    `trades` is an iterable of (doc_id, data) for docs updated recently. Returns
+    [(doc_id, symbol, cooldown_min)] for each CLOSED trade whose profit lock
+    fired and whose cooldown has not been written yet.
+
+    Client-side counterpart to the updated_at-only Firestore query — see
+    COOLDOWN_LOOKBACK_MIN for why the other filters are not in the query.
+    """
+    out = []
+    for doc_id, data in trades:
+        symbol = data.get("symbol")
+        cfg = pair_lock_configs.get(symbol)
+        if not cfg:
+            continue
+        cooldown_min = cfg.get("cooldown_min", 0)
+        if cooldown_min <= 0:
+            continue          # breakeven-only pair — nothing locked in
+        if data.get("status") != "CLOSED":
+            continue
+        if not data.get("lock_fired"):
+            continue
+        if data.get("lock_cooldown_set"):
+            continue          # already processed
+        out.append((doc_id, symbol, cooldown_min))
+    return out
+
+
 def check_pair_lock_cooldowns():
     """
     Cooldown writer for all pairs in PAIR_LOCK_CONFIGS.
 
-    Called after portfolio sync each refresh cycle. For each pair, finds trades that:
-      - status == CLOSED
-      - lock_fired == True
-      - lock_cooldown_set is missing / False
-
-    Writes a cooldown timestamp to config/lock_state_{symbol} and stamps the trade
-    doc with lock_cooldown_set=True so it isn't processed again.
+    Called after portfolio sync each refresh cycle. Runs ONE Firestore query for
+    recently-updated trades (see COOLDOWN_LOOKBACK_MIN), then selects the ones
+    needing a cooldown via select_cooldown_candidates. For each, writes a
+    cooldown timestamp to config/lock_state_{symbol} and stamps the trade doc
+    with lock_cooldown_set=True so it isn't processed again.
     """
     auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
     if not auth_email:
         return
 
-    for symbol, lock_cfg in PAIR_LOCK_CONFIGS.items():
-        cooldown_min = lock_cfg.get("cooldown_min", 0)
-        if cooldown_min <= 0:
-            continue  # breakeven-only pair — nothing is locked in, no cooldown
-        state_doc_id = f"lock_state_{symbol}"
-        tag          = f"{symbol} lock"
+    if not any(c.get("cooldown_min", 0) > 0 for c in PAIR_LOCK_CONFIGS.values()):
+        return  # no pair uses a cooldown — skip the query entirely
 
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=COOLDOWN_LOOKBACK_MIN)
+
+    try:
+        portfolio_ref = (
+            db.collection("users")
+            .document(auth_email)
+            .collection("forex_portfolio")
+        )
+        q = portfolio_ref.where(
+            filter=firestore.FieldFilter("updated_at", ">", cutoff)
+        )
+        recent_docs = _firestore_call(lambda: list(q.stream()), label="lock cooldown recent trades")
+        if recent_docs is None:
+            return  # timed out — retry next cycle
+    except Exception:
+        logger.error("lock cooldown: Firestore query for recent trades failed", exc_info=True)
+        return
+
+    candidates = select_cooldown_candidates(
+        ((d.id, d.to_dict()) for d in recent_docs), PAIR_LOCK_CONFIGS
+    )
+    logger.info(
+        f"lock cooldown: {len(recent_docs)} trades updated since "
+        f"{cutoff.isoformat()}, {len(candidates)} need a cooldown"
+    )
+    if not candidates:
+        return
+
+    by_id = {d.id: d for d in recent_docs}
+    for doc_id, symbol, cooldown_min in candidates:
+        tag = f"{symbol} lock"
         try:
-            portfolio_ref = (
-                db.collection("users")
-                .document(auth_email)
-                .collection("forex_portfolio")
+            now = datetime.now(timezone.utc)
+            cooldown_until_str = (now + timedelta(minutes=cooldown_min)).isoformat()
+
+            db.collection("config").document(f"lock_state_{symbol}").set(
+                {
+                    "cooldown_until":     cooldown_until_str,
+                    "reason":             "lock_sl_triggered",
+                    "triggered_by_trade": doc_id,
+                    "updated_at":         now.isoformat(),
+                },
+                merge=True,
             )
-
-            try:
-                q = (
-                    portfolio_ref
-                    .where(filter=firestore.FieldFilter("symbol", "==", symbol))
-                    .where(filter=firestore.FieldFilter("status", "==", "CLOSED"))
-                    .where(filter=firestore.FieldFilter("lock_fired", "==", True))
-                )
-                closed_locked_docs = _firestore_call(lambda: list(q.stream()), label=f"{tag} closed locked trades")
-                if closed_locked_docs is None:
-                    continue
-            except Exception:
-                logger.error(
-                    f"{tag}: Firestore query for closed locked trades failed", exc_info=True
-                )
-                continue
-
-            for doc in closed_locked_docs:
-                try:
-                    data = doc.to_dict()
-
-                    if data.get("lock_cooldown_set"):
-                        continue
-
-                    cooldown_until     = datetime.now(timezone.utc) + timedelta(minutes=cooldown_min)
-                    cooldown_until_str = cooldown_until.isoformat()
-
-                    db.collection("config").document(state_doc_id).set(
-                        {
-                            "cooldown_until":     cooldown_until_str,
-                            "reason":             "lock_sl_triggered",
-                            "triggered_by_trade": doc.id,
-                            "updated_at":         datetime.now(timezone.utc).isoformat(),
-                        },
-                        merge=True,
-                    )
-
-                    doc.reference.update({
-                        "lock_cooldown_set": True,
-                        "updated_at":        datetime.now(timezone.utc),
-                    })
-
-                    logger.info(
-                        f"{tag}: cooldown written — no new {symbol} entries until "
-                        f"{cooldown_until_str} (triggered by trade doc {doc.id})"
-                    )
-
-                except Exception:
-                    logger.error(
-                        f"{tag}: failed to write cooldown for doc {doc.id}", exc_info=True
-                    )
-
+            by_id[doc_id].reference.update({
+                "lock_cooldown_set": True,
+                "updated_at":        now,
+            })
+            logger.info(
+                f"{tag}: cooldown written — no new {symbol} entries until "
+                f"{cooldown_until_str} (triggered by trade doc {doc_id})"
+            )
         except Exception:
-            logger.error(
-                f"{tag}: check_pair_lock_cooldowns failed for {symbol}", exc_info=True
-            )
+            logger.error(f"{tag}: failed to write cooldown for doc {doc_id}", exc_info=True)
 
 
 def run_preclose_check():

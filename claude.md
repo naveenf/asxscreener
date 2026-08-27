@@ -174,6 +174,15 @@ reduction on a pair that is not currently earning**, not as an ROI upgrade. Brea
 viable here (BE 1.0→0.0 + lock 1.5→0.5 gave MaxDD -4.49%) but deliberately not adopted — one
 mechanism is enough on this pair.
 
+⚠️ **Do not add equality filters to the cooldown query.** `check_pair_lock_cooldowns()` runs ONE
+Firestore query filtering on `updated_at` alone (`COOLDOWN_LOOKBACK_MIN`, 6h) and applies
+symbol/status/`lock_fired`/`lock_cooldown_set` client-side in `select_cooldown_candidates()`.
+That keeps it on Firestore's automatic single-field index. The previous version filtered
+server-side per pair and returned every locked trade ever, on every cycle — ~14k reads/day,
+growing with history and with each pair added. Adding those filters back needs a composite index,
+and this project has no versioned index config (no `firestore.indexes.json`), so it would fail
+only at runtime.
+
 **XAG has no lock.** Its 3R→+2R lock was removed with the 15m/RR3.0 migration — the take-profit
 *is* 3R there, so the lock could never fire. Re-add only with a threshold swept against the
 current config.
