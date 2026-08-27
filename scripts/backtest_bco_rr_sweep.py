@@ -71,8 +71,8 @@ def load_and_prep(symbol: str, timeframe: str) -> pd.DataFrame:
 def run_backtest(df, rr, cfg, weekend_flat=False) -> pd.DataFrame | None:
     """Returns per-trade DataFrame, or None if too few trades.
 
-    Mirrors scripts/backtest_rr_sweep.py exit logic (broker SL/TP only) so
-    results stay comparable with the numbers recorded in CLAUDE.md.
+    Broker SL/TP exits only, matching how trades actually close in production.
+    Note this does NOT price weekend gaps — see backtest_weekend_gap_impact.py.
     """
     closes, highs, lows = df["Close"].values, df["High"].values, df["Low"].values
     sma20, sma50, sma100 = df["SMA20"].values, df["SMA50"].values, df["SMA100"].values

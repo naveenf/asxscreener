@@ -295,7 +295,7 @@ not its history. Git carries the history.
 | `backtest_bco_rr_sweep.py` | BCO R:R sweep with split-half OOS check |
 | `backtest_stop_stage_sweep.py` | Profit-lock / breakeven stages, gap-priced + OOS-gated — re-run before adding a stage to any pair |
 | `backtest_bco_noise_filter_sweep.py` | BCO filter sweep |
-| `backtest_nas100_investigation.py` | NAS100 filter sweep — re-run as more data arrives |
+| `backtest_nas100_investigation.py` | NAS100 filter sweep — re-run as more data arrives (its 2.2 MB output was not retained) |
 | `backtest_prod_vs_live_comparison.py` | Live vs backtest comparison, all pairs |
 
 Their outputs live alongside in `data/backtest_*.csv` plus
