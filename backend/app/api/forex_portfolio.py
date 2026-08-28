@@ -89,6 +89,48 @@ def _compute_period_breakdown(trades: list, period: str) -> dict:
     return breakdown
 
 
+def compute_max_drawdown_pct(pnl_series, starting_balance, deposits=None) -> float:
+    """Worst peak-to-trough fall in account equity, as a % of equity AT THAT PEAK.
+
+    `pnl_series` is per-trade P&L in chronological order; `deposits` is an
+    optional list of (index, amount) applied *after* the trade at that index,
+    so a deposit lifts the equity base without counting as a gain.
+
+    Divides by the running peak, not by the starting balance. Dividing by a
+    fixed starting balance inflates every later drawdown as the account grows —
+    a $1,347 dip on a $7,800 account is -17%, but reads as -63% against a $2,142
+    start. It also made live figures incomparable with the backtest scripts,
+    which all use (equity - peak) / peak.
+
+    Returns a non-positive percentage (0.0 when equity never falls below a peak).
+    """
+    if starting_balance is None or starting_balance <= 0:
+        return 0.0
+
+    deposit_at = {}
+    for idx, amount in (deposits or []):
+        deposit_at[idx] = deposit_at.get(idx, 0.0) + amount
+
+    equity = float(starting_balance)
+    peak = equity
+    max_dd = 0.0
+    for i, pnl in enumerate(pnl_series):
+        equity += pnl
+        if equity > peak:
+            peak = equity
+        if peak > 0:
+            dd = (equity - peak) / peak * 100
+            if dd < max_dd:
+                max_dd = dd
+        # a deposit raises the base and the peak with it — it is not a gain,
+        # so it must never register as a recovery from drawdown
+        if i in deposit_at:
+            equity += deposit_at[i]
+            if equity > peak:
+                peak = equity
+    return max_dd
+
+
 def _load_backtest_reference() -> dict:
     """Load backtest benchmark data from JSON file."""
     try:
@@ -630,8 +672,6 @@ async def get_trade_analytics(
         sorted_trades = sorted(trades_list, key=lambda x: x['sell_date_dt'])
         equity_curve = []
         cumulative_pnl = 0
-        peak = 0
-        max_dd = 0
 
         if sorted_trades:
             first_date = sorted_trades[0]['sell_date_dt']
@@ -643,12 +683,28 @@ async def get_trade_analytics(
                 "date": t['sell_date_dt'].isoformat(),
                 "cumulative_pnl": cumulative_pnl
             })
-            if cumulative_pnl > peak:
-                peak = cumulative_pnl
-            dd = (cumulative_pnl - peak) / starting_balance_aud * 100 if starting_balance_aud > 0 else 0
-            if dd < max_dd:
-                max_dd = dd
 
+        # Drawdown is measured on account EQUITY against its running peak — see
+        # compute_max_drawdown_pct. Deposits are mapped onto the trade they
+        # follow so they lift the equity base without reading as a recovery.
+        # Both sides are datetime.date: sell_date_dt is built with .date() above,
+        # and get_fund_transfers returns date.fromisoformat(...).
+        deposit_points = []
+        for tf in fund_transfers:
+            tf_date = tf["date"]
+            idx = -1
+            for i, t in enumerate(sorted_trades):
+                if t['sell_date_dt'] <= tf_date:
+                    idx = i
+                else:
+                    break
+            deposit_points.append((idx, tf["amount"]))
+
+        max_dd = compute_max_drawdown_pct(
+            [t['pnl_aud'] for t in sorted_trades],
+            starting_balance_aud,
+            deposits=deposit_points,
+        )
         summary['max_drawdown_pct'] = round(max_dd, 2)
 
         # 6. By Pair breakdown (PAIR::Strategy keyed)
