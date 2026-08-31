@@ -284,6 +284,15 @@ fallback that the Settings page cannot toggle.
 - Filtering, sorting, CSV export; equity curve, monthly returns, strategy comparison charts
 - Auto-sync with Oanda every 5 minutes; default date range: Feb 19, 2026+
 
+⚠️ **Every write to a `forex_portfolio` doc MUST set `updated_at`** — creates included.
+`trade_cache.get_forex_trades_cached()` delta-syncs with `where('updated_at', '>', cursor)`,
+and a Firestore inequality filter **skips docs where the field is absent**, permanently — not
+until the next cycle. Two writers in `oanda_trade_service.py` omitted it (trade creation and the
+"not found in Oanda open trades" auto-close), so 17 trades worth -$594 never appeared in Trade
+History or Analytics at all, and one was still stuck OPEN 11 days after closing. Fixed Aug 31,
+2026, with the stranded docs repaired from Oanda; the invariant is tested in
+`backend/tests/test_trade_doc_updated_at.py`.
+
 ---
 
 ## Documentation Organization

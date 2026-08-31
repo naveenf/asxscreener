@@ -14,6 +14,25 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+
+def build_auto_close_update(existing_notes: Optional[str], close_type: str) -> Dict[str, Any]:
+    """Firestore payload for a trade Oanda no longer reports as open.
+
+    `updated_at` is mandatory on every forex_portfolio write: the trade cache
+    delta-syncs on `updated_at`, and a Firestore inequality filter skips docs
+    where the field is absent — so a doc closed without it stays stale (or
+    missing) in Trade History forever. See test_trade_doc_updated_at.py.
+    """
+    return {
+        'status': 'CLOSED',
+        'sell_price': 0,
+        'sell_date': datetime.utcnow().strftime("%Y-%m-%d"),
+        'close_type': close_type,
+        'notes': f"{existing_notes or ''} | Auto-closed: Not found in Oanda open trades.".strip(" |"),
+        'updated_at': datetime.utcnow(),
+    }
+
+
 class OandaTradeService:
     @staticmethod
     def calculate_units(symbol: str, entry_price: float, stop_loss: float, balance_aud: float, margin_avail_aud: float, risk_pct: float = 0.01) -> float:
@@ -174,13 +193,9 @@ class OandaTradeService:
                     logger.info(f"SYNC: {symbol} found open in Firestore but not in Oanda. Marking as CLOSED.")
                     oanda_trade_id = data.get('oanda_trade_id', '')
                     close_type = OandaPriceService.get_trade_close_type(oanda_trade_id) if oanda_trade_id else 'UNKNOWN'
-                    doc.reference.update({
-                        'status': 'CLOSED',
-                        'sell_price': 0,
-                        'sell_date': datetime.utcnow().strftime("%Y-%m-%d"),
-                        'close_type': close_type,
-                        'notes': (data.get('notes', '') or '') + " | Auto-closed: Not found in Oanda open trades."
-                    })
+                    doc.reference.update(
+                        build_auto_close_update(data.get('notes'), close_type)
+                    )
         except Exception as e:
             logger.error(f"Error fetching/syncing Firestore portfolio: {e}")
 
@@ -459,7 +474,11 @@ class OandaTradeService:
                 'take_profit': tp_placed,
                 'signal_stop_loss': signal.get('stop_loss'),
                 'signal_take_profit': signal.get('take_profit'),
-                'created_at': datetime.utcnow()
+                'created_at': datetime.utcnow(),
+                # Required: the trade cache delta-syncs on updated_at, and a
+                # Firestore inequality filter skips docs missing the field —
+                # a trade created without it never reaches Trade History.
+                'updated_at': datetime.utcnow(),
             }
 
             portfolio_ref.add(doc_data)

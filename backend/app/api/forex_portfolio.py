@@ -1003,7 +1003,11 @@ async def add_forex_item(
             'strategy': item.strategy,
             'timeframe': item.timeframe,
             'status': 'OPEN',
-            'created_at': datetime.utcnow()
+            'created_at': datetime.utcnow(),
+            # Required: the trade cache delta-syncs on updated_at, and a
+            # Firestore inequality filter skips docs missing the field —
+            # a trade created without it never reaches Trade History.
+            'updated_at': datetime.utcnow(),
         }
         
         _, doc_ref = portfolio_ref.add(doc_data)
