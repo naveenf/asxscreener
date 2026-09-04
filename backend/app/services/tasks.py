@@ -109,7 +109,18 @@ PAIR_LOCK_CONFIGS = {
     # the 15m/RR3.0 migration: the take-profit IS 3R there, so the lock could
     # never fire before TP. Re-add only with a threshold swept against the new
     # config — do not restore the 3R values.
-    "BCO_USD":   {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3},
+    # BCO lock_to_r raised 1.0 -> 1.5 on Sep 4, 2026. The 1.0R target capped ~30
+    # winners too hard: replayed against BCO's real trades (weekend flattening
+    # modelled, stage fired only on a ~5-min poll) the deployed 2.0->1.0 removed
+    # the pair's entire edge — ROI 6.14 -> -3.46, Sharpe 0.50 -> -0.15 — to buy
+    # 1.4pp of drawdown. 2.0->1.5 beats BOTH that and the no-stage baseline on
+    # all three axes (ROI 6.94, MaxDD -10.91 vs -17.42, Sharpe 0.62) and is the
+    # only BCO cell passing the split-half OOS check. Direction holds across
+    # both windows, both trigger models and both weekend treatments — but the
+    # per-trade effect is NOT statistically significant (mean dR -0.188,
+    # 95% CI [-0.437, +0.062] for the old cell), so this is a drawdown decision,
+    # not an ROI one. See claude.md "Live verification (Sep 4, 2026)".
+    "BCO_USD":   {"lock_at_r": 2.0, "lock_to_r": 1.5, "cooldown_min": 90, "sl_precision": 3},
     # NAS100_USD added Aug 25, 2026 to cut drawdown on a pair that is not
     # currently earning live (-$89 realised). BT on 15m Oct 2025-Aug 2026:
     # MaxDD -10.47%->-5.44%, ROI +27.8%->+32.8%, WR 35.4%->52.3%, months
@@ -121,9 +132,14 @@ PAIR_LOCK_CONFIGS = {
     # Breakeven: early trigger, moves SL to a small loss. JP225's 1.5R target
     # leaves no big winner to protect; the pain is the sheer count of full -1R
     # losses, so this caps them instead. No cooldown — nothing is locked in.
-    # Validated Aug 2026: Sharpe 2.53->5.63, MaxDD -6.83%->-2.28%, full -1R
-    # losses 100%->15% of trades. Does NOT generalise — see the sweep in
-    # data/backtest_breakeven_sweep.csv before adding this to another pair.
+    # Re-verified Sep 4, 2026 against JP225's real trades (107, poll-limited
+    # triggers): MaxDD -17.01% -> -7.63%, Sharpe 0.27 -> 1.65. The drawdown gain
+    # replicates across both windows and both trigger models; the ROI effect
+    # does NOT (+9.0pp faithful, -16.9pp on the wider window), so this stage is
+    # justified on drawdown alone. The older "Sharpe 2.53->5.63" figure is not
+    # reproducible from live data — do not cite it. Does NOT generalise: run
+    # scripts/replay_stop_stages.py against a pair's own trades before adding
+    # this to it.
     "JP225_USD": {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1},
 }
 
@@ -262,7 +278,7 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
                 )
             all_signals = filtered_signals
 
-        # --- Profit-Lock Check (cooldown gate + SL move for XAG, BCO) ---
+        # --- Stop-move check (cooldown gate + SL move; see PAIR_LOCK_CONFIGS) ---
         try:
             run_pair_lock_checks()
         except Exception as xag_e:
