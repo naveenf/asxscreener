@@ -151,9 +151,86 @@ written only for pairs with `cooldown_min`.
 
 | Pair | Stage | Justification |
 |------|-------|---------------|
-| BCO_USD | Lock 2R→+1R, cooldown 90 min | Sharpe 1.67→2.44; ~20 trades per dataset rescued from 2R reversals |
+| BCO_USD | Lock 2R→**+1.5R**, cooldown 90 min | Raised from +1R Sep 4, 2026. The +1R target removed the pair's edge (ROI 6.14→-3.46, Sharpe 0.50→-0.15); +1.5R beats both it and the no-stage baseline on ROI, DD and Sharpe, and is the only BCO cell passing split-half |
 | NAS100_USD | Lock 1.5R→+0.5R, cooldown 90 min | MaxDD -10.47%→-5.44%, ROI +27.8%→+32.8%, WR 35.4%→52.3%, months positive 7/11→9/11 |
-| JP225_USD | Breakeven 0.25R→-0.1R, no cooldown | Sharpe 2.53→5.63, MaxDD -6.83%→-2.28%; full -1R losses cut from 100%→15% of trades |
+| JP225_USD | Breakeven 0.25R→-0.1R, no cooldown | Live-verified on drawdown (-17.0%→-7.6%, replicates in both windows). The old backtest figure Sharpe 2.53→5.63 is NOT reproducible — do not cite it |
+
+### Live verification (Sep 4, 2026)
+
+Every production stage re-tested by replaying each pair's REAL closed trades against raw price
+bars — not against a cached sweep CSV. Method: broker SL/TP tested intrabar (those orders rest at
+Oanda), stage triggers fired only on a ~5-minute poll sample (see the poll-limited warning under
+Methodology Warnings), gaps filled at the bar open, trades sorted chronologically before any
+equity path. Two windows: **faithful** (5m bars as poll samples, bounded by the 20,000-bar cap on
+5m files, ~mid-May 2026 onward) and a **wider** cross-check (15m closes as the poll proxy, which
+under-fires stages and so is conservative about them, reaching back to Jan/Feb 2026).
+
+**Faithful window — production stage vs no stage:**
+
+| Pair | n | Fired | ROI% base→stage | MaxDD% base→stage | Sharpe base→stage | Verdict |
+|------|--:|------:|-----------------|-------------------|-------------------|---------|
+| BCO_USD (lock 2.0→1.0) † | 142 | 30 | 6.14 → **-3.46** | -17.42 → -16.03 | 0.50 → **-0.15** | ❌ Harmful — buys 1.4pp of DD with the entire edge |
+| JP225_USD (BE 0.25→-0.1) | 107 | 48 | 1.45 → **10.49** | -17.01 → **-7.63** | 0.27 → **1.65** | ✅ Keep — on the drawdown result |
+| NAS100_USD (lock 1.5→0.5) | 24 | 7 | 12.66 → 5.95 | -4.90 → -4.43 | 4.06 → 2.57 | ⚠️ Underpowered — cannot conclude |
+| XAU_USD (none) | 59 | — | 90.28 | -10.04 | 5.46 | ✅ Naked is correct |
+| XAG_USD (none) | 98 | — | 44.00 | -18.21 | 1.74 | ✅ Naked is correct |
+
+† BCO run WITH production weekend flattening — see the BCO baseline trap below.
+
+**Wider window cross-check (n roughly 2-3x):** BCO 56.01→41.89 ROI · JP225 79.79→**62.90**
+(ROI *falls*) with DD -17.01→-10.15 · NAS100 22.44→21.49 with DD -15.68→**-9.76** ·
+XAU 152.57→81.90 · XAG 394.27→105.91.
+
+The windows **agree** on BCO (harmful) and on XAU/XAG (a stage is never free). They **disagree on
+JP225's ROI** (+9.0pp faithful, -16.9pp wider); its drawdown gain replicates in both.
+
+**Best alternative per pair (faithful window):**
+
+| Pair | Baseline ROI / DD / Sharpe | Best by drawdown | Best by ROI |
+|------|---------------------------|------------------|-------------|
+| BCO_USD † | 6.14 / -17.42 / 0.50 | **lock 2.0→1.5 — 6.94 / -10.91 / 0.62, OOS PASS** | BE 1.0→-0.2 — 10.68 / -12.92, OOS fail |
+| JP225_USD | 1.45 / -17.01 / 0.27 | BE 0.25→0.0 — 10.90 / -6.88, OOS fail | BE 0.25→-0.2 — 12.75, OOS fail |
+| NAS100_USD | 12.66 / -4.90 / 4.06 | lock 2.0→1.5 — **4 fires** | lock 2.5→1.5 — **1 fire** |
+| XAU_USD | 90.28 / -10.04 / 5.46 | BE 0.25→0.0 — 60.53 / -4.43, PASS | BE 1.0→-0.2 — 81.35 / -7.28 |
+| XAG_USD | 44.00 / -18.21 / 1.74 | lock 2.0→1.5 — 9.19 / -10.03 | lock 2.0→1.0 — 29.02, OOS fail |
+
+**XAU and XAG: every one of 17 candidate stages reduces ROI, in BOTH windows, without exception.**
+Drawdown can be bought, expensively — XAG's best-DD cell costs 79% of the return (44.0%→9.2%) to
+halve drawdown. Running these two naked is well supported. Do not revisit on drawdown grounds
+alone.
+
+**BCO: the deployed lock is the wrong cell, not the wrong idea.** `lock 2.0→1.5` beats both the
+deployed `2.0→1.0` AND the no-stage baseline on ROI, drawdown and Sharpe, in both windows, and is
+the only BCO cell that passes the split-half check. The whole difference is 0.5R of give-back on
+~30 trades. NOT YET ADOPTED — needs explicit approval.
+
+⚠️ **No stage's effect on expectancy is statistically significant.** Paired per-trade ΔR
+(stage minus baseline), faithful window — every 95% CI straddles zero:
+
+| Pair | Stage | n | Changed | Mean ΔR | t | 95% CI |
+|------|-------|--:|--------:|--------:|---:|--------|
+| BCO_USD | lock 2.0→1.0 | 142 | 36 | -0.188 | -1.47 | [-0.437, +0.062] |
+| JP225_USD | BE 0.25→-0.1 | 107 | 48 | +0.077 | +1.03 | [-0.069, +0.223] |
+| NAS100_USD | lock 1.5→0.5 | 24 | 7 | -0.265 | -1.05 | [-0.760, +0.230] |
+| XAU_USD | lock 2.0→1.0 | 59 | 13 | -0.257 | -1.77 | [-0.541, +0.027] |
+| XAG_USD | lock 2.0→1.0 | 98 | 25 | -0.145 | -0.55 | [-0.664, +0.374] |
+
+The large ROI swings above are compounding artifacts of per-trade differences a t-test cannot
+separate from noise. **Drawdown verdicts are the robust ones** — they replicate across both
+windows and both trigger models, and drawdown is a tail statistic a handful of trades legitimately
+controls. Treat ROI and Sharpe verdicts on 24-142 trades as directional at best.
+
+Against this file's own promotion bar: BCO's *baseline* fails split-half in the faithful window
+(h1 -0.12, h2 +0.23), JP225's production BE fails it (h1 +0.24, h2 -0.05), NAS100 fails the
+trade-count bar outright. Only XAU and XAG clear all three — and there the answer is add nothing.
+
+⚠️ **CLAUDE.md's old JP225 figure "Sharpe 2.53→5.63" is NOT reproducible from live data.**
+Do not cite it. The defensible claim for JP225 is the drawdown result, which replicates.
+
+⚠️ **NAS100's justification is artifact-shaped.** "149/151 configs cut drawdown" is precisely the
+result the intrabar-trigger artifact manufactures, and on this exact pair and stage that artifact
+is worth +7.9pp ROI and +0.68 Sharpe (see the poll-limited warning). The lock is not validated.
+Do not add a second mechanism here.
 
 **Neither stage generalises — sweep before adding one.** Run
 `scripts/backtest_stop_stage_sweep.py` (self-contained; gap-priced, OOS-gated) against the pair's
@@ -235,6 +312,55 @@ high/low against the SL price. A weekend gap opens *past* the stop, so real fill
 marked † is therefore mildly optimistic. Copy the `is_gap_bar` handling for any work on stops or
 tail risk.
 
+**Stop-stage triggers are poll-limited, NOT candle-based.** `run_pair_lock_checks()` never
+reads a candle close. It calls `OandaPriceService.get_current_price()` — a single **S5
+(5-second) midpoint** candle — and it runs inside `run_forex_refresh_task`, which cron fires at
+minutes `1,6,11,…,56`. So the live system observes price **once every ~5 minutes**, on every
+pair, regardless of that pair's signal timeframe. A stage can only fire on a price still present
+at a 5-minute sample.
+
+Any backtest or replay that fires a stage on an intrabar **high/low** is therefore wrong, and
+wrong in a direction that manufactures a benefit. Measured on NAS100 (102 trades, same bars, same
+stage, ONLY the trigger price differs):
+
+| Trigger model | Fires | ROI% | MaxDD% | Sharpe |
+|---|--:|---|---|---|
+| no stage at all | 0 | 22.44 | -15.68 | 1.67 |
+| lock 1.5→0.5, fires at a 5-min poll | 18 | 21.49 | -9.76 | 1.73 |
+| lock 1.5→0.5, fires on intrabar high/low | **25** | **30.32** | **-8.40** | **2.35** |
+
+Intrabar fires 32-39% more often across pairs and here fabricates improvement on **all three axes
+at once**. Which metric it inflates varies (on JP225 it flatters drawdown instead of ROI), but it
+always inflates the stage relative to the baseline.
+
+The intrabar model fires on brief spikes to the threshold — and brief spikes are exactly the
+population that then reverses to -1R, so "catching" them invents the entire drawdown gain. A real
+poll sees only a *sustained* move, which selects for genuine winners, truncates them, and leaves
+the whipsaw losers at a full -1R. **XAU was nearly deployed on that artifact (Sep 3-4, 2026).**
+Broker SL/TP are different — those orders rest at Oanda and DO fill intrabar. Only *our* stop
+move is poll-limited. `scripts/replay_stop_stages.py` models this correctly; copy its handling.
+
+**⚠️ Data trap: `signal_stop_loss` is NOT the stop that was placed.**
+`oanda_trade_service.py:398-410` re-anchors SL and TP off the **live fill** before placing the
+order, and `_log_to_portfolio` writes those re-anchored levels to `stop_loss`/`take_profit` with
+`buy_price` = the actual fill. `signal_stop_loss`/`signal_take_profit` are anchored to the signal
+CANDLE CLOSE — a different price. **Pairing `signal_stop_loss` with `buy_price` fabricates the
+risk distance and silently corrupts every R, ROI, drawdown and Sharpe downstream.** An entire
+analysis was invalidated by this on Sep 4, 2026.
+
+The offset is constant per trade: `stop_loss - signal_stop_loss == take_profit -
+signal_take_profit` holds to 7e-12 across all 662 unmoved trades. So for a trade whose stop was
+later moved, recover the ORIGINALLY PLACED stop as
+`signal_stop_loss + (take_profit - signal_take_profit)` — the stop-move job never touches TP.
+(183 rows carry no `signal_*` at all; all pre-2026-03-20.)
+
+**⚠️ Data trap: BCO's baseline is not "no stage".** BCO is in `ALWAYS_CLOSE_PAIRS`, so it is
+force-flattened before every weekly close. An unconstrained replay holds 25 of 142 BCO trades
+across a Friday 21:00 close (median hold 95 hours) and those 25 contribute **+30.4R against a
++9.6R total** — the entire baseline and more comes from trades production would never have kept.
+Any BCO comparison must model Friday flattening or it is measuring an impossible counterfactual.
+The verdict flips without it.
+
 **Promotion bar.** This repo has repeatedly promoted configs on short windows that then failed
 live — EUR_AUD (BT Sharpe 4.52 → -0.07 full dataset), NAS100 (14.36 on 15 trades → negative
 live), UK100 (8.45 → -$460 live). Before deploying a swept config, require: **≥60 trades**,
@@ -311,9 +437,10 @@ not its history. Git carries the history.
 | `backtest_xag_15m_filter_sweep.py` | Full filter grid, gap-priced + OOS-gated. **Use this as the template for new sweeps.** |
 | `backtest_weekend_gap_impact.py` | Weekend gap cost per pair; prices gapped stops at the true open |
 | `backtest_bco_rr_sweep.py` | BCO R:R sweep with split-half OOS check |
-| `backtest_stop_stage_sweep.py` | Profit-lock / breakeven stages, gap-priced + OOS-gated — re-run before adding a stage to any pair |
+| `backtest_stop_stage_sweep.py` | Profit-lock / breakeven stages, gap-priced + OOS-gated. ⚠️ Simulates its own entries; prefer `replay_stop_stages.py` for any pair with live history |
+| `replay_stop_stages.py` | **Stop-stage verification against REAL live trades.** Poll-limited triggers, reconstructed original stops, BCO weekend flattening. The authoritative tool for stage decisions |
+| `backtest_xau_15m_filter_sweep.py` | XAU entry-filter grid (9,528 cells). Result: nothing beats the current config |
 | `backtest_bco_noise_filter_sweep.py` | BCO filter sweep |
-| `backtest_nas100_investigation.py` | NAS100 filter sweep — re-run as more data arrives (its 2.2 MB output was not retained) |
 | `backtest_prod_vs_live_comparison.py` | Live vs backtest comparison, all pairs |
 
 Their outputs live alongside in `data/backtest_*.csv` plus
@@ -322,6 +449,33 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 ---
 
 ## Recent Changes
+
+**Sep 4, 2026 — BCO_USD lock target raised +1.0R → +1.5R.** The only config change from the
+stop-stage review below. Replayed against BCO's real trades with weekend flattening modelled and
+triggers poll-limited: the deployed +1R capped ~30 winners hard enough to remove the pair's whole
+edge (ROI 6.14→-3.46, Sharpe 0.50→-0.15) for 1.4pp of drawdown. +1.5R scores ROI 6.99, MaxDD
+-10.91% (vs -17.42% naked), Sharpe 0.62, and is the only BCO cell passing split-half. Adopted as
+a **drawdown** decision — the per-trade effect is not statistically significant. JP225, NAS100,
+XAU and XAG were all left exactly as they were.
+
+**Sep 4, 2026 — stop-stage trigger model corrected; all live stages re-verified; two data
+traps documented.** A proposed XAU breakeven was built and then withdrawn before commit: its
+drawdown gain existed only because the replay fired on intrabar highs, while production polls
+price every ~5 minutes. An independent re-analysis then found two further errors that had
+corrupted the first pass — `signal_stop_loss` is not the placed stop, and BCO's baseline must
+model weekend flattening. Both are written up under Methodology Warnings; both silently corrupt
+every downstream metric. Corrected verdicts: **BCO's deployed lock 2.0→1.0 is harmful**
+(ROI 6.14→-3.46, Sharpe 0.50→-0.15) while the neighbouring **lock 2.0→1.5 beats both it and the
+no-stage baseline on all three axes** and is the only BCO cell passing split-half — not yet
+adopted. **JP225's breakeven is kept on its drawdown result**, which replicates across windows;
+its ROI effect does not. **NAS100 is underpowered** (n=24) and its published justification is
+artifact-shaped. **XAU and XAG stay naked** — all 17 candidate stages reduce ROI in both windows.
+No config was changed. Crucially, **no stage's effect on expectancy is statistically significant**
+— every 95% CI straddles zero, so drawdown is the only axis worth deciding on.
+Also added `scripts/backtest_xau_15m_filter_sweep.py` (9,528 cells): **no entry filter beats the
+current XAU config** — 0 cells improve drawdown and ROI together. XAG's 5,792-cell sweep was
+re-checked too; its 5 apparent challengers all rest on `avoid=post_ny`, which fails a marginal
+test (helps 36% of 680 paired cells, negative medians). Both entry configs stand unchanged.
 
 **Aug 25, 2026 — NAS100_USD profit lock 1.5R→+0.5R, cooldown 90 min.** Adopted to cut drawdown
 on a pair that is not earning live: MaxDD -10.47%→-5.44%, ROI +27.8%→+32.8%, WR 35.4%→52.3%,
