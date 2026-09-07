@@ -59,6 +59,30 @@ def get_oanda_api():
     # Use a longer timeout for the downloader
     return API(access_token=token, environment=env, request_params={"timeout": 30})
 
+# Rows retained per timeframe. Sized from MEASURED bar density (a probe of live
+# Oanda history gave ~5,675 5m bars and ~1,895 15m bars per calendar month —
+# below the theoretical 5-day-week rate because of holidays and weekend gaps):
+#
+#   M5  70,000 ~= 1 year     M15 70,000 ~= 3 years
+#
+# Chosen against simulated trade counts for each pair's CURRENT config on raw
+# bars, not against calendar intuition. At these depths a backtest sees roughly:
+#   JP225  5m ~380 trades      BCO   15m ~870      USD_JPY 15m ~710
+#   XAU   15m ~205             XAG   15m ~310      NAS100  15m ~165
+# i.e. every pair clears a usable sample on its own signal timeframe, and the
+# slowest (NAS100, UK100) are the binding constraint rather than the fast ones.
+#
+# H1/H4/M3 are no longer downloaded (see main) but keep their caps so re-enabling
+# them needs no other change.
+MAX_ROWS = {
+    "M5":  70_000,
+    "M15": 70_000,
+    "M3":   20_000,
+    "H1":   20_000,
+    "H4":   20_000,
+}
+
+
 def load_pairs():
     with open(CONFIG_PATH, 'r') as f:
         return json.load(f)['pairs']
@@ -158,9 +182,15 @@ def update_dataset(api, symbol, oanda_symbol, granularity, label):
         combined_df = combined_df.drop_duplicates(subset=['Date'], keep='last')
         combined_df = combined_df.sort_values('Date')
         
-        # Optional: Limit file size (e.g. keep last 20k rows)
-        if len(combined_df) > 20000:
-             combined_df = combined_df.tail(20000)
+        # Rolling row cap, per timeframe. This TRIMS PERMANENTLY — bars dropped
+        # here are gone from disk (re-fetchable from Oanda, but no longer local).
+        # A single global 20,000 used to apply, which bit hardest on exactly the
+        # two timeframes we trade: it left only ~3.2 months of 5m and ~9.6
+        # months of 15m, silently bounding every backtest and making the
+        # repo's own >=60-trade promotion bar unreachable on sparse pairs.
+        cap = MAX_ROWS.get(granularity, 20000)
+        if len(combined_df) > cap:
+             combined_df = combined_df.tail(cap)
              
         combined_df.to_csv(filename, index=False)
         print(f"  [{label}] Updated. New rows: {len(new_df)}. Total: {len(combined_df)}")
@@ -187,7 +217,7 @@ def main():
     # 3. We filter for 'complete' candles and duplicates, so there's no harm in polling.
     
     print(f"Starting Forex Update at {now.strftime('%H:%M')}")
-    print(f"Plan: M15=Yes | H1=Yes | H4=Yes (Polling for completed candles)")
+    print(f"Plan: M15=Yes | M5=Yes (Polling for completed candles)")
 
     for pair in pairs:
         symbol = pair['symbol'] # e.g. EURUSD=X (keep for file naming)
@@ -199,22 +229,20 @@ def main():
             
         print(f"Processing {pair['name']} ({oanda_symbol})...")
         
-        # M15 Update
+        # Only the timeframes the live system trades. Every active pair runs
+        # SmaScalping on 15m except JP225_USD (5m), and that detector reads
+        # data['base'] only — the 'htf'/'htf2' slots the MTF loaders fill from
+        # H1/H4 are never consulted, and both loaders already guard on
+        # data['base'] being None, so absent H1/H4 files are handled.
+        #
+        # H1, H4 and Silver's M3 were dropped Sep 4, 2026: they cost an API call
+        # per pair per 5-minute cycle and were read by archived strategies only.
+        # ⚠️ Re-enable these BEFORE re-activating any archived strategy that
+        # needs them — PVTScalping is 1h-based, EnhancedSniper/NewBreakout/
+        # DailyORB use H1/H4 filters. Without the files they get None and are
+        # silently skipped rather than erroring.
         update_dataset(api, symbol, oanda_symbol, "M15", "15_Min")
-        
-        # H1 Update
-        update_dataset(api, symbol, oanda_symbol, "H1", "1_Hour")
-            
-        # H4 Update
-        update_dataset(api, symbol, oanda_symbol, "H4", "4_Hour")
-
-        # Intraday M5 for all assets
         update_dataset(api, symbol, oanda_symbol, "M5", "5_Min")
-
-        # Special Case: Silver (XAG_USD) Intraday M3
-        if symbol == "XAG_USD":
-            print(f"  [Intraday] Fetching M3 for Silver...")
-            update_dataset(api, symbol, oanda_symbol, "M3", "3_Min")
             
         # Rate limit kindness
         time.sleep(0.2)
