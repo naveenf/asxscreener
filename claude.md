@@ -52,13 +52,13 @@ asx-screener/
 │       └── strategy_interface.py          # Abstract Base Class
 ├── data/
 │   ├── raw/                    # Stock CSVs
-│   ├── forex_raw/              # Forex MTF CSVs (5m, 15m, 1h, 4h)
+│   ├── forex_raw/              # Forex CSVs (5m, 15m only — see Data Retention)
 │   └── metadata/
 │       ├── best_strategies.json  # Strategy config map (source of truth)
 │       ├── forex_pairs.json
 │       └── stock_list.json
 ├── scripts/                    # Backtest sweeps — see Documentation Organization
-│   └── download_forex.py       # Data fetcher
+│   └── download_forex.py       # Data fetcher (M15 + M5 only)
 └── docs/analysis/              # Backtest reports
 ```
 
@@ -107,9 +107,14 @@ mirrors it — if they disagree, the JSON wins.
 | JP225_USD | 5m | 1.5 | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]` | 5.87 | -5.85 |
 | NAS100_USD | 15m | 3.5 | 1.0% | 35 | 2 | `adx_min=30`, `atr_ratio=1.2`, `di_slope`, `avoid[7,8,20-23]` | 14.36 ‡ | -1.99 |
 | UK100_GBP | 15m | 3.5 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `avoid[15-19]` | 8.45 ‡ | -3.94 |
-| BCO_USD | 15m | 2.5 | 1.0% | 30 | 1 | `adx_min=15`, `atr_ratio=1.0`, `avoid[20-23]` | 1.47 † | -17.91 |
+| BCO_USD | 15m | 2.5 | 1.0% | **35** | 1 | `adx_min=15`, **`atr_ratio=1.2`**, **`di_spread=20`**, `avoid[20-23]` | 1.61 ‡‡ | -15.4 ‡‡ |
 | EUR_USD | 15m | 6.0 | 1.0% | 25 | 2 | `atr_ratio=1.0`, `avoid[20-23]` | 5.56 ‡ | -10.47 |
 | USD_JPY | 15m | 3.0 | 0.5% | 30 | 1 | `avoid[15-21]` | 2.85 ‡ | -8.65 |
+
+‡‡ **The only row measured over 3.1 years with walk-forward validation** (fit 2023-08→2025-12,
+held-out 2026). Every OTHER row in this table is a ~10-month single-window figure and does not
+survive contact with older data — see *Two-window reality check* below. Do not compare ‡‡ rows to
+the others.
 
 † Measured with gapped stops priced at the true post-weekend open. **Not comparable** to the
 other rows, which use the legacy backtester that books every stop at exactly -1R (see the
@@ -117,8 +122,15 @@ gap-pricing warning below). Lower ≠ worse.
 ‡ Live performance has diverged from these figures — see *Live divergence* below.
 
 **Disabled at runtime** via the Settings page (Firestore `config/strategy_overrides`, not the
-JSON): **EUR_USD** and **USD_JPY**, both for sustained negative live returns. Their configs are
-retained above so re-enabling needs no re-derivation.
+JSON): **EUR_USD**, **USD_JPY** and — from Sep 7, 2026 — **UK100_GBP**. EUR_USD and USD_JPY for
+sustained negative live returns; UK100 on the 3-year re-measure: Sharpe 0.19, MaxDD -36.3%,
+CAGR/DD 0.05, and -0.42 Sharpe if the pre-close flatten applies to it. It is also the worst live
+P&L on record (-$460) and the slowest pair at 3.7 trades/month. Their configs are retained above
+so re-enabling needs no re-derivation.
+
+⚠️ UK100's true economics depend on `config/trade_settings → holiday_close_enabled`: held over
+weekends it scores ROI +6.1%, flattened before the weekly close it scores **-14.5%**. That toggle
+is not readable from the repo — check it on the Settings page before re-enabling.
 
 ### Live divergence (as of Aug 2026, 927 trades since Mar 10)
 
@@ -134,6 +146,40 @@ profitable ones.** Set `target_rr` to what will actually be held, not to what ma
 backtest.
 
 ---
+
+### Two-window reality check (Sep 2026, after the data backfill)
+
+Every config in the table above was swept on the ~10 months that were the only data on disk. With
+3 years of 15m now available, the same configs re-measured on their tuned window vs everything:
+
+| Pair | Doc Sharpe | Reproduces on tuned window? | 3-yr Sharpe | 3-yr MaxDD | 3-yr CAGR/DD |
+|------|-----------:|-----------------------------|------------:|-----------:|-------------:|
+| XAU_USD | 6.48 | ✅ 6.57 | 1.92 | -40.9% | 0.90 |
+| XAG_USD | 4.60 | ✅ 4.38 | 1.45 | -17.6% | 0.79 |
+| BCO_USD | 1.47 | ~ 1.29 | 0.08 → **1.61 retuned** | -45.1% → **-15.4%** | 0.04 → **1.73** |
+| NAS100_USD | 14.36 | ❌ 2.58 | 1.41 | -19.7% | 0.70 |
+| UK100_GBP | 8.45 | ❌ 3.90 | 0.19 | -36.3% | 0.05 |
+| JP225_USD | 5.87 | ❌ 1.58 | 0.69 | -25.2% | 1.04 |
+| USD_JPY | 2.85 | ❌ 0.81 | 0.21 | -16.1% | 0.19 |
+| EUR_USD | 5.56 | ❌ -5.03 | -0.54 | -37.3% | 0.21 |
+
+XAU and XAG reproduce (they were re-derived Aug 2026 on this data), which **validates the
+pipeline** — so the drops are real out-of-sample degradation, not a measurement difference. The
+five that do not reproduce are stale figures from older sweeps on different windows or timeframes.
+
+⚠️ **Expect 15-25% drawdowns, not 5-10%.** The old figures are the minimum over a short,
+favourably-selected window. These configs win 23-29% of trades at 2.5-3.5R, which guarantees long
+losing runs — observed maximum streaks are **12-18 consecutive losses**. At 1% risk a 15-loss
+streak is ~14% drawdown; at XAU's 1.5% it is ~20%. Bootstrapping each pair's GOOD window out to
+full length already yields -11% to -24%, so most of the increase is path length, not deterioration.
+This is a position-sizing fact, not a config problem.
+
+⚠️ **7 of 8 pairs score far better on their tuned window than on unseen data** (XAU +0.975R vs
++0.050R; XAG +0.569 vs -0.044; UK100 +0.588 vs -0.040; BCO +0.158 vs -0.056). Part overfitting —
+each config was the best cell of a large sweep on that window — and part regime, since 2026 was
+strong nearly everywhere. **The next retune must be walk-forward** (fit older, validate on a
+held-out recent year). The split-half check currently in the sweep scripts fits and tests inside
+the same window and structurally cannot catch this. BCO's Sep 2026 retune is the worked example.
 
 ## Stop-Move Stages
 
@@ -151,7 +197,7 @@ written only for pairs with `cooldown_min`.
 
 | Pair | Stage | Justification |
 |------|-------|---------------|
-| BCO_USD | Lock 2R→**+1.5R**, cooldown 90 min | Raised from +1R Sep 4, 2026. The +1R target removed the pair's edge (ROI 6.14→-3.46, Sharpe 0.50→-0.15); +1.5R beats both it and the no-stage baseline on ROI, DD and Sharpe, and is the only BCO cell passing split-half |
+| BCO_USD | Lock 2R→+1R, cooldown 90 min | ⚠️ **Unevidenced on the current config.** Raised to +1.5R Sep 4, 2026 and reverted Sep 7 — see Config-consistency below. Only 15 trades exist since the Aug 24 RR migration |
 | NAS100_USD | Lock 1.5R→+0.5R, cooldown 90 min | MaxDD -10.47%→-5.44%, ROI +27.8%→+32.8%, WR 35.4%→52.3%, months positive 7/11→9/11 |
 | JP225_USD | Breakeven 0.25R→-0.1R, no cooldown | Live-verified on drawdown (-17.0%→-7.6%, replicates in both windows). The old backtest figure Sharpe 2.53→5.63 is NOT reproducible — do not cite it |
 
@@ -164,6 +210,23 @@ Methodology Warnings), gaps filled at the bar open, trades sorted chronologicall
 equity path. Two windows: **faithful** (5m bars as poll samples, bounded by the 20,000-bar cap on
 5m files, ~mid-May 2026 onward) and a **wider** cross-check (15m closes as the poll proxy, which
 under-fires stages and so is conservative about them, reaching back to Jan/Feb 2026).
+
+⚠️ **Config-consistency — read before trusting any row below.** These replays used whatever
+trades fell in the window, and two pairs changed R:R on Aug 24, 2026 *inside* it. Checking the
+implied R:R of every trade actually replayed:
+
+| Pair | R:R mix in window | Verdict validity |
+|------|-------------------|------------------|
+| XAU_USD | 43/58 at RR 3.5, stable | ✅ valid |
+| JP225_USD | 77/107 at RR 1.5, rest 1.4-1.6 | ✅ valid |
+| NAS100_USD | 11 at 3.5, 7 at 2.5 — mixed | ⚠️ underpowered AND config-mixed |
+| XAG_USD | **~99% at RR 12** (retired config), 1 at 3.0 | ❌ **invalid for RR 3.0** |
+| BCO_USD | **127/142 at RR 5.0** (retired), 15 at 2.5 | ❌ **invalid for RR 2.5** |
+
+XAG stays naked and BCO keeps its documented lock, so no harm followed — but neither pair's row
+below describes what it runs today. **Always check the implied R:R distribution of the trades a
+replay consumed** (`|take_profit - buy_price| / |buy_price - orig_sl|`) before believing it; a
+config change inside the window silently mixes two different strategies.
 
 **Faithful window — production stage vs no stage:**
 
@@ -303,6 +366,59 @@ deciding number is **average R of weekend-held trades**
 second `close_trade` or change it to raise.
 
 
+## Data Retention
+
+`download_forex.py` appends incrementally (reads the file, fetches from its newest bar, dedupes
+on `Date`), then **trims to a rolling row cap and writes that back — trimmed bars are deleted
+from disk.** Caps are per timeframe in `MAX_ROWS`:
+
+| File | Bars/month (measured) | Cap | History |
+|------|----------------------:|----:|---------|
+| `_5_Min` | ~5,675 | 70,000 | **~1 year** |
+| `_15_Min` | ~1,895 | 70,000 | **~3 years** |
+
+Densities are measured from live Oanda history, not the theoretical 5-day week — holidays and
+weekend gaps make the real rate lower, so calendar-based row estimates overstate depth by ~10%.
+
+Caps were sized against **simulated trade counts for each pair's current config on raw bars**
+(not against the live trade cache, which mixes retired configurations). Signal rates differ ~9x
+across pairs, so the slow pairs bind:
+
+| Pair | TF | Trades/month | Months to 200 trades |
+|------|----|-------------:|---------------------:|
+| JP225_USD | 5m | 31.7 | 6.3 |
+| BCO_USD | 15m | 24.1 | 8.3 |
+| USD_JPY | 15m | 19.7 | 10.1 |
+| EUR_USD | 15m | 12.4 | 16.1 |
+| XAG_USD | 15m | 8.6 | 23.3 |
+| XAU_USD | 15m | 5.7 | **34.9** |
+| NAS100_USD | 15m | 4.6 | **43.1** |
+| UK100_GBP | 15m | 3.7 | **53.9** |
+
+⚠️ **A stop-stage question needs far more than 200 trades.** To detect a 0.20R per-trade effect at
+80% power: JP225 needs ~9.5 months and BCO ~23 — both reachable. XAU needs ~176 months, NAS100
+~200, UK100 ~257. **Those pairs are not answerable statistically at any practical data volume**
+and must be decided on mechanism instead (e.g. "a lock below the take-profit truncates the tail
+the edge depends on" — visible in a handful of trades, no p-value required). More history helps
+JP225 and BCO; for the rest it buys precision that will never arrive.
+
+⚠️ **Until Sep 4, 2026 this was a single global 20,000**, which bit hardest on exactly the two
+timeframes the system trades — leaving only ~3.2 months of 5m and ~9.6 months of 15m. That
+silently bounded every sweep in this repo and is a structural reason configs kept getting promoted
+on short windows: on a sparse pair the file rolled forward faster than trades accrued, so the
+≥60-trade promotion bar was unreachable no matter how long you waited. If a historical analysis
+here looks oddly short-windowed, this is why.
+
+`download_forex.py` only ever fetches FORWARD from its newest bar, so it can never recover trimmed
+history. After raising a cap, run `scripts/download_forex_max_history.py` once to page backwards
+and refill; the 5-minute cron maintains it from there.
+
+**Only M15 and M5 are downloaded.** H1, H4 and Silver's M3 were dropped Sep 4, 2026 — every active
+pair runs SmaScalping, which reads `data['base']` only, and both MTF loaders already guard on
+`base` being None. ⚠️ **Re-enable them in `download_forex.py` BEFORE re-activating any archived
+strategy that needs them** — PVTScalping is 1h-based; EnhancedSniper, NewBreakout and DailyORB use
+H1/H4 filters. Without the files they receive None and are skipped silently rather than erroring.
+
 ## Methodology Warnings
 
 **Gap-pricing bug.** Every script in `scripts/` except `backtest_weekend_gap_impact.py` and
@@ -379,9 +495,17 @@ analysis that holds up independently of the ranking.
 - `di_persist=2` to XAG **on 5m** — kills the edge (+86%→+10%). This is 5m-specific: XAG on 15m
   and NAS100 on 15m both run persist=2 in production, where 2 candles is 30 min rather than 10.
 - `rsi_filter` on any 5m pair — adds noise.
-- `adx_min ≥ 20` or `atr_ratio = 1.5` to BCO — the first destroys the edge (Sharpe -0.83 at 25),
-  the second collapses WR to 4.5%. `avoid[0-5]` also harmful (blocks the London open where BCO
-  trends). `di_spread=10` is inert — DI>30 already implies it.
+- `atr_ratio ≥ 1.3` to BCO — 1.3 destroys 2026 entirely (OOS expR +0.002, then -0.151 at 1.4) and
+  1.5 collapses WR to 4.5%. **`atr_ratio = 1.2` is the opposite — one of the three best levers on
+  the pair** (cut drawdown in 99% of 13,824 paired cells). The cliff is between 1.2 and 1.3.
+  `avoid[0-5]` also harmful (blocks the London open where BCO trends).
+- ⚠️ **Corrected Sep 2026 — two long-standing entries here were wrong:**
+  - *"`di_spread=10` is inert — DI>30 already implies it"* — the premise is false. DI+ > 30 places
+    no bound on DI-, so the spread is an independent constraint. `di_spread=10` really is near-inert
+    (helps 37% of paired cells), but that generalised to "spread does not matter" and cost the
+    **`di_spread=20`** setting, which helps 77% of 13,824 paired cells and is now in production.
+  - *"`adx_min ≥ 20` destroys the edge"* — true only against the OLD di=30 config. Inside
+    di=35/atr=1.2 it is mildly positive (61% of 864 cells). Still the weakest lever; not adopted.
 - **Ratcheting SL** (1R→0.5R, 2R→1R) and **SMA20-triggered trailing SL** — tested across all 8
   pairs, all worse (XAG 5.55→-0.11). Cutting early into a fixed-RR structure destroys the
   fat-tail wins that justify a low win rate. Do not re-test. JP225's breakeven stage is distinct:
@@ -442,6 +566,7 @@ not its history. Git carries the history.
 | `backtest_xau_15m_filter_sweep.py` | XAU entry-filter grid (9,528 cells). Result: nothing beats the current config |
 | `backtest_bco_noise_filter_sweep.py` | BCO filter sweep |
 | `backtest_prod_vs_live_comparison.py` | Live vs backtest comparison, all pairs |
+| `download_forex_max_history.py` | **One-off** Oanda backfill — pages backwards to fill history the old row cap trimmed away. Run once after changing `MAX_ROWS`; the cron maintains it after |
 
 Their outputs live alongside in `data/backtest_*.csv` plus
 `data/weekend_held_trade_isolation.csv`.
@@ -449,6 +574,44 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 ---
 
 ## Recent Changes
+
+**Sep 7, 2026 — BCO_USD retuned on 3.1 years: `di_threshold` 30→35, `atr_ratio_min` 1.0→1.2,
+`di_spread_min` 0→20.** The first config in this repo validated walk-forward. Measured with
+production's Friday flattening and gap-priced stops over 2023-08→2026-09:
+**ROI +6.2%→+105.2%, Sharpe 0.08→1.61, MaxDD -45.1%→-15.4%**, expectancy +0.017R→+0.174R on 444
+trades — and **positive in all four calendar years** (+0.211/+0.156/+0.174/+0.172) where the old
+config lost money in 2023 and 2024. Selected blind to 2026: in-sample +0.174R, held-out 2026
++0.172R. The old config *failed its own walk-forward* (in-sample Sharpe **-0.56**; all its profit
+was 2026). From a 41,472-cell sweep, but not a lucky cell — **37.8% of the grid beats the old
+config on ROI, Sharpe and drawdown simultaneously**, and the three adopted levers each hold across
+thousands of paired cells (di 35: 72%, atr 1.2: 88%, spread 20: 77%), computed blind to 2026.
+t-stat +2.39 vs the old config's +0.36. Trade count drops 1038→444.
+
+`target_rr` was deliberately NOT changed — the RR axis is nearly flat from 2.0-3.5 over 3 years,
+so August's 5.0→2.5 retune addressed the wrong parameter; `di_threshold=30` admitting weak signals
+was the real defect. `adx_min=20` (grid peak, Sharpe 1.90) was rejected as an interaction artifact:
+harmful in isolation, jagged on its own axis. The 2.0R→+1.0R profit lock was re-tested and kept —
+neutral (±0.1 Sharpe); every tighter stage is harmful.
+Sweep: an agent run against `data/forex_raw/BCO_USD_15_Min.csv`; reproduce with
+`scripts/replay_stop_stages.py` conventions.
+
+**Sep 7, 2026 — BCO_USD lock reverted +1.5R → +1.0R.** The Sep 4 change was withdrawn: 127 of
+the 142 trades supporting it predated the Aug 24 RR 5.0→2.5 migration, so ~89% of the evidence
+described a retired configuration. At RR 2.5 a 2.0R trigger sits 80% of the way to TP and fires on
+only 1-2 of the 15 post-migration trades — the same defect that retired XAG's 3R lock. The
+apparent ROI gain was also a compounding artifact; total ΔR was negative even on the old data.
+**No BCO lock setting is currently evidenced**; settling it needs ~23 months of post-migration
+trades, and deeper history cannot help because it only adds pre-migration ones. Retention caps
+were also finalised at 70,000 rows per timeframe (~1 year of 5m, ~3 years of 15m).
+
+**Sep 4, 2026 — data retention raised; H1/H4/M3 downloads dropped.** The row cap was a single
+global 20,000, leaving only ~3.2 months of 5m and ~9.6 months of 15m and silently bounding every
+backtest. Now per-timeframe: **5m and 15m both 70,000 rows (~1 year / ~3 years)**, sized from
+measured bar density and simulated per-pair trade counts. H1, H4 and
+Silver's M3 are no longer fetched — nothing active reads them. `download_forex_max_history.py` was
+rewritten from a broken yfinance version (60-day cap, wrote to a filename nothing read) into an
+Oanda backwards-paging backfill; run it once to refill, then the cron maintains it.
+See Data Retention.
 
 **Sep 4, 2026 — BCO_USD lock target raised +1.0R → +1.5R.** The only config change from the
 stop-stage review below. Replayed against BCO's real trades with weekend flattening modelled and
