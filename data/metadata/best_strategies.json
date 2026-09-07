@@ -161,20 +161,21 @@
     "strategies": [
       {
         "strategy": "SmaScalping",
-        "sharpe": 1.47,
+        "sharpe": 1.61,
         "timeframe": "15m",
         "target_rr": 2.5,
         "params": {
-          "di_threshold": 30.0,
+          "di_threshold": 35.0,
           "di_persist": 1,
           "adx_min": 15.0,
-          "atr_ratio_min": 1.0,
+          "atr_ratio_min": 1.2,
           "avoid_hours": [
             20,
             21,
             22,
             23
-          ]
+          ],
+          "di_spread_min": 20.0
         }
       }
     ]
