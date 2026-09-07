@@ -1,0 +1,7 @@
+step,param,value,vs_baseline,paired_cells,pct_better_expR,pct_better_roi,pct_better_dd,median_dExpR,conditioned_on
+1,sma_ordered,True,False,103680,84.2,82.0,82.2,0.0762,{}
+2,target_rr,5.0,3.0,17280,73.7,64.7,50.0,0.0729,{'sma_ordered': True}
+3,atr_ratio_min,0.0,1.2,5760,69.0,86.2,43.2,0.072,"{'sma_ordered': True, 'target_rr': 5.0}"
+4,adx_min,25.0,0.0,1440,74.7,72.3,59.2,0.0532,"{'sma_ordered': True, 'target_rr': 5.0, 'atr_ratio_min': 0.0}"
+5,body_ratio_min,0.3,0.0,720,76.4,65.8,70.7,0.0746,"{'sma_ordered': True, 'target_rr': 5.0, 'atr_ratio_min': 0.0, 'adx_min': 25.0}"
+6,avoid,london_open,none,144,85.4,73.6,75.0,0.041,"{'sma_ordered': True, 'target_rr': 5.0, 'atr_ratio_min': 0.0, 'adx_min': 25.0, 'body_ratio_min': 0.3}"

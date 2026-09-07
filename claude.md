@@ -103,7 +103,7 @@ mirrors it — if they disagree, the JSON wins.
 | Asset | TF | RR | risk | DI> | persist | Other filters | Sharpe | MaxDD% |
 |-------|----|----|------|-----|---------|---------------|--------|--------|
 | XAU_USD | 15m | 3.5 | 1.5% | 35 | 2 | `adx_rising`, `avoid[8,9]` | 6.48 | -7.73 |
-| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `di_slope` | 4.60 † | -6.28 |
+| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `adx_min=25`, **`sma_ordered`**, `body_ratio_min=0.3`, `di_slope`, `avoid[7,8,9]` | 1.46 ‡‡ | -18.6 ‡‡ |
 | JP225_USD | 5m | 1.5 | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]` | 5.87 | -5.85 |
 | NAS100_USD | 15m | 3.5 | 1.0% | 35 | 2 | `adx_min=30`, `atr_ratio=1.2`, `di_slope`, `avoid[7,8,20-23]` | 14.36 ‡ | -1.99 |
 | UK100_GBP | 15m | 3.5 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `avoid[15-19]` | 8.45 ‡ | -3.94 |
@@ -111,10 +111,11 @@ mirrors it — if they disagree, the JSON wins.
 | EUR_USD | 15m | 6.0 | 1.0% | 25 | 2 | `atr_ratio=1.0`, `avoid[20-23]` | 5.56 ‡ | -10.47 |
 | USD_JPY | 15m | 3.0 | 0.5% | 30 | 1 | `avoid[15-21]` | 2.85 ‡ | -8.65 |
 
-‡‡ **The only row measured over 3.1 years with walk-forward validation** (fit 2023-08→2025-12,
-held-out 2026). Every OTHER row in this table is a ~10-month single-window figure and does not
-survive contact with older data — see *Two-window reality check* below. Do not compare ‡‡ rows to
-the others.
+‡‡ **The only rows measured over 3 years with walk-forward validation** — BCO (fit
+2023-08→2025-12) and XAG (fit 2023-09→2025-12), both held out on 2026. Every OTHER row in this
+table is a ~10-month single-window figure and does not survive contact with older data — see
+*Two-window reality check* below. Do not compare ‡‡ rows to the others: their Sharpes look *worse*
+because they are honest, and their MaxDD figures are realistic rather than best-case.
 
 † Measured with gapped stops priced at the true post-weekend open. **Not comparable** to the
 other rows, which use the legacy backtester that books every stop at exactly -1R (see the
@@ -155,13 +156,16 @@ Every config in the table above was swept on the ~10 months that were the only d
 | Pair | Doc Sharpe | Reproduces on tuned window? | 3-yr Sharpe | 3-yr MaxDD | 3-yr CAGR/DD |
 |------|-----------:|-----------------------------|------------:|-----------:|-------------:|
 | XAU_USD | 6.48 | ✅ 6.57 | 1.92 | -40.9% | 0.90 |
-| XAG_USD | 4.60 | ✅ 4.38 | 1.45 | -17.6% | 0.79 |
+| XAG_USD ⚠️sup | 4.60 | ✅ 4.38 | 1.45 | -17.6% | 0.79 |
 | BCO_USD | 1.47 | ~ 1.29 | 0.08 → **1.61 retuned** | -45.1% → **-15.4%** | 0.04 → **1.73** |
 | NAS100_USD | 14.36 | ❌ 2.58 | 1.41 | -19.7% | 0.70 |
 | UK100_GBP | 8.45 | ❌ 3.90 | 0.19 | -36.3% | 0.05 |
 | JP225_USD | 5.87 | ❌ 1.58 | 0.69 | -25.2% | 1.04 |
 | USD_JPY | 2.85 | ❌ 0.81 | 0.21 | -16.1% | 0.19 |
 | EUR_USD | 5.56 | ❌ -5.03 | -0.54 | -37.3% | 0.21 |
+
+⚠️sup **XAG's row describes the config SUPERSEDED on Sep 7, 2026** — it is kept because it is
+why the pair was retuned, not as a description of what runs now. See Recent Changes.
 
 XAU and XAG reproduce (they were re-derived Aug 2026 on this data), which **validates the
 pipeline** — so the drops are real out-of-sample degradation, not a measurement difference. The
@@ -489,7 +493,11 @@ analysis that holds up independently of the ranking.
 
 ## ⚠️ Do NOT Apply
 
-- `sma_ordered` to NAS100 or XAG — destroys Sharpe (NAS100 2.67→-1.04). SMAs lag on fast moves.
+- `sma_ordered` to NAS100 — destroys Sharpe (2.67→-1.04). SMAs lag on fast moves.
+  ⚠️ **Corrected Sep 7, 2026 — this entry previously named XAG too, and that was wrong.** The
+  evidence was NAS100's, generalised to a pair where it had never been tested. On XAG
+  `sma_ordered` wins **84.2% of 103,680 paired cells** — the single strongest lever on the pair,
+  now in production. It was also adopted on nothing else: re-test per pair before assuming.
 - `di_slope`, `di_persist=2`, `di_threshold`>30, or `adx_min`>15 to **USD_JPY** — all harmful;
   DI spread is too tight on JPY.
 - `di_persist=2` to XAG **on 5m** — kills the edge (+86%→+10%). This is 5m-specific: XAG on 15m
@@ -574,6 +582,65 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 ---
 
 ## Recent Changes
+
+**Sep 7, 2026 — XAG_USD retuned on 3 years, walk-forward validated: added `sma_ordered`,
+`adx_min=25`, `body_ratio_min=0.3`, `avoid_hours=[7,8,9]`; removed `atr_ratio_min=1.2`.**
+The second config here validated walk-forward, after BCO. The OLD config had **no edge outside a
+single half-year**: -0.029R across the 27-month fit window (2023-09→2025-12, 205 trades), with
+2026-H1 alone contributing 36.6R of a 34.7R lifetime total (105%) and the other six sections
+summing to -1.9R. Fit blind to 2026, then held out: **in-sample +0.333R, held-out +0.357R** — it
+does not depend on the 2026 regime. Full 3 years: expectancy +0.126R→**+0.340R**, ROI
+35.3%→**92.3%**, Sharpe 0.68→**1.46**, MaxDD -21.6%→**-18.6%**, PF 1.17→1.51, worst streak 12→10,
+203 trades. Positive in **all four calendar years** (old config lost money in 2023 and 2025);
+5/7 six-month sections positive and best-section concentration 105%→38%. From a 207,360-cell grid
+but not a lucky cell: **32.6% of the grid clears the fit-window bar the old config fails**, all 25
+one-step neighbours are positive in BOTH windows, and split-half on the fit window is +0.444/+0.222.
+`target_rr` deliberately NOT raised — RR 3.5-4.0 score better on both windows, but raising targets
+is the direction the live record says fails.
+⚠️ **Gated on execution, not config.** At the ~1.5 realised payoff seen live on every pair
+(winners closed manually before TP), this config computes to **-0.163R** and only turns positive if
+wins are held past ~2.0R. The old config was worse (-0.298R). No entry filter fixes this — it is
+the same defect that retired XAG's 12R and BCO's 5R targets.
+Confirmed unchanged by the same sweep: **XAG stays naked** (65/82 stage cells cut drawdown but
+35/82 have significantly NEGATIVE ΔR; best-ROI cells are compounding artifacts), **keeps holding
+over weekends** (flattening costs 92.3%→69.8% ROI), and **the 5m→15m migration holds** (5m gives
+2.4x the trades for under half the expectancy and cannot be walk-forward validated — its history
+is almost entirely the favourable 2026 regime).
+Sweep: `scripts/backtest_xag_walkforward_retune.py` → `data/backtest_xag_wf_*.csv`.
+
+**Sep 7, 2026 — XAU_USD retune evaluated and REJECTED; config unchanged.** A 414,720-cell
+walk-forward sweep produced a candidate (di 35→40, `di_slope`, `sma_ordered`, `avoid[8,9,20-23]`)
+that beat the incumbent on the fit window (+0.543R vs +0.094R), cut bootstrap-median drawdown
+~-28%→~-17%, and was positive in all four years. **It was not deployed**: on the held-out 2026 year
+it was **significantly WORSE** (ΔexpR -0.975, 95% CI [-1.893, -0.056], t=-2.08 — the only
+significant comparison in the study, and it ran against the candidate), earning +0.108R vs the
+incumbent's +1.083R. Deploying a config that just underperformed on the only unseen data available,
+replacing one that is currently the best live pair (+$3,128), was judged the weaker bet. Revisit if
+live signals degrade.
+⚠️ **XAU's stored `sharpe: 6.48` is a ~10-month tuned-window figure and is not reproducible.**
+Freshly measured over 3 years: **daily-annualised Sharpe 1.14, MaxDD -40.9%** (bootstrap median
+-28%; the observed -40.9% is a p5 unlucky ordering — quote the bootstrap). Its edge is heavily
+2026-concentrated: 40 of 329 trades supply **63% of lifetime R**. `risk_pct` remains 1.5%, the only
+pair above 1.0%; cutting to 1.0% takes
+bootstrap-median DD ~-28%→~-20% for a third of the CAGR, and **the incumbent cannot reach -12% DD
+by cutting risk at any level**. All 32 candidate stop-stages have ΔR CIs straddling zero: XAU stays
+naked.
+Sweep artifacts were NOT retained — XAU's config did not change, so only this summary is kept.
+Reproduce with the conventions in `scripts/backtest_xag_walkforward_retune.py`.
+
+**Sep 7, 2026 — full-history replay of all 5 active pairs on the backfilled 3-year data.**
+Replayed with an engine validated bar-by-bar against the real `SmaScalpingDetector.analyze()`
+(0 signal / 0 stop-loss mismatches per pair), gap-priced, with poll-limited stage triggers. ⚠️ **Several long-standing figures in this file did not reproduce.**
+Measured 3-year daily-annualised Sharpe / MaxDD: BCO **1.63 / -13.1%** (reproduces the Sep 7
+retune), XAU **1.14 / -40.9%**, NAS100 **0.84 / -20.0%**, XAG(old) **0.68 / -21.6%**. JP225 is
+5m-only so its window is **1 year, not 3** (463 trades, 87% of its R from 2026-H1) — do not table it
+beside the others. Trade rates also differ materially from the Data Retention table (measured
+BCO 12.3/mo not 24.1, XAU 9.3 not 5.7, NAS100 7.2 not 4.6). **No stage's per-trade ΔR is
+statistically significant on 209-423 paired trades**; BCO's deployed lock measures **neutral**
+(ΔR -0.011, t=-0.63), not harmful as previously recorded, and NAS100's lock made drawdown *worse*
+in the primary run and sign-flips with the flatten toggle. Only these findings were retained — no
+config changed for those pairs, so the replay artifacts were not kept. The equivalent engine lives
+in `scripts/backtest_xag_walkforward_retune.py` (see its reference-replay section).
 
 **Sep 7, 2026 — BCO_USD retuned on 3.1 years: `di_threshold` 30→35, `atr_ratio_min` 1.0→1.2,
 `di_spread_min` 0→20.** The first config in this repo validated walk-forward. Measured with

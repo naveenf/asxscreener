@@ -24,14 +24,21 @@
     "strategies": [
       {
         "strategy": "SmaScalping",
-        "sharpe": 4.6,
+        "sharpe": 1.46,
         "timeframe": "15m",
         "target_rr": 3.0,
         "params": {
           "di_threshold": 35.0,
           "di_persist": 2,
-          "atr_ratio_min": 1.2,
-          "di_slope": true
+          "adx_min": 25.0,
+          "sma_ordered": true,
+          "body_ratio_min": 0.3,
+          "di_slope": true,
+          "avoid_hours": [
+            7,
+            8,
+            9
+          ]
         }
       }
     ]
