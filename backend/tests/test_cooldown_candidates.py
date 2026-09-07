@@ -13,7 +13,7 @@ from backend.app.services.tasks import select_cooldown_candidates
 
 # Two pairs with a cooldown, one breakeven-only pair without.
 CONFIGS = {
-    "BCO_USD":    {"lock_at_r": 2.0, "lock_to_r": 1.5, "cooldown_min": 90, "sl_precision": 3},
+    "BCO_USD":    {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3},
     "NAS100_USD": {"lock_at_r": 1.5, "lock_to_r": 0.5, "cooldown_min": 90, "sl_precision": 1},
     "JP225_USD":  {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1},
 }

@@ -13,7 +13,7 @@ import pytest
 from backend.app.services.tasks import decide_stop_move
 
 LOCK_3R = {"lock_at_r": 3.0, "lock_to_r": 2.0, "cooldown_min": 25, "sl_precision": 3}
-BCO     = {"lock_at_r": 2.0, "lock_to_r": 1.5, "cooldown_min": 90, "sl_precision": 3}
+BCO     = {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3}
 NAS100  = {"lock_at_r": 1.5, "lock_to_r": 0.5, "cooldown_min": 90, "sl_precision": 1}
 JP225   = {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1}
 BOTH    = {"be_at_r": 0.25, "be_to_r": -0.1,
@@ -39,7 +39,7 @@ def test_pair_without_breakeven_stage_ignores_small_r():
 
 
 def test_bco_lock_uses_its_own_levels():
-    assert decide_stop_move(BCO, r_current=2.0, be_fired=False, lock_fired=False) == ("lock", 1.5)
+    assert decide_stop_move(BCO, r_current=2.0, be_fired=False, lock_fired=False) == ("lock", 1.0)
 
 
 # ── breakeven ────────────────────────────────────────────────────────────────

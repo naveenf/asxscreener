@@ -109,18 +109,24 @@ PAIR_LOCK_CONFIGS = {
     # the 15m/RR3.0 migration: the take-profit IS 3R there, so the lock could
     # never fire before TP. Re-add only with a threshold swept against the new
     # config — do not restore the 3R values.
-    # BCO lock_to_r raised 1.0 -> 1.5 on Sep 4, 2026. The 1.0R target capped ~30
-    # winners too hard: replayed against BCO's real trades (weekend flattening
-    # modelled, stage fired only on a ~5-min poll) the deployed 2.0->1.0 removed
-    # the pair's entire edge — ROI 6.14 -> -3.46, Sharpe 0.50 -> -0.15 — to buy
-    # 1.4pp of drawdown. 2.0->1.5 beats BOTH that and the no-stage baseline on
-    # all three axes (ROI 6.94, MaxDD -10.91 vs -17.42, Sharpe 0.62) and is the
-    # only BCO cell passing the split-half OOS check. Direction holds across
-    # both windows, both trigger models and both weekend treatments — but the
-    # per-trade effect is NOT statistically significant (mean dR -0.188,
-    # 95% CI [-0.437, +0.062] for the old cell), so this is a drawdown decision,
-    # not an ROI one. See claude.md "Live verification (Sep 4, 2026)".
-    "BCO_USD":   {"lock_at_r": 2.0, "lock_to_r": 1.5, "cooldown_min": 90, "sl_precision": 3},
+    # ⚠️ lock_to_r was raised to 1.5 on Sep 4, 2026 and REVERTED on Sep 7. The
+    # supporting replay covered 142 trades of which 127 predated the Aug 24
+    # RR 5.0 -> 2.5 migration, so ~89% of the evidence described a configuration
+    # BCO no longer runs. Two further problems surfaced on re-check: at RR 2.5 a
+    # 2.0R trigger sits 80% of the way to take-profit, so the lock fires on only
+    # 1-2 of the 15 post-migration trades — structurally the same "can never
+    # fire before TP" defect that retired XAG's 3R lock in August; and even on
+    # the old config the 2.0->1.5 cell had NEGATIVE total dR (-1.9R), the
+    # apparent ROI gain being a compounding/sequencing artifact rather than more
+    # R. Do not re-adopt without post-migration evidence.
+    #
+    # There is currently NO valid evidence for any BCO lock setting: 15 trades
+    # on the live config decides nothing. Settling it needs ~23 months of
+    # post-Aug-24 trades (BCO simulates ~24/month, and the question needs ~550
+    # trades to detect a 0.20R effect at 80% power). Deeper history does not
+    # help — it only adds pre-migration trades. Re-run
+    # scripts/replay_stop_stages.py filtered to trades after 2026-08-24.
+    "BCO_USD":   {"lock_at_r": 2.0, "lock_to_r": 1.0, "cooldown_min": 90, "sl_precision": 3},
     # NAS100_USD added Aug 25, 2026 to cut drawdown on a pair that is not
     # currently earning live (-$89 realised). BT on 15m Oct 2025-Aug 2026:
     # MaxDD -10.47%->-5.44%, ROI +27.8%->+32.8%, WR 35.4%->52.3%, months
