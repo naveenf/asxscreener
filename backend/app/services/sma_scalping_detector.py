@@ -21,20 +21,22 @@ class SmaScalpingDetector(ForexStrategy):
                  di_spread_min: float = 0.0, rsi_filter: bool = False,
                  body_ratio_min: float = 0.0,
                  vol_ratio_min: float = 0.0, atr_ratio_min: float = 0.0,
-                 di_slope: bool = False, avoid_hours: list = None):
-        self.di_threshold   = di_threshold
-        self.rr             = rr
-        self.adx_min        = adx_min
-        self.di_persist     = max(1, di_persist)
-        self.adx_rising     = adx_rising
-        self.sma_ordered    = sma_ordered
-        self.di_spread_min  = di_spread_min
-        self.rsi_filter     = rsi_filter
-        self.body_ratio_min = body_ratio_min
-        self.vol_ratio_min  = vol_ratio_min
-        self.atr_ratio_min  = atr_ratio_min
-        self.di_slope       = di_slope
-        self.avoid_hours    = avoid_hours or []
+                 di_slope: bool = False, avoid_hours: list = None,
+                 htf_trend_align: bool = False):
+        self.di_threshold    = di_threshold
+        self.rr              = rr
+        self.adx_min         = adx_min
+        self.di_persist      = max(1, di_persist)
+        self.adx_rising      = adx_rising
+        self.sma_ordered     = sma_ordered
+        self.di_spread_min   = di_spread_min
+        self.rsi_filter      = rsi_filter
+        self.body_ratio_min  = body_ratio_min
+        self.vol_ratio_min   = vol_ratio_min
+        self.atr_ratio_min   = atr_ratio_min
+        self.di_slope        = di_slope
+        self.avoid_hours     = avoid_hours or []
+        self.htf_trend_align = htf_trend_align
 
     def get_name(self) -> str:
         return "SmaScalping"
@@ -60,6 +62,7 @@ class SmaScalpingDetector(ForexStrategy):
         atr_ratio_min  = float(params.get('atr_ratio_min',  self.atr_ratio_min))  if params else self.atr_ratio_min
         di_slope       = bool(params.get('di_slope',        self.di_slope))       if params else self.di_slope
         avoid_hours    = list(params.get('avoid_hours',     self.avoid_hours))    if params else self.avoid_hours
+        htf_trend_align = bool(params.get('htf_trend_align', self.htf_trend_align)) if params else self.htf_trend_align
 
         if len(df) < di_persist + 1:
             return None
@@ -143,6 +146,33 @@ class SmaScalpingDetector(ForexStrategy):
         else:
             session_ok = True
 
+        # Filter 10: HTF trend alignment — only take a direction that agrees
+        # with a higher-timeframe trend (Close vs SMA50 on data['htf_trend'],
+        # e.g. 4H for XAG_USD, Daily for JP225_USD — see best_strategies.json
+        # htf_trend_tf). Mirrors scripts/backtest_htf_direction_filter.py's
+        # htf_trend()/attach_htf() exactly: HTF rows are indexed by OPEN time
+        # (download_forex.py convention), so a bar's trend only becomes usable
+        # once its own close (open + its granularity) has passed — never read
+        # a still-forming HTF candle. Missing/insufficient HTF data fails
+        # closed (blocks both directions) rather than silently passing.
+        if htf_trend_align:
+            htf_trend_buy = htf_trend_sell = False
+            htf_df = data.get('htf_trend')
+            if htf_df is not None and len(htf_df) >= 51 and len(df) >= 2:
+                base_delta = df.index.to_series().diff().median()
+                htf_delta  = htf_df.index.to_series().diff().median()
+                if pd.notna(base_delta) and pd.notna(htf_delta):
+                    base_close = latest.name + base_delta
+                    htf_closed = htf_df[htf_df.index + htf_delta <= base_close]
+                    if len(htf_closed) >= 51:
+                        htf_sma50 = htf_closed['Close'].rolling(50).mean().iloc[-1]
+                        htf_last_close = htf_closed['Close'].iloc[-1]
+                        if pd.notna(htf_sma50):
+                            htf_trend_buy  = htf_last_close > htf_sma50
+                            htf_trend_sell = htf_last_close < htf_sma50
+        else:
+            htf_trend_buy = htf_trend_sell = True
+
         is_buy = (
             latest['Close'] > latest['SMA20'] and
             latest['Close'] > latest['SMA50'] and
@@ -158,7 +188,8 @@ class SmaScalpingDetector(ForexStrategy):
             vol_ok and
             atr_exp_ok and
             di_slope_buy and
-            session_ok
+            session_ok and
+            htf_trend_buy
         )
         is_sell = (
             latest['Close'] < latest['SMA20'] and
@@ -175,7 +206,8 @@ class SmaScalpingDetector(ForexStrategy):
             vol_ok and
             atr_exp_ok and
             di_slope_sell and
-            session_ok
+            session_ok and
+            htf_trend_sell
         )
 
         if not (is_buy or is_sell):

@@ -72,14 +72,20 @@ def get_oanda_api():
 # i.e. every pair clears a usable sample on its own signal timeframe, and the
 # slowest (NAS100, UK100) are the binding constraint rather than the fast ones.
 #
-# H1/H4/M3 are no longer downloaded (see main) but keep their caps so re-enabling
-# them needs no other change.
+# H1/M3 are no longer downloaded (see main) but keep their caps so re-enabling
+# them needs no other change. H4 and D are downloaded for XAG_USD and JP225_USD
+# only, per the HTF trend-gate research (Sep 2026): both pairs' baselines failed
+# the repo's own split-half check, and adding a same-direction HTF trend filter
+# fixed it (XAG: H4, JP225: Daily). 20,000 H4 bars is ~9-13 years at realistic
+# density; 3,000 Daily bars is ~12 years — both far beyond what's needed, kept
+# generous because the storage cost is trivial at these granularities.
 MAX_ROWS = {
     "M5":  70_000,
     "M15": 70_000,
     "M3":   20_000,
     "H1":   20_000,
     "H4":   20_000,
+    "D":     3_000,
 }
 
 
@@ -138,6 +144,8 @@ def update_dataset(api, symbol, oanda_symbol, granularity, label):
         suffix = "3_Min"
     elif granularity == "M5":
         suffix = "5_Min"
+    elif granularity == "D":
+        suffix = "Daily"
     else:
         suffix = granularity
 
@@ -217,7 +225,7 @@ def main():
     # 3. We filter for 'complete' candles and duplicates, so there's no harm in polling.
     
     print(f"Starting Forex Update at {now.strftime('%H:%M')}")
-    print(f"Plan: M15=Yes | M5=Yes (Polling for completed candles)")
+    print(f"Plan: M15=Yes | M5=Yes | H4=XAG_USD only | D=JP225_USD only")
 
     for pair in pairs:
         symbol = pair['symbol'] # e.g. EURUSD=X (keep for file naming)
@@ -237,13 +245,23 @@ def main():
         #
         # H1, H4 and Silver's M3 were dropped Sep 4, 2026: they cost an API call
         # per pair per 5-minute cycle and were read by archived strategies only.
-        # ⚠️ Re-enable these BEFORE re-activating any archived strategy that
+        # ⚠️ Re-enable H1/M3 BEFORE re-activating any archived strategy that
         # needs them — PVTScalping is 1h-based, EnhancedSniper/NewBreakout/
         # DailyORB use H1/H4 filters. Without the files they get None and are
-        # silently skipped rather than erroring.
+        # silently skipped rather than erroring. H4 itself came back below,
+        # scoped to XAG_USD only, for the HTF trend gate.
         update_dataset(api, symbol, oanda_symbol, "M15", "15_Min")
         update_dataset(api, symbol, oanda_symbol, "M5", "5_Min")
-            
+
+        # HTF trend-gate data (Sep 2026 research finding — see CLAUDE.md
+        # "Recent Changes"): only the two pairs whose gated variant actually
+        # passed the split-half check get their trend timeframe kept fresh.
+        # Everything else stays 15m/5m only, same as before.
+        if oanda_symbol == "XAG_USD":
+            update_dataset(api, symbol, oanda_symbol, "H4", "4_Hour")
+        elif oanda_symbol == "JP225_USD":
+            update_dataset(api, symbol, oanda_symbol, "D", "Daily")
+
         # Rate limit kindness
         time.sleep(0.2)
 

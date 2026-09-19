@@ -110,6 +110,7 @@ Configured per-pair in `best_strategies.json`.
 | `avoid_hours` | Block entry during these UTC hours. |
 | `di_spread_min` | Minimum DI+/DI- gap — rejects marginal crossings. |
 | `body_ratio_min` | Minimum candle body/range ratio — rejects dojis. |
+| `htf_trend_align` + `htf_trend_tf` | Only take a direction agreeing with the higher-timeframe trend (Close vs SMA50 on `htf_trend_tf`, e.g. `"4h"`/`"daily"`). Fails CLOSED (blocks both directions) on missing/thin HTF data — never silently permissive. See Recent Changes (Sep 2026 HTF gate). |
 
 ---
 
@@ -121,13 +122,19 @@ mirrors it — if they disagree, the JSON wins.
 | Asset | TF | RR | risk | DI> | persist | Other filters | Sharpe | MaxDD% |
 |-------|----|----|------|-----|---------|---------------|--------|--------|
 | XAU_USD | 15m | 3.5 | 1.5% | 35 | 2 | `adx_rising`, `avoid[8,9]` | 6.48 | -7.73 |
-| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `adx_min=25`, **`sma_ordered`**, `body_ratio_min=0.3`, `di_slope`, `avoid[7,8,9]` | 1.46 ‡‡ | -18.6 ‡‡ |
-| JP225_USD | 5m | 1.5 | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]` | 5.87 | -5.85 |
+| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `adx_min=25`, **`sma_ordered`**, `body_ratio_min=0.3`, `di_slope`, `avoid[7,8,9]`, **`htf_trend_align` (4h)** | 1.46 ‡‡ | -18.6 ‡‡ |
+| JP225_USD | 5m | 1.5 | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]`, **`htf_trend_align` (daily)** | 5.87 | -5.85 |
 | NAS100_USD | 15m | 3.5 | 1.0% | 35 | 2 | `adx_min=30`, `atr_ratio=1.2`, `di_slope`, `avoid[7,8,20-23]` | 14.36 ‡ | -1.99 |
 | UK100_GBP | 15m | 3.5 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `avoid[15-19]` | 8.45 ‡ | -3.94 |
 | BCO_USD | 15m | 2.5 | 1.0% | **35** | 1 | `adx_min=15`, **`atr_ratio=1.2`**, **`di_spread=20`**, `avoid[20-23]` | 1.61 ‡‡ | -15.4 ‡‡ |
 | EUR_USD | 15m | 6.0 | 1.0% | 25 | 2 | `atr_ratio=1.0`, `avoid[20-23]` | 5.56 ‡ | -10.47 |
 | USD_JPY | 15m | 3.0 | 0.5% | 30 | 1 | `avoid[15-21]` | 2.85 ‡ | -8.65 |
+
+⚠️ **XAG's and JP225's Sharpe/MaxDD above predate `htf_trend_align`** (added Sep 2026, see
+Recent Changes) — the gate was validated in a separate backtest
+(`data/backtest_htf_direction_filter.csv`) that isn't yet folded into these headline numbers.
+XAG's HTF-gated backtest: Sharpe 0.91→1.15 (4h) / 1.32 (daily), MaxDD -17.0%→-11.7%/-5.9%. JP225's
+(daily gate only — 4h was flat/negative there): Sharpe 0.68→1.85, MaxDD -21.6%→-13.3%.
 
 ‡‡ **The only rows measured over 3 years with walk-forward validation** — BCO (fit
 2023-08→2025-12) and XAG (fit 2023-09→2025-12), both held out on 2026. Every OTHER row in this
@@ -592,6 +599,8 @@ not its history. Git carries the history.
 | `backtest_xau_15m_filter_sweep.py` | XAU entry-filter grid (9,528 cells). Result: nothing beats the current config |
 | `backtest_bco_noise_filter_sweep.py` | BCO filter sweep |
 | `backtest_prod_vs_live_comparison.py` | Live vs backtest comparison, all pairs |
+| `backtest_htf_direction_filter.py` | HTF (4h/daily) trend-alignment gate, gap-priced + OOS-gated. Result: adopted for XAG (4h) and JP225 (daily) — see Recent Changes |
+| `download_htf_trend_data.py` | **One-off** backfill for the H4/Daily research data `backtest_htf_direction_filter.py` needs; the production cron (`download_forex.py`) keeps XAG's H4 and JP225's Daily topped up afterward, scoped to just those two pairs |
 | `download_forex_max_history.py` | **One-off** Oanda backfill — pages backwards to fill history the old row cap trimmed away. Run once after changing `MAX_ROWS`; the cron maintains it after |
 
 Their outputs live alongside in `data/backtest_*.csv` plus
@@ -600,6 +609,40 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 ---
 
 ## Recent Changes
+
+**Sep 19, 2026 — `htf_trend_align` HTF trend gate added for XAG_USD (4h) and JP225_USD
+(daily); no other pair changed.** New SmaScalping Filter 10: only take a direction agreeing
+with Close-vs-SMA50 on a second, higher timeframe. Backtested across all 5 currently-active
+pairs (`scripts/backtest_htf_direction_filter.py` → `data/backtest_htf_direction_filter.csv`,
+2yr window, gap-priced, split-half OOS-gated) before implementation: XAG's baseline itself
+**fails** the repo's own split-half check (h1 -0.07R) and both the 4h and daily gates fix it
+(WR 29.9%→32.2%/35.6%, Sharpe 0.91→1.15/1.32, MaxDD -17.0%→-11.7%/-5.9%) — 4h was chosen for
+XAG despite daily scoring better in isolation, to keep more trades (115 vs 73 retained).
+JP225's daily gate is the single best cell in the study (Sharpe 0.68→1.85, MaxDD -21.6%→-13.3%,
+n=203, both halves positive); its 4h variant was flat/negative and was NOT adopted. XAU_USD's
+daily gate and NAS100_USD's 4h gate both looked attractive in aggregate but **failed split-half**
+(entire gain in one half) and were correctly rejected — same overfitting pattern this repo has
+been burned by before (NAS100 14.36→negative live, UK100 8.45→-$460 live). BCO_USD's baseline
+already clears the bar cleanly; both gates cut its Sharpe (1.68→1.38→1.27) for a small drawdown
+gain and were rejected as cutting real edge, not noise.
+Implementation: `sma_scalping_detector.py` reads `data['htf_trend']` (Close vs SMA50, fails
+CLOSED on missing/thin data — never silently permissive); `forex_screener.py` loads it per-pair
+from the new `htf_trend_tf` config key (`"4h"`/`"daily"`), independent of the existing
+`htf`/`htf2` slots used by archived strategies. No-lookahead is load-bearing: HTF rows are keyed
+by OPEN time (existing `download_forex.py` convention), so a bar is only used once its own close
+(open + its own granularity, self-inferred as the median index diff — no hardcoded timeframe
+strings) has passed. Verified two ways: an exhaustive walk of the real `analyze()` over the full
+history of both pairs found 0 lookahead violations and 0 mismatches against an independent
+reimplementation of the backtest's `htf_trend()`/`attach_htf()`; a gate-ON-vs-OFF walk over
+~600 recent bars per pair found 0 monotonicity violations (the gate only ever suppresses a
+signal, never invents a disagreeing one) with non-trivial retention (XAG 33%, JP225 75%).
+Reviewed independently by a second, fresh pass before being treated as safe to ship. Test
+coverage: `backend/tests/test_sma_scalping_htf_gate.py` (lookahead boundary, fail-closed on
+missing/thin data, inertness for pairs without the config, both directions both ways).
+`download_forex.py`'s 5-minute cron now also fetches H4 for XAG_USD and Daily (`"D"`
+granularity) for JP225_USD only — everything else stays 15m/5m, unchanged. XAU/NAS100/BCO's
+`best_strategies.json` entries are untouched; the gate is fully inert wherever `htf_trend_align`
+isn't set.
 
 **Sep 7, 2026 — XAG_USD retuned on 3 years, walk-forward validated: added `sma_ordered`,
 `adx_min=25`, `body_ratio_min=0.3`, `avoid_hours=[7,8,9]`; removed `atr_ratio_min=1.2`.**

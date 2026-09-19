@@ -86,7 +86,8 @@ class ForexScreener:
             '5m': f"{symbol}_5_Min.csv",
             '15m': f"{symbol}_15_Min.csv",
             '1h': f"{symbol}_1_Hour.csv",
-            '4h': f"{symbol}_4_Hour.csv"
+            '4h': f"{symbol}_4_Hour.csv",
+            'daily': f"{symbol}_Daily.csv"
         }
         
         for tf, fname in files.items():
@@ -243,6 +244,21 @@ class ForexScreener:
                     else:
                         data['htf'] = raw_data.get('4h')
                         data['htf2'] = raw_data.get('1h')
+
+                # HTF trend-gate data (SmaScalping's htf_trend_align filter,
+                # Sep 2026). Config-driven and independent of the 'htf'/'htf2'
+                # slots above so it never collides with what other strategies
+                # expect there: params.htf_trend_tf names the raw_data key
+                # ('4h', 'daily', ...) to use, per pair, from best_strategies.json.
+                htf_trend_tf = params_dict.get('htf_trend_tf')
+                if htf_trend_tf:
+                    data['htf_trend'] = raw_data.get(htf_trend_tf)
+                    if data['htf_trend'] is None:
+                        logger.warning(
+                            f"{symbol}::{strategy_name} has htf_trend_tf='{htf_trend_tf}' but no "
+                            f"such data was loaded (available: {list(raw_data.keys())}) — "
+                            f"the HTF gate will fail closed and block all entries for this pair."
+                        )
 
                 if data['base'] is None:
                     continue

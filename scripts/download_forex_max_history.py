@@ -39,7 +39,7 @@ from oandapyV20.endpoints import instruments
 sys.path.insert(0, str(Path(__file__).parent))
 from download_forex import DATA_DIR, MAX_ROWS, get_oanda_api, load_pairs, parse_candles
 
-SUFFIX = {"M5": "5_Min", "M15": "15_Min", "H1": "1_Hour", "H4": "4_Hour", "M3": "3_Min"}
+SUFFIX = {"M5": "5_Min", "M15": "15_Min", "H1": "1_Hour", "H4": "4_Hour", "M3": "3_Min", "D": "Daily"}
 PAGE = 5000
 MAX_PAGES = 60          # hard stop; 60 x 5000 = 300k bars per pair/timeframe
 
