@@ -879,27 +879,70 @@ def _close_open_positions_for_pair(pair: str, auth_email: str, now: datetime):
         # close_trade() catches all exceptions internally (including 404) and returns None on
         # any failure, so the except branch would never fire — we handle None explicitly.
         result = OandaPriceService.close_trade(trade_id)
+
+        # Only ask Oanda a second question when the first one failed.
+        trade_details = None
         if result is None:
-            # Distinguish "already closed by TP/SL" (trade not found in Oanda) from a
-            # genuine API failure (trade still shows as open).
             trade_details = OandaPriceService.get_trade_details(trade_id)
-            if trade_details is None:
-                # Not found in Oanda → already closed by TP/SL
-                logger.info(
-                    f"Pre-close: trade {trade_id} ({pair}) not found in Oanda (already closed) "
-                    f"— updating Firestore."
-                )
-                _update_firestore_closed(doc.reference, today_str, now, reason="already closed via TP/SL", existing_notes=existing_notes)
-            else:
-                # Still open in Oanda — genuine API failure, skip Firestore update
-                logger.error(
-                    f"Pre-close: close_trade({trade_id}) failed for {pair} (trade still open in Oanda) — "
-                    f"skipping Firestore update."
-                )
+
+        outcome = classify_close_outcome(result, trade_details)
+
+        if outcome == "rejected":
+            # close_trade returns a TRUTHY response on rejection, so a bare
+            # `result is None` test treats a REJECTED close as a success.
+            logger.error(
+                f"Pre-close: Oanda REJECTED close of {trade_id} ({pair}): "
+                f"{result['orderRejectTransaction'].get('rejectReason')} — "
+                f"leaving Firestore OPEN."
+            )
+            continue
+
+        if outcome == "still_open":
+            logger.error(
+                f"Pre-close: close_trade({trade_id}) failed for {pair} but the trade is "
+                f"still OPEN at Oanda — leaving Firestore OPEN."
+            )
+            continue
+
+        if outcome == "indeterminate":
+            # get_trade_details returns None on ANY failure, not just 404, so it
+            # is not evidence of closure. Marking CLOSED here would hide a LIVE
+            # position from this very job next week — which for BCO_USD means
+            # ALWAYS_CLOSE_PAIRS weekend flattening silently stops applying.
+            logger.error(
+                f"Pre-close: could not determine state of {trade_id} ({pair}) — "
+                f"Oanda unreachable. Leaving Firestore OPEN."
+            )
+            continue
+
+        sell_price, pnl = extract_close_fill(result, trade_details)
+        extra = {}
+        if sell_price is not None:
+            extra["sell_price"] = sell_price
+        if pnl is not None:
+            extra["pnl"] = pnl
+        if sell_price is None or pnl is None:
+            # _sync_oanda_closed_trades is the only other writer of these and it
+            # queries status == OPEN, so marking CLOSED without them books the
+            # trade at $0 P&L in Trade History and Analytics, permanently.
+            logger.warning(
+                f"Pre-close: closed {trade_id} ({pair}) but could not read "
+                f"sell_price/pnl from the response — P&L will need repair."
+            )
+
+        if outcome == "already_closed":
+            logger.info(
+                f"Pre-close: trade {trade_id} ({pair}) was already CLOSED at Oanda "
+                f"(hit TP/SL first) — syncing Firestore."
+            )
+            _update_firestore_closed(doc.reference, today_str, now,
+                                     reason="already closed via TP/SL",
+                                     existing_notes=existing_notes, extra_fields=extra)
             continue
 
         logger.info(f"Pre-close: closed Oanda trade {trade_id} for {pair}.")
-        _update_firestore_closed(doc.reference, today_str, now, reason="pre_close", existing_notes=existing_notes)
+        _update_firestore_closed(doc.reference, today_str, now, reason="pre_close",
+                                 existing_notes=existing_notes, extra_fields=extra)
 
 
 def _update_firestore_closed(doc_ref, today_str: str, now: datetime, reason: str, existing_notes: str = "",

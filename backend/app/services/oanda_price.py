@@ -543,7 +543,23 @@ class OandaPriceService:
 
             return trade_data
         except Exception as e:
-            logger.warning(f"Trade {trade_id} not found or error: {e}")
+            # Distinguish the causes: this function returns None for ALL of them,
+            # so callers cannot tell them apart — the log is the only signal a
+            # human gets. An expired token in particular used to read as a
+            # routine "not found", which is the one failure that silently halts
+            # trading until someone restarts the process (get_api caches the API
+            # object, so a bad token keeps failing until then).
+            err = str(e)
+            if "401" in err or "invalid" in err.lower() and "token" in err.lower():
+                logger.error(
+                    f"OANDA authentication FAILED reading trade {trade_id} "
+                    f"(token expired or revoked) — check OANDA_ACCESS_TOKEN and "
+                    f"restart the service; the API client is cached: {e}"
+                )
+            elif "404" in err:
+                logger.info(f"Trade {trade_id} not found at Oanda (404): {e}")
+            else:
+                logger.warning(f"Trade {trade_id} lookup failed: {e}")
             return None
 
     @classmethod
