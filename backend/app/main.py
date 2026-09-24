@@ -19,7 +19,7 @@ pd.set_option('future.no_silent_downcasting', True)
 
 from .api.routes import router
 from .config import settings
-from .services.tasks import run_forex_refresh_task, run_stock_refresh_task, run_preclose_check
+from .services.tasks import run_forex_refresh_task, run_stock_refresh_task, run_preclose_check, run_max_hold_close_check
 from .services.insider_trades import InsiderTradesService
 
 # Setup logging — console for everything, file handler scoped to services only
@@ -89,6 +89,11 @@ async def startup_event():
 
     # 5. Pre-close position management (every 5 minutes)
     scheduler.add_job(run_preclose_check, 'cron', minute='*/5')
+
+    # Max-hold time stop: close positions held past PAIR_MAX_HOLD_DAYS.
+    # Offset from the pre-close job so the two never contend for the same doc;
+    # whichever runs first closes it and the other simply finds no OPEN trade.
+    scheduler.add_job(run_max_hold_close_check, 'cron', minute='3,13,23,33,43,53')
 
     scheduler.start()
     logger.info("Background scheduler started (Forex every 15m, Stocks daily at 18:00).")

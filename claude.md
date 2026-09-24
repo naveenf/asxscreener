@@ -92,9 +92,13 @@ in `data/metadata/best_strategies_archived.json` and not running.
 
 **Entry (LONG):** Price > SMA20/50/100 · DI+ > DI- · DI+ > threshold for N candles · ADX ≥ adx_min · entry not below 2-candle lows
 **Stop loss:** `max(structural_distance, 1×ATR)` — the ATR floor prevents noise-triggered stops.
-**Exit:** Broker-level SL and TP placed on Oanda at entry. A trade closes **only** on SL or TP.
+**Exit:** Broker-level SL and TP placed on Oanda at entry. A trade closes on SL, on TP, or —
+since Sep 24, 2026 — on the **max-hold time stop** (`PAIR_MAX_HOLD_DAYS` in `tasks.py`, 7 days
+on every active pair; see Recent Changes). Price-based exits are SL and TP only.
 No trailing exit — SMA20 trailing was validated harmful on every pair (60–89% of trades cut
-short, avg-R collapsing below 0.25R). Do not re-enable `check_exit` for SmaScalping.
+short, avg-R collapsing below 0.25R). Do not re-enable `check_exit` for SmaScalping. The
+max-hold stop is NOT a trailing exit: it never cuts at a profit threshold, it bounds calendar
+age, which is a different population (see Recent Changes for why that distinction matters).
 
 ### Filter reference
 
@@ -602,6 +606,7 @@ not its history. Git carries the history.
 | `backtest_htf_direction_filter.py` | HTF (4h/daily) trend-alignment gate, gap-priced + OOS-gated. Result: adopted for XAG (4h) and JP225 (daily) — see Recent Changes |
 | `download_htf_trend_data.py` | **One-off** backfill for the H4/Daily research data `backtest_htf_direction_filter.py` needs; the production cron (`download_forex.py`) keeps XAG's H4 and JP225's Daily topped up afterward, scoped to just those two pairs |
 | `download_forex_max_history.py` | **One-off** Oanda backfill — pages backwards to fill history the old row cap trimmed away. Run once after changing `MAX_ROWS`; the cron maintains it after |
+| `backtest_max_hold_sweep.py` | Max-hold time-stop sweep + hold-time census across all 8 pairs, gap-priced, poll-limited stages, financing-netted, OOS-gated. Evidence for `PAIR_MAX_HOLD_DAYS` |
 
 Their outputs live alongside in `data/backtest_*.csv` plus
 `data/weekend_held_trade_isolation.csv`.
@@ -609,6 +614,76 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 ---
 
 ## Recent Changes
+
+**Sep 24, 2026 — max-hold time stop added: `PAIR_MAX_HOLD_DAYS` = 7 days on all 5 active
+pairs.** Nothing previously bounded how long a SmaScalping trade could run. Entries are built
+from 15m structure (2-candle stop, 1×ATR floor) — the parameters of a trade meant to resolve in
+hours — yet XAU_USD has a measured **132-day hold**, and because `oanda_trade_service.py`
+enforces one position per pair (it skips a symbol already open in Oanda, `:215`), such a trade
+**locks the pair out for its entire duration**. XAU traded zero times in Feb–May 2026 for exactly
+this reason.
+
+⚠️ **The behaviour is generic, not an XAU quirk: 7 of 8 pairs have >7-day holds** (EUR_USD max
+326d, UK100_GBP 127d, USD_JPY 66d, XAG 18.6d, NAS100 14.1d, BCO 11.2d). JP225 is the only clean
+pair because it is 5m (max 3.2d). The concentration is extreme — on XAU, 6% of trades consume
+**61% of all position-days**; on EUR_USD, 8% consume 77%.
+
+Measured over 2023–2026, gap-priced, poll-limited stages, net of financing at 5%/yr
+(`scripts/backtest_max_hold_sweep.py` → `data/backtest_max_hold_{sweep,census,paired}.csv`):
+**XAU_USD** split-half **FAIL → PASS** (h1 -0.01 → +0.12, h2 +0.35), net R 66.5→99.9, MaxDD
+-44.1%→-33.1%, Sharpe 0.91→1.22. **NAS100_USD** split-half **FAIL → PASS** (h1 -0.01 → +0.01),
+Sharpe 0.52→0.65. **BCO_USD** Sharpe 1.45→1.55. **XAG_USD** and **JP225_USD** effectively
+unchanged (3 and 0 trades affected).
+
+⚠️ **Adopted as ROBUSTNESS and TAIL-RISK control — NOT an ROI upgrade and NOT a financing fix.**
+Three things to read before ever retuning this:
+- **The per-trade effect is not significant.** XAU at 7d: ΔR **+0.005R, t=0.18**, 95% CI
+  [-0.046, +0.055]. Every pair's CI straddles zero. The large ROI swings in the cap sweep are
+  **sequencing artifacts** — the same trap already documented for the stop stages.
+- **3d and 5d score HIGHER on ROI but have NEGATIVE paired point estimates** (XAU -0.058R and
+  -0.034R). Those are the overfit cells. **7d is the expectancy-neutral one — that is why the cap
+  is 7 and not 5.**
+- **A cap does NOT reduce financing.** XAU financing is 11.58R uncapped vs **12.98R at 7 days** —
+  higher. Capping frees capacity that new trades immediately consume; position-days fall
+  745→604 while trade count rises 322→428. Financing is driven by time-in-market × leverage, which
+  a cap redistributes rather than removes. To cut financing, the lever is time-in-market (XAU holds
+  a position 77% of all calendar days at ~227x leverage), not hold length.
+
+Financing is material on two pairs and negligible on three: as a share of gross R at 5%/yr —
+NAS100 19%, XAU 15%, XAG 5%, BCO 4%, JP225 4% (at 8%/yr: 30% and 24% for the first two).
+⚠️ The sweep charges longs and shorts symmetrically, which **overstates FX** (real FX carry is a
+rate differential and can be positive on a short). Measure the truth with
+`OandaPriceService.get_financing_charges()` — it already pulls real `DAILY_FINANCING`
+transactions — rather than trusting the model.
+
+Confirmed by the same sweep: **the three runtime-disabled pairs stay disabled.** EUR_USD,
+USD_JPY and UK100_GBP are negative net of financing under BOTH configs and fail split-half in
+both (full-history net R: EUR_USD -68.3→-25.0, USD_JPY -22.0→-21.1, UK100 -11.6→-7.4). Even at
+ZERO financing their 3.7-year gross R is -35.4 / +8.9 / +4.4 across 245–697 trades — no edge to
+finance. UK100 is the cautionary one: it looks fine on a 1-year window (net +23.5R, Sharpe 1.55,
+split-half PASS) and is negative over full history — the same short-window illusion behind its
+recorded 8.45 Sharpe and -$460 live result.
+
+Implementation: `decide_max_hold_close()` is a pure function (tested in
+`backend/tests/test_max_hold.py`, 49 tests) that **fails closed** — a trade whose age cannot be
+established is never force-closed (missing/non-datetime `created_at`, future timestamps from
+clock skew, cap of 0/None/negative). It normalises the naive/aware mismatch between
+`_log_to_portfolio`'s `datetime.utcnow()` and what Firestore hands back.
+`run_max_hold_close_check()` runs on cron minutes 3,13,…,53, offset from the pre-close job.
+⚠️ **Closure requires POSITIVE confirmation** via `classify_close_outcome()`: `get_trade_details()`
+returns `None` on ANY failure (API down, auth, network — `oanda_price.py:533,545`), not just 404,
+so `None` means "cannot determine" and NEVER "already closed". Writing CLOSED on an unconfirmed
+close would leave a LIVE position invisible to the stop-move stages, to `_sync_oanda_closed_trades`
+and to **`ALWAYS_CLOSE_PAIRS` weekend flattening** — the -$639 BCO scenario. `extract_close_fill()`
+captures `sell_price`/`pnl` at close time because `_sync_oanda_closed_trades` only repairs docs
+whose status is still OPEN, so marking CLOSED first would otherwise book every max-hold exit as a
+**$0 P&L trade** and silently corrupt win rate, the equity curve and R-multiple stats.
+`updated_at` is stamped at WRITE time, not job-start time, so a job that spends minutes retrying
+Oanda cannot back-date its write below the `trade_cache` cursor.
+Known, deliberate: a max-hold close of a `lock_fired` BCO/NAS100 trade still fires the 90-minute
+profit-lock cooldown (`select_cooldown_candidates` keys on CLOSED + `lock_fired`). Negligible
+after a 7-day hold, but it is not what the cooldown's rationale describes — to exempt it, flag the
+doc in the max-hold path and check that flag in `select_cooldown_candidates`.
 
 **Sep 19, 2026 — `htf_trend_align` HTF trend gate added for XAG_USD (4h) and JP225_USD
 (daily); no other pair changed.** New SmaScalping Filter 10: only take a direction agreeing

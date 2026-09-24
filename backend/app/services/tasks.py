@@ -91,6 +91,91 @@ def pairs_to_close_now(close_pairs, holiday_close_enabled, always_close_pairs=No
         always_close_pairs = ALWAYS_CLOSE_PAIRS
     return set(close_pairs) & set(always_close_pairs)
 
+
+# ---------------------------------------------------------------------------
+# Max-hold time stop
+# ---------------------------------------------------------------------------
+# A SmaScalping entry is built from 15m structure: a 2-candle structural stop
+# with a 1xATR floor. Those are the parameters of a trade meant to resolve in
+# hours. Left alone, some run for months — XAU_USD has a measured 132-day hold,
+# and because oanda_trade_service enforces one position per pair (it skips a
+# symbol already open in Oanda), such a trade locks the pair out entirely for
+# its whole duration.
+#
+# Evidence for 7 days (full history 2023-2026, gap-priced, financing-netted,
+# entry logic verified bar-for-bar against SmaScalpingDetector.analyze):
+#   XAU_USD    split-half FAIL (h1 -0.01) -> PASS (+0.12/+0.35);
+#              MaxDD -44.1% -> -33.1%, Sharpe 0.91 -> 1.22
+#   NAS100_USD split-half FAIL (h1 -0.01) -> PASS (+0.01/+0.25); Sharpe 0.52 -> 0.65
+#   BCO_USD    Sharpe 1.45 -> 1.55;  XAG_USD unchanged;  JP225_USD inert (5m,
+#              longest observed hold 3.2 days)
+#
+# Adopted as ROBUSTNESS and TAIL-RISK control, not as an ROI upgrade and NOT as
+# a financing fix:
+#   * the paired per-trade effect is NOT significant (XAU 7d: +0.005R, t=0.18,
+#     95% CI [-0.046, +0.055]) — the large ROI swings in the sweep are
+#     sequencing artifacts, the same trap documented for the stop stages;
+#   * it does NOT reduce financing. Capping holds frees capacity that new trades
+#     immediately consume: XAU financing 11.58R uncapped vs 12.98R at 7 days.
+#     Financing is driven by time-in-market x leverage, which a cap redistributes
+#     rather than removes.
+#   * 3d and 5d caps score HIGHER on ROI but their paired point estimates are
+#     negative — those are the overfit cells. 7d is the neutral-expectancy one.
+#
+# Interaction with the profit-lock cooldown, left deliberately AS-IS: if a
+# BCO_USD/NAS100_USD trade had its lock fire days before ageing out, closing it
+# here still satisfies select_cooldown_candidates (CLOSED + lock_fired), so the
+# 90-minute entry cooldown fires. That is a defensible reading of the
+# spent-momentum guard and 90 minutes is negligible after a 7-day hold — but it
+# is NOT what the cooldown's rationale describes, and it briefly delays the
+# re-entry this cap exists to enable. To exempt max-hold closes, flag the doc
+# here and check that flag in select_cooldown_candidates.
+#
+# Set a symbol to None (or omit it) to disable the cap for that pair.
+PAIR_MAX_HOLD_DAYS: dict = {
+    "XAU_USD":    7,
+    "XAG_USD":    7,
+    "NAS100_USD": 7,
+    "BCO_USD":    7,
+    "JP225_USD":  7,
+}
+
+
+def max_hold_days_for(symbol: str, configs: dict = None):
+    """Configured max-hold for `symbol`, or None when the pair has no cap."""
+    if configs is None:
+        configs = PAIR_MAX_HOLD_DAYS
+    return configs.get(symbol)
+
+
+def decide_max_hold_close(entry_time, now, max_hold_days) -> bool:
+    """Pure decision: has this open trade been held at least max_hold_days?
+
+    Fails CLOSED in the safe direction — a trade whose age cannot be established
+    is never force-closed. `entry_time` comes from the Firestore `created_at`
+    field, which _log_to_portfolio writes with datetime.utcnow() (NAIVE UTC) but
+    which the client hands back timezone-AWARE, so both shapes are normalised
+    here rather than at the call site. Trades predating that field, and any
+    entry_time in the future (clock skew), are left alone.
+    """
+    if not max_hold_days or max_hold_days <= 0:
+        return False
+    if entry_time is None or now is None:
+        return False
+    if not isinstance(entry_time, datetime) or not isinstance(now, datetime):
+        return False
+
+    # Normalise: treat a naive timestamp as UTC (what utcnow() wrote).
+    if entry_time.tzinfo is None:
+        entry_time = entry_time.replace(tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
+    if entry_time > now:
+        return False          # clock skew / bad data — never close on it
+
+    return (now - entry_time) >= timedelta(days=max_hold_days)
+
 # ---------------------------------------------------------------------------
 # Stop-move configs
 # ---------------------------------------------------------------------------
@@ -817,18 +902,262 @@ def _close_open_positions_for_pair(pair: str, auth_email: str, now: datetime):
         _update_firestore_closed(doc.reference, today_str, now, reason="pre_close", existing_notes=existing_notes)
 
 
-def _update_firestore_closed(doc_ref, today_str: str, now: datetime, reason: str, existing_notes: str = ""):
-    """Write CLOSED status and PRE_CLOSE metadata back to a Firestore trade document."""
-    try:
-        new_notes = f"{existing_notes} | Pre-close: {reason}".strip(" |")
+def _update_firestore_closed(doc_ref, today_str: str, now: datetime, reason: str, existing_notes: str = "",
+                             close_type: str = "PRE_CLOSE", label: str = "Pre-close",
+                             extra_fields: dict = None):
+    """Write CLOSED status and close metadata back to a Firestore trade document.
 
-        doc_ref.update({
+    `updated_at` is mandatory on EVERY write to a forex_portfolio doc: the trade
+    cache delta-syncs with where('updated_at', '>', cursor) and a Firestore
+    inequality filter skips docs missing the field permanently, not just for one
+    cycle. See backend/tests/test_trade_doc_updated_at.py.
+    """
+    try:
+        new_notes = f"{existing_notes} | {label}: {reason}".strip(" |")
+
+        payload = {
             "status": "CLOSED",
             "sell_date": today_str,
-            "close_type": "PRE_CLOSE",
+            "close_type": close_type,
             "notes": new_notes,
-            "updated_at": now,
-        })
-        logger.info(f"Pre-close: Firestore doc {doc_ref.id} updated → CLOSED (reason: {reason})")
+            # Stamped at WRITE time, never at job-start time. trade_cache advances
+            # its cursor to max(updated_at) seen and then queries updated_at >
+            # cursor, so a value older than a write that already landed elsewhere
+            # would put this doc permanently below the cursor — the same silent
+            # stranding the invariant exists to prevent. A job that spends
+            # minutes retrying Oanda must not back-date its write.
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if extra_fields:
+            payload.update(extra_fields)
+
+        doc_ref.update(payload)
+        logger.info(f"{label}: Firestore doc {doc_ref.id} updated → CLOSED (reason: {reason})")
     except Exception as e:
-        logger.error(f"Pre-close: failed to update Firestore doc {doc_ref.id}: {e}")
+        logger.error(f"{label}: failed to update Firestore doc {doc_ref.id}: {e}")
+
+
+def classify_close_outcome(result, trade_details) -> str:
+    """Pure: what actually happened when Oanda was asked to close a trade.
+
+    `close_trade()` returns None for ANY failure (API unavailable, auth, network,
+    404) and a response carrying orderRejectTransaction on rejection — that
+    contract is depended on by trade_closer.py and must not change.
+
+    The subtlety is `get_trade_details()`: it ALSO returns None for any failure,
+    not just "not found" (oanda_price.py:533-534 and 545-547), and it returns a
+    dict with state == "CLOSED" for an already-closed trade rather than 404ing.
+    So None from it means "could not determine", NEVER "already closed".
+
+    Writing CLOSED on an unconfirmed close is the dangerous error: the position
+    stays live at Oanda while every job that manages it queries status == "OPEN"
+    — the stop-move stages, the weekly pre-close (including ALWAYS_CLOSE_PAIRS
+    weekend flattening for BCO_USD) and _sync_oanda_closed_trades all skip it
+    forever. So closure requires POSITIVE confirmation.
+
+    Returns one of: "closed", "already_closed", "rejected", "still_open",
+    "indeterminate".
+    """
+    if isinstance(result, dict) and result.get("orderRejectTransaction"):
+        return "rejected"
+    if result is not None:
+        return "closed"
+    if isinstance(trade_details, dict):
+        return "already_closed" if trade_details.get("state") == "CLOSED" else "still_open"
+    return "indeterminate"
+
+
+def extract_close_fill(result=None, trade_details=None):
+    """Pure: (sell_price, pnl) from a close response or trade details, or (None, None).
+
+    _sync_oanda_closed_trades is the only other writer of sell_price/pnl, and it
+    queries status == "OPEN" — so once this job marks a doc CLOSED, that sync can
+    never fill them in. Without these the trade books as a $0 P&L closed trade and
+    silently corrupts win rate, the equity curve and the R-multiple stats that
+    this project's decisions rest on. So capture them at close time.
+    """
+    price = pnl = None
+
+    if isinstance(result, dict):
+        fill = result.get("orderFillTransaction") or {}
+        closed = fill.get("tradesClosed") or []
+        first = closed[0] if closed and isinstance(closed[0], dict) else {}
+        raw_price = first.get("price", fill.get("price"))
+        raw_pnl = first.get("realizedPL", fill.get("pl"))
+        try:
+            price = float(raw_price) if raw_price is not None else None
+        except (TypeError, ValueError):
+            price = None
+        try:
+            pnl = float(raw_pnl) if raw_pnl is not None else None
+        except (TypeError, ValueError):
+            pnl = None
+
+    if (price is None or pnl is None) and isinstance(trade_details, dict):
+        if price is None:
+            raw = trade_details.get("averageClosePrice")
+            try:
+                price = float(raw) if raw is not None else None
+            except (TypeError, ValueError):
+                price = None
+        if pnl is None:
+            raw = trade_details.get("realizedPL")
+            try:
+                pnl = float(raw) if raw is not None else None
+            except (TypeError, ValueError):
+                pnl = None
+
+    return price, pnl
+
+
+def run_max_hold_close_check():
+    """Scheduled job: close any open trade held longer than its pair's max hold.
+
+    Deliberately narrow — it only ever CLOSES a position that is already past
+    the configured age. It never opens, never moves a stop, and never touches a
+    pair without a PAIR_MAX_HOLD_DAYS entry.
+
+    Firestore access: ONE query on status == "OPEN", with the symbol match applied
+    client-side. Two equality filters would be served fine by merging single-field
+    indexes — run_pair_lock_checks() and _close_open_positions_for_pair() both run
+    exactly that query in production — so this is a cost choice, not an index
+    constraint: open trades number at most MAX_CONCURRENT_TRADES, so one query
+    beats one per pair. (The CLAUDE.md composite-index rule is about
+    check_pair_lock_cooldowns combining an updated_at INEQUALITY with equality
+    filters, which is the case that genuinely needs a composite index.)
+
+    Per-trade keep_through_close=True opts out, exactly as it does for the
+    weekly pre-close.
+    """
+    auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
+    if not auth_email:
+        logger.warning("run_max_hold_close_check: AUTHORIZED_AUTO_TRADER_EMAIL not set, skipping.")
+        return
+
+    if not any(max_hold_days_for(sym) for sym in PAIR_MAX_HOLD_DAYS):
+        return  # every pair disabled — nothing to do
+
+    now = datetime.now(timezone.utc)
+    today_str = now.strftime("%Y-%m-%d")
+
+    try:
+        portfolio_ref = (
+            db.collection("users")
+            .document(auth_email)
+            .collection("forex_portfolio")
+        )
+        q = portfolio_ref.where(filter=firestore.FieldFilter("status", "==", "OPEN"))
+        open_docs = _firestore_call(lambda: list(q.stream()), label="max-hold open trades")
+        if open_docs is None:
+            return  # timed out — try again next cycle
+    except Exception:
+        logger.error("Max-hold: Firestore query for open trades failed", exc_info=True)
+        return
+
+    for doc in open_docs:
+        try:
+            data = doc.to_dict() or {}
+            symbol = data.get("symbol")
+            if not symbol:
+                continue
+
+            max_days = max_hold_days_for(symbol)
+            if not max_days:
+                continue  # pair not capped
+
+            if not decide_max_hold_close(data.get("created_at"), now, max_days):
+                continue
+
+            if data.get("keep_through_close"):
+                logger.info(
+                    f"Max-hold: skipping {symbol} trade {doc.id}: keep_through_close=True"
+                )
+                continue
+
+            trade_id = data.get("oanda_trade_id")
+            existing_notes = data.get("notes") or ""
+            reason = f"held ≥ {max_days}d"
+
+            if not trade_id:
+                logger.warning(
+                    f"Max-hold: trade doc {doc.id} ({symbol}) has no oanda_trade_id — "
+                    f"updating Firestore only."
+                )
+                _update_firestore_closed(doc.reference, today_str, now,
+                                         reason=f"{reason} (no Oanda ID)",
+                                         existing_notes=existing_notes,
+                                         close_type="MAX_HOLD", label="Max-hold")
+                continue
+
+            # close_trade() swallows its own exceptions (including 404) and returns
+            # None on failure, or a response carrying orderRejectTransaction on a
+            # rejection — do not change that contract, trade_closer.py depends on it.
+            result = OandaPriceService.close_trade(trade_id)
+
+            # Only ask Oanda a second question when the first one failed.
+            trade_details = None
+            if result is None:
+                trade_details = OandaPriceService.get_trade_details(trade_id)
+
+            outcome = classify_close_outcome(result, trade_details)
+
+            if outcome == "rejected":
+                logger.error(
+                    f"Max-hold: Oanda REJECTED close of {trade_id} ({symbol}): "
+                    f"{result['orderRejectTransaction'].get('rejectReason')} — "
+                    f"leaving Firestore OPEN, will retry next cycle."
+                )
+                continue
+
+            if outcome == "still_open":
+                logger.error(
+                    f"Max-hold: close_trade({trade_id}) failed for {symbol} but the trade "
+                    f"is still OPEN at Oanda — leaving Firestore OPEN, will retry next cycle."
+                )
+                continue
+
+            if outcome == "indeterminate":
+                # Could not confirm the position's state at all (API down, auth,
+                # network). Marking CLOSED here would hide a LIVE position from
+                # the stop-move stages and from weekend flattening. Retry instead.
+                logger.error(
+                    f"Max-hold: could not determine state of {trade_id} ({symbol}) — "
+                    f"Oanda unreachable. Leaving Firestore OPEN, will retry next cycle."
+                )
+                continue
+
+            sell_price, pnl = extract_close_fill(result, trade_details)
+            extra = {}
+            if sell_price is not None:
+                extra["sell_price"] = sell_price
+            if pnl is not None:
+                extra["pnl"] = pnl
+            extra["closed_by"] = "MaxHold"
+            if sell_price is None or pnl is None:
+                # Leave the door open for _sync_oanda_closed_trades-style repair
+                # and make the gap visible rather than booking a silent $0 trade.
+                logger.warning(
+                    f"Max-hold: closed {trade_id} ({symbol}) but could not read "
+                    f"sell_price/pnl from the response — P&L will need repair."
+                )
+
+            if outcome == "already_closed":
+                logger.info(
+                    f"Max-hold: trade {trade_id} ({symbol}) was already CLOSED at Oanda "
+                    f"(hit TP/SL first) — syncing Firestore."
+                )
+                _update_firestore_closed(doc.reference, today_str, now,
+                                         reason="already closed via TP/SL",
+                                         existing_notes=existing_notes,
+                                         close_type="MAX_HOLD", label="Max-hold",
+                                         extra_fields=extra)
+                continue
+
+            logger.info(f"Max-hold: closed Oanda trade {trade_id} for {symbol} ({reason}).")
+            _update_firestore_closed(doc.reference, today_str, now,
+                                     reason=reason, existing_notes=existing_notes,
+                                     close_type="MAX_HOLD", label="Max-hold",
+                                     extra_fields=extra)
+        except Exception:
+            logger.error(f"Max-hold: unexpected error on doc {doc.id}", exc_info=True)
+            continue
