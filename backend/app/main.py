@@ -21,6 +21,7 @@ from .api.routes import router
 from .config import settings
 from .services.tasks import run_forex_refresh_task, run_stock_refresh_task, run_preclose_check, run_max_hold_close_check
 from .services.insider_trades import InsiderTradesService
+from .services.leader_election import release_leadership
 
 # Setup logging — console for everything, file handler scoped to services only
 logging.basicConfig(
@@ -102,6 +103,7 @@ async def startup_event():
 async def shutdown_event():
     """Run on application shutdown."""
     scheduler.shutdown()
+    release_leadership()
     logger.info("Background scheduler shut down.")
 
 # CORS middleware for React frontend

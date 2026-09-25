@@ -21,6 +21,7 @@ from .portfolio_monitor import PortfolioMonitor
 from .notification import EmailService
 from .refresh_manager import refresh_manager
 from .market_close_schedule import get_all_preclose_pairs
+from .leader_election import acquire_or_renew_leadership, is_leader, INSTANCE_ID
 from ..firebase_setup import db
 from google.cloud import firestore
 
@@ -316,6 +317,15 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
     try:
         refresh_manager.start_forex_refresh()
 
+        # Renew (or attempt to claim) this process's leadership lease. Only the
+        # leader may place orders, close positions, or move stops — see
+        # leader_election.py. Screening/signal generation below still runs on
+        # every instance so standby UIs stay populated; only the mutating
+        # section near the bottom is gated on a fresh is_leader() re-check,
+        # since the screener run below can take ~60s and the lease could have
+        # moved on by then.
+        acquire_or_renew_leadership()
+
         # Fetch user override config from Firestore (pair disable/direction settings set via UI)
         disabled_combos = set()
         direction_overrides = {}
@@ -369,11 +379,24 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
                 )
             all_signals = filtered_signals
 
+        # Re-check leadership right before any trade-mutating call. A single
+        # renewal at the top of this function isn't enough on its own — the
+        # screener run above can take ~60s, long enough for the lease to have
+        # moved to another instance in the meantime. Only the current leader
+        # may move a stop, place an order, or trigger a close below.
+        leader = is_leader()
+        if not leader:
+            logger.info(
+                f"[{task_id}] Standby ({INSTANCE_ID}) this cycle — skipping "
+                f"stop-move checks, trade execution and exit monitoring."
+            )
+
         # --- Stop-move check (cooldown gate + SL move; see PAIR_LOCK_CONFIGS) ---
-        try:
-            run_pair_lock_checks()
-        except Exception as xag_e:
-            logger.error(f"[{task_id}] Pair lock check failed (non-critical): {xag_e}", exc_info=True)
+        if leader:
+            try:
+                run_pair_lock_checks()
+            except Exception as xag_e:
+                logger.error(f"[{task_id}] Pair lock check failed (non-critical): {xag_e}", exc_info=True)
 
         # Re-filter signals after lock checks may have added pairs to blocked set
         if PRECLOSE_BLOCKED_PAIRS:
@@ -386,16 +409,17 @@ def run_forex_refresh_task(mode: str = 'dynamic'):
                 )
             all_signals = filtered_signals
 
-        try:
-            logger.info(f"[{task_id}] Attempting auto-trade execution for {len(all_signals)} signals...")
-            OandaTradeService.execute_trades(all_signals)
-        except Exception as te:
-            logger.error(f"[{task_id}] Auto-trade execution failed: {te}")
+        if leader:
+            try:
+                logger.info(f"[{task_id}] Attempting auto-trade execution for {len(all_signals)} signals...")
+                OandaTradeService.execute_trades(all_signals)
+            except Exception as te:
+                logger.error(f"[{task_id}] Auto-trade execution failed: {te}")
 
         # --- Portfolio Exit Monitoring ---
         portfolio_exits = []
         auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
-        if auth_email:
+        if auth_email and leader:
             try:
                 monitor = PortfolioMonitor()
                 portfolio_exits = monitor.check_portfolio_exits(auth_email)
@@ -778,6 +802,12 @@ def run_preclose_check():
         PRECLOSE_BLOCKED_PAIRS.update(active_windows.keys())
 
         # --- 3. Close open positions for pairs in 'close' phase ---
+        # Leadership gate: block-set bookkeeping above is local and harmless on
+        # every instance, but only the leader may actually close a position.
+        if not acquire_or_renew_leadership():
+            logger.info(f"Pre-close: standby ({INSTANCE_ID}) — skipping position closes this cycle.")
+            return
+
         auth_email = settings.AUTHORIZED_AUTO_TRADER_EMAIL
         if not auth_email:
             logger.warning("run_preclose_check: AUTHORIZED_AUTO_TRADER_EMAIL not set, skipping close.")
@@ -1079,6 +1109,10 @@ def run_max_hold_close_check():
 
     if not any(max_hold_days_for(sym) for sym in PAIR_MAX_HOLD_DAYS):
         return  # every pair disabled — nothing to do
+
+    if not acquire_or_renew_leadership():
+        logger.info(f"Max-hold close check: standby ({INSTANCE_ID}) — skipping this cycle.")
+        return
 
     now = datetime.now(timezone.utc)
     today_str = now.strftime("%Y-%m-%d")

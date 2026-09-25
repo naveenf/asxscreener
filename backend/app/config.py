@@ -76,6 +76,10 @@ class Settings(BaseSettings):
     AUTHORIZED_AUTO_TRADER_EMAIL: str = "naveenf.opt@gmail.com"
     MAX_CONCURRENT_TRADES: int = 5
 
+    # Leader election (multi-instance safety — see leader_election.py)
+    INSTANCE_LABEL: str = ""          # optional human-readable name for this instance, e.g. "office-pc"
+    LEADER_LEASE_SECONDS: int = 600   # lease length; renewed every refresh cycle
+
     # Email Settings
     SMTP_SERVER: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
