@@ -29,7 +29,13 @@ if not VENV_PYTHON.exists():
           f"&& backend/venv/bin/pip install -r backend/requirements.txt")
     sys.exit(1)
 
-if Path(sys.executable).resolve() != VENV_PYTHON.resolve():
+if sys.prefix == sys.base_prefix:
+    # Not running inside the venv yet — re-exec with its Python. Comparing
+    # resolved executable paths doesn't work here: venv/bin/python3 is
+    # typically a symlink to the system interpreter, so .resolve() collapses
+    # both to the same target and this check would always look satisfied.
+    # sys.prefix vs sys.base_prefix is the standard, symlink-safe way to
+    # detect whether the interpreter actually activated a venv's site-packages.
     os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), str(Path(__file__).resolve())])
 
 os.chdir(BACKEND_DIR)
