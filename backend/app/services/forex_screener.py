@@ -16,6 +16,15 @@ from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
+# Bars per timeframe handed to the live strategies. The CSVs keep ~3 years for
+# backtests, but a live signal only reads the latest candles: SMA100 needs 100
+# bars and Wilder's ADX/DI/ATR converge to float precision within ~500, so
+# SmaScalping's signals, SL and TP are identical to full-history results at this
+# window (verified on every active pair, incl. the 4h/daily HTF gate). Computing
+# indicators on the full 70k rows took ~2 min per pair on the production VM.
+# Re-verify before re-activating an archived strategy with longer lookbacks.
+LIVE_WINDOW_BARS = 500
+
 from .indicators import TechnicalIndicators
 from .strategy_interface import ForexStrategy
 from .forex_detector import ForexDetector
@@ -100,7 +109,7 @@ class ForexScreener:
                         df[col] = pd.to_datetime(df[col], utc=True)
                         df.set_index(col, inplace=True)
                         df.sort_index(inplace=True)
-                        data[tf] = df
+                        data[tf] = df.tail(LIVE_WINDOW_BARS)
                 except Exception:
                     pass
         

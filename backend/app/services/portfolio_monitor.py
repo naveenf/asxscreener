@@ -102,8 +102,14 @@ class PortfolioMonitor:
             strategy_name = item.get('strategy') or "Squeeze"
             timeframe = item.get('timeframe') or "15m"
             
+            # SmaScalping uses fixed SL/TP only — Oanda broker handles all exits
+            # SMA20 trailing exit was validated to cut winners short on every pair.
+            # Skip before loading data: reading the full CSVs was pure waste.
+            if strategy_name == "SmaScalping":
+                continue
+
             strategy = self.strategies.get(strategy_name, self.strategies["Squeeze"])
-            
+
             # Map strategy to base timeframe
             timeframe_map = {
                 "SilverSniper": "5m",
@@ -145,11 +151,6 @@ class PortfolioMonitor:
                 data['htf'] = raw_data.get('1h')
                 
             if data.get('base') is None:
-                continue
-
-            # SmaScalping uses fixed SL/TP only — Oanda broker handles all exits
-            # SMA20 trailing exit was validated to cut winners short on every pair
-            if strategy_name == "SmaScalping":
                 continue
 
             # Check Exit
