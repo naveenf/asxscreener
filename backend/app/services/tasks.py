@@ -221,18 +221,31 @@ PAIR_LOCK_CONFIGS = {
     # not adopted — one mechanism is enough on the pair whose backtests have
     # diverged most from live. See data/backtest_stop_stage_sweep.csv.
     "NAS100_USD": {"lock_at_r": 1.5, "lock_to_r": 0.5, "cooldown_min": 90, "sl_precision": 1},
-    # Breakeven: early trigger, moves SL to a small loss. JP225's 1.5R target
-    # leaves no big winner to protect; the pain is the sheer count of full -1R
-    # losses, so this caps them instead. No cooldown — nothing is locked in.
-    # Re-verified Sep 4, 2026 against JP225's real trades (107, poll-limited
-    # triggers): MaxDD -17.01% -> -7.63%, Sharpe 0.27 -> 1.65. The drawdown gain
-    # replicates across both windows and both trigger models; the ROI effect
-    # does NOT (+9.0pp faithful, -16.9pp on the wider window), so this stage is
-    # justified on drawdown alone. The older "Sharpe 2.53->5.63" figure is not
-    # reproducible from live data — do not cite it. Does NOT generalise: run
-    # scripts/replay_stop_stages.py against a pair's own trades before adding
-    # this to it.
-    "JP225_USD": {"be_at_r": 0.25, "be_to_r": -0.1, "sl_precision": 1},
+    # JP225_USD ran a breakeven stage (be_at_r 0.25 -> be_to_r -0.1) from Aug 21
+    # 2026 until Oct 16 2026, when it was REMOVED alongside target_rr 1.5 -> 3.5.
+    # Its whole rationale was that a 1.5R target left no big winner to protect,
+    # so capping the count of full -1R losses was the only lever. That premise
+    # dies with the bigger target: a 0.25R trigger sits 7% of the way to a 3.5R
+    # take-profit and fired on 144 of 196 trades, rescuing 61 worth +54R while
+    # truncating 32 worth -106R. ⚠️ The paired dR of -0.325R (p=0.0155) first
+    # cited for this removal was an ENGINE ARTIFACT: replay_with_stage applies a
+    # stop move one bar early, which understates any stage. Corrected, the
+    # figure is -0.206R, p=0.1024 — NOT significant, and the stage then wins on
+    # return-per-drawdown (10.24 vs 8.27). See CLAUDE.md -> Methodology
+    # Warnings. Removal stands on the raised target and on naked's higher
+    # absolute return, NOT on a measured per-trade edge; re-adding
+    # {"be_at_r": 0.25, "be_to_r": -0.1} is defensible on drawdown grounds.
+    # Best single
+    # trade fell from +9.03R to +3.67R: the stage cuts exactly the tail the
+    # raised target exists to capture. Structurally the same defect that retired
+    # XAG's 3R lock and BCO's +1.5R lock — a trigger that does not scale with
+    # the target. A 25-cell sweep at RR 3.5 found NO stage beating no-stage on
+    # ROI and drawdown together, and 7 cells significantly negative.
+    # ⚠️ The cost is drawdown: naked is MaxDD -12.55% vs -7.42% staged, and
+    # -4.0R vs +1.2R in the (losing) 2026 Q3. If JP225 needs drawdown control
+    # again, BE 0.25 -> -0.2 was the best stage cell (MaxDD -7.03%, retDD 7.66
+    # vs 8.27 naked) — but sweep it against the config in force, do not assume.
+    # Evidence: scripts/backtest_jp225_timeframe_study.py.
 }
 
 

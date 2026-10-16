@@ -125,20 +125,26 @@ mirrors it — if they disagree, the JSON wins.
 
 | Asset | TF | RR | risk | DI> | persist | Other filters | Sharpe | MaxDD% |
 |-------|----|----|------|-----|---------|---------------|--------|--------|
-| XAU_USD | 15m | 3.5 | 1.5% | 35 | 2 | `adx_rising`, `avoid[8,9]` | 6.48 | -7.73 |
+| XAU_USD | 15m | 3.5 | **1.0%** | 35 | 2 | `adx_rising`, `avoid[8,9]` | 6.48 ‡ | -7.73 |
 | XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `adx_min=25`, **`sma_ordered`**, `body_ratio_min=0.3`, `di_slope`, `avoid[7,8,9]`, **`htf_trend_align` (4h)** | 1.46 ‡‡ | -18.6 ‡‡ |
-| JP225_USD | 5m | 1.5 | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]`, **`htf_trend_align` (daily)** | 5.87 | -5.85 |
+| JP225_USD | 5m | **3.5** | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]`, **`htf_trend_align` (daily)** | 2.62 ◊ | -12.55 ◊ |
 | NAS100_USD | 15m | 3.5 | 1.0% | 35 | 2 | `adx_min=30`, `atr_ratio=1.2`, `di_slope`, `avoid[7,8,20-23]` | 14.36 ‡ | -1.99 |
 | UK100_GBP | 15m | 3.5 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `avoid[15-19]` | 8.45 ‡ | -3.94 |
 | BCO_USD | 15m | 2.5 | 1.0% | **35** | 1 | `adx_min=15`, **`atr_ratio=1.2`**, **`di_spread=20`**, `avoid[20-23]` | 1.61 ‡‡ | -15.4 ‡‡ |
 | EUR_USD | 15m | 6.0 | 1.0% | 25 | 2 | `atr_ratio=1.0`, `avoid[20-23]` | 5.56 ‡ | -10.47 |
 | USD_JPY | 15m | 3.0 | 0.5% | 30 | 1 | `avoid[15-21]` | 2.85 ‡ | -8.65 |
 
-⚠️ **XAG's and JP225's Sharpe/MaxDD above predate `htf_trend_align`** (added Sep 2026, see
-Recent Changes) — the gate was validated in a separate backtest
-(`data/backtest_htf_direction_filter.csv`) that isn't yet folded into these headline numbers.
-XAG's HTF-gated backtest: Sharpe 0.91→1.15 (4h) / 1.32 (daily), MaxDD -17.0%→-11.7%/-5.9%. JP225's
-(daily gate only — 4h was flat/negative there): Sharpe 0.68→1.85, MaxDD -21.6%→-13.3%.
+⚠️ **XAG's Sharpe/MaxDD above predates `htf_trend_align`** (added Sep 2026, see Recent
+Changes) — the gate was validated in a separate backtest
+(`data/backtest_htf_direction_filter.csv`) that isn't yet folded into that headline number.
+XAG's HTF-gated backtest: Sharpe 0.91→1.15 (4h) / 1.32 (daily), MaxDD -17.0%→-11.7%/-5.9%.
+
+◊ **JP225's figures are the Oct 16, 2026 measurement of the config as it now stands** — 5m +
+daily gate, RR 3.5, no stop stage, gap-priced, pre-close flatten ON, over the only 5m history
+that exists (Oct 2025 → Sep 2026, 166 trades). Daily-annualised Sharpe 2.62, MaxDD -12.55%,
+ROI +103.8%, WR 36.7%. **It is a ONE-YEAR figure in a favourable regime and cannot be
+walk-forward validated at 3 years — the 5m file only holds ~1 year.** The in-year split is
+fit +0.639R / held-out +0.289R. Treat it as the honest best available, not as a ‡‡ row.
 
 ‡‡ **The only rows measured over 3 years with walk-forward validation** — BCO (fit
 2023-08→2025-12) and XAG (fit 2023-09→2025-12), both held out on 2026. Every OTHER row in this
@@ -170,10 +176,20 @@ USD_JPY -$302 · UK100 -$460.
 
 Root cause is **execution, not signal**: realised payoff (avg win ÷ avg loss) sits at ~1.5 on
 every pair regardless of the configured R:R, because winners get closed manually well before
-TP. The higher the target, the less often it is reached — JP225's 1.5R target is hit on 47% of
-wins, XAG's old 12R on 1.5%. **The pairs whose targets match actual holding behaviour are the
+TP. The higher the target, the less often it is reached — JP225's old 1.5R target was hit on 47%
+of wins, XAG's old 12R on 1.5%. **The pairs whose targets match actual holding behaviour are the
 profitable ones.** Set `target_rr` to what will actually be held, not to what maximises a
 backtest.
+
+⚠️ **"Never raise a target" is NOT the lesson — measure reachability first.** This rule was
+derived from targets that were genuinely unreachable (XAG 12R, BCO 5R) and was then wrongly
+generalised. The honest test is the **max favourable excursion** of a pair's own live trades:
+how far did price actually run before the original stop? Measured on JP225's 187 real RR-1.5
+trades (5m bars, from entry until the original stop would have filled): p50 **1.16R**, p75
+**3.65R**, p90 **9.7R**, with **28% reaching 3.0R** against 44% reaching 1.5R — i.e. twice the
+payoff for 0.63x the hit rate. That is what justified JP225's Oct 16 move to 3.5R. Run this
+measurement before accepting OR rejecting a target change; do not argue it from this section
+alone.
 
 ---
 
@@ -203,7 +219,8 @@ five that do not reproduce are stale figures from older sweeps on different wind
 ⚠️ **Expect 15-25% drawdowns, not 5-10%.** The old figures are the minimum over a short,
 favourably-selected window. These configs win 23-29% of trades at 2.5-3.5R, which guarantees long
 losing runs — observed maximum streaks are **12-18 consecutive losses**. At 1% risk a 15-loss
-streak is ~14% drawdown; at XAU's 1.5% it is ~20%. Bootstrapping each pair's GOOD window out to
+streak is ~14% drawdown; at the 1.5% XAU ran until Oct 16, 2026 it was ~20%. Bootstrapping each
+pair's GOOD window out to
 full length already yields -11% to -24%, so most of the increase is path length, not deterioration.
 This is a position-sizing fact, not a config problem.
 
@@ -227,12 +244,15 @@ written only for pairs with `cooldown_min`.
 - **Breakeven** (`be_at_r`/`be_to_r`) — early trigger, moves SL to a small loss. For pairs with
   a small TP and no fat tail to protect, where the pain is the *count* of full -1R losses. Sets
   `be_fired`, no cooldown — nothing was locked in, so blocking re-entry has no rationale.
+  ⚠️ **Nothing runs a breakeven stage now.** JP225 was the only pair with one; it was removed
+  Oct 16, 2026 when its target rose to 3.5R (see Recent Changes). The mechanism is retained in
+  `decide_stop_move()` and tested, but it is currently inert — a breakeven only makes sense where
+  the target is small enough that there is no tail to truncate.
 
 | Pair | Stage | Justification |
 |------|-------|---------------|
 | BCO_USD | Lock 2R→+1R, cooldown 90 min | ⚠️ **Unevidenced on the current config.** Raised to +1.5R Sep 4, 2026 and reverted Sep 7 — see Config-consistency below. Only 15 trades exist since the Aug 24 RR migration |
 | NAS100_USD | Lock 1.5R→+0.5R, cooldown 90 min | MaxDD -10.47%→-5.44%, ROI +27.8%→+32.8%, WR 35.4%→52.3%, months positive 7/11→9/11 |
-| JP225_USD | Breakeven 0.25R→-0.1R, no cooldown | Live-verified on drawdown (-17.0%→-7.6%, replicates in both windows). The old backtest figure Sharpe 2.53→5.63 is NOT reproducible — do not cite it |
 
 ### Live verification (Sep 4, 2026)
 
@@ -266,7 +286,7 @@ config change inside the window silently mixes two different strategies.
 | Pair | n | Fired | ROI% base→stage | MaxDD% base→stage | Sharpe base→stage | Verdict |
 |------|--:|------:|-----------------|-------------------|-------------------|---------|
 | BCO_USD (lock 2.0→1.0) † | 142 | 30 | 6.14 → **-3.46** | -17.42 → -16.03 | 0.50 → **-0.15** | ❌ Harmful — buys 1.4pp of DD with the entire edge |
-| JP225_USD (BE 0.25→-0.1) | 107 | 48 | 1.45 → **10.49** | -17.01 → **-7.63** | 0.27 → **1.65** | ✅ Keep — on the drawdown result |
+| JP225_USD (BE 0.25→-0.1) | 107 | 48 | 1.45 → **10.49** | -17.01 → **-7.63** | 0.27 → **1.65** | ⛔ **REMOVED Oct 16, 2026** — valid for RR 1.5, invalid for RR 3.5 |
 | NAS100_USD (lock 1.5→0.5) | 24 | 7 | 12.66 → 5.95 | -4.90 → -4.43 | 4.06 → 2.57 | ⚠️ Underpowered — cannot conclude |
 | XAU_USD (none) | 59 | — | 90.28 | -10.04 | 5.46 | ✅ Naked is correct |
 | XAG_USD (none) | 98 | — | 44.00 | -18.21 | 1.74 | ✅ Naked is correct |
@@ -320,8 +340,13 @@ Against this file's own promotion bar: BCO's *baseline* fails split-half in the 
 (h1 -0.12, h2 +0.23), JP225's production BE fails it (h1 +0.24, h2 -0.05), NAS100 fails the
 trade-count bar outright. Only XAU and XAG clear all three — and there the answer is add nothing.
 
-⚠️ **CLAUDE.md's old JP225 figure "Sharpe 2.53→5.63" is NOT reproducible from live data.**
-Do not cite it. The defensible claim for JP225 is the drawdown result, which replicates.
+⚠️ **Every JP225 row in this section describes the RETIRED RR-1.5 configuration.** The
+breakeven stage was removed Oct 16, 2026 together with the move to RR 3.5; at the larger target
+its paired ΔR measures -0.206R (p=0.1024, NOT significant — the -0.325R/p=0.0155 first cited was
+an engine artifact, see Methodology Warnings) — see Recent Changes. The rows are kept because
+they are the worked example of a stage whose threshold did not scale with its target, which is
+the recurring failure here (XAG's 3R lock, BCO's +1.5R lock). The old figure "Sharpe 2.53→5.63"
+is not reproducible from live data at all — do not cite it.
 
 ⚠️ **NAS100's justification is artifact-shaped.** "149/151 configs cut drawdown" is precisely the
 result the intrabar-trigger artifact manufactures, and on this exact pair and stage that artifact
@@ -419,7 +444,7 @@ across pairs, so the slow pairs bind:
 
 | Pair | TF | Trades/month | Months to 200 trades |
 |------|----|-------------:|---------------------:|
-| JP225_USD | 5m | 31.7 | 6.3 |
+| JP225_USD | 5m | 31.7 ◊ | 6.3 ◊ |
 | BCO_USD | 15m | 24.1 | 8.3 |
 | USD_JPY | 15m | 19.7 | 10.1 |
 | EUR_USD | 15m | 12.4 | 16.1 |
@@ -427,6 +452,11 @@ across pairs, so the slow pairs bind:
 | XAU_USD | 15m | 5.7 | **34.9** |
 | NAS100_USD | 15m | 4.6 | **43.1** |
 | UK100_GBP | 15m | 3.7 | **53.9** |
+
+◊ **JP225's rate predates the Oct 16, 2026 move to RR 3.5** and is now roughly half: the new
+config books ~166 trades/year (~14/month) on the same signals, because a 3.5R target holds each
+position far longer and only one position per pair is allowed. The retention cap is generous
+enough that nothing needs changing, but do not use 31.7/month to size a JP225 sample.
 
 ⚠️ **A stop-stage question needs far more than 200 trades.** To detect a 0.20R per-trade effect at
 80% power: JP225 needs ~9.5 months and BCO ~23 — both reachable. XAU needs ~176 months, NAS100
@@ -489,6 +519,30 @@ the whipsaw losers at a full -1R. **XAU was nearly deployed on that artifact (Se
 Broker SL/TP are different — those orders rest at Oanda and DO fill intrabar. Only *our* stop
 move is poll-limited. `scripts/replay_stop_stages.py` models this correctly; copy its handling.
 
+**⚠️ `replay_with_stage` applies a stop move ONE BAR EARLY — and it biases AGAINST stages.**
+`scripts/backtest_xag_walkforward_retune.py::replay_with_stage` (reused by
+`backtest_jp225_timeframe_study.py`) collects poll samples in
+`(bar_ns[i], bar_ns[i+1]]` and so includes the close of bar **i+1**, then tests bar i+1's
+high/low against the stop that close just moved. A move that production could only make *after*
+bar i+1 completed is therefore applied *to* bar i+1. Shift the poll index forward one bar period
+to correct it (`causal_poll()` in the JP225 study).
+
+Direction of the bias is the opposite of what it looks like: the premature move exposes the trade
+to being stopped by the very bar that triggered it, so **a stage scores worse than it should**.
+Measured on JP225 at RR 3.5, same bars, same stage, only the poll alignment differing:
+
+| Poll model | BE ROI | BE expR | paired ΔR vs naked | p |
+|---|---|---|---|---|
+| as-shipped (move applied to bar i+1's own range) | +47.8% | +0.210 | -0.325R | 0.0155 |
+| causal (move applied from bar i+2) | **+75.0%** | **+0.303** | -0.206R | **0.1024** |
+
+A "significant" result became non-significant. **No-stage runs are unaffected** — they never
+sample a poll — so only stage-vs-no-stage *comparisons* are distorted, always understating the
+stage. ⚠️ **Every stage verdict in this file derived from that engine is therefore too harsh on
+the stage**, including BCO's lock measuring "harmful"/"neutral" and the XAU/XAG "add nothing"
+conclusions. `scripts/replay_stop_stages.py` is unaffected and remains the authoritative tool for
+stage decisions against live trades. Re-examine before retiring any further stage.
+
 **⚠️ Data trap: `signal_stop_loss` is NOT the stop that was placed.**
 `oanda_trade_service.py:398-410` re-anchors SL and TP off the **live fill** before placing the
 order, and `_log_to_portfolio` writes those re-anchored levels to `stop_loss`/`take_profit` with
@@ -545,9 +599,13 @@ analysis that holds up independently of the ranking.
     di=35/atr=1.2 it is mildly positive (61% of 864 cells). Still the weakest lever; not adopted.
 - **Ratcheting SL** (1R→0.5R, 2R→1R) and **SMA20-triggered trailing SL** — tested across all 8
   pairs, all worse (XAG 5.55→-0.11). Cutting early into a fixed-RR structure destroys the
-  fat-tail wins that justify a low win rate. Do not re-test. JP225's breakeven stage is distinct:
-  it moves to a small *loss* very early rather than locking *profit*, and only helps where there
-  is no fat tail to protect.
+  fat-tail wins that justify a low win rate. Do not re-test. A breakeven stage is distinct in
+  kind — it moves to a small *loss* very early rather than locking *profit* — but it fails for the
+  same reason wherever a fat tail exists. JP225 ran one until Oct 16, 2026; with the target raised
+  to 3.5R, removing it raised absolute return (ROI +75.0% → +103.8%) but **worsened drawdown**
+  (-7.3% → -12.6%) and the per-trade difference was **not significant** (-0.206R, p=0.1024). A
+  breakeven only clearly helps where the target is small enough that there is no tail to truncate;
+  outside that, treat it as a drawdown instrument and decide on drawdown, not expectancy.
 
 ---
 
@@ -606,6 +664,7 @@ not its history. Git carries the history.
 | `backtest_htf_direction_filter.py` | HTF (4h/daily) trend-alignment gate, gap-priced + OOS-gated. Result: adopted for XAG (4h) and JP225 (daily) — see Recent Changes |
 | `download_htf_trend_data.py` | **One-off** backfill for the H4/Daily research data `backtest_htf_direction_filter.py` needs; the production cron (`download_forex.py`) keeps XAG's H4 and JP225's Daily topped up afterward, scoped to just those two pairs |
 | `download_forex_max_history.py` | **One-off** Oanda backfill — pages backwards to fill history the old row cap trimmed away. Run once after changing `MAX_ROWS`; the cron maintains it after |
+| `backtest_jp225_timeframe_study.py` | **JP225 5m-vs-15m timeframe study** + HTF-gate pairing, target_rr sweep and a 25-cell stage grid. Imports its engine from `backtest_htf_direction_filter.py` (signals) and `backtest_xag_walkforward_retune.py` (poll-limited stage replay) rather than reimplementing either. Evidence for the Oct 16 JP225 retune. ⚠️ Needs H4/Daily history back to 2023 (`--htf-dir`); the repo's files only start Sep 2024 |
 | `backtest_max_hold_sweep.py` | Max-hold time-stop sweep + hold-time census across all 8 pairs, gap-priced, poll-limited stages, financing-netted, OOS-gated. Evidence for `PAIR_MAX_HOLD_DAYS` |
 
 Their outputs live alongside in `data/backtest_*.csv` plus
@@ -614,6 +673,129 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 ---
 
 ## Recent Changes
+
+**Oct 16, 2026 — XAU_USD `risk_pct` 1.5% → 1.0%.** Position sizing only; the entry config, the
+3.5R target and "XAU stays naked" are all unchanged. XAU was the only pair above 1.0% and is the
+largest single contributor to portfolio drawdown — it was -$785 in Oct 1-15 alone, and it holds a
+position 77% of all calendar days. Taken while the account sits ~36% below its equity peak
+(cumulative P&L peaked +$5,473 on Aug 11, 2026; -$3,226 off that peak as of Oct 16), which is
+already beyond the 15-25% this file tells you to expect.
+
+Measured on XAU's own 125 real closed trades (sumR +37.1, WR 48.8%), 1.5% → 1.0% moves the
+equity path from ROI +69.4% / MaxDD -13.40% to **ROI +43.0% / MaxDD -9.04%**. Consistent with the
+Sep 7 bootstrap: median DD ~-28% → ~-20% for roughly a third of the CAGR.
+
+⚠️ **This is a worse trade on paper than it looks on risk.** Return÷drawdown falls slightly
+(5.18 → 4.76), so cutting risk is NOT free — it buys a shallower path at a real cost in
+compounding, and XAU is currently the best live pair (+$3,128 lifetime). It was accepted because
+drawdown depth, not expectancy, is the binding constraint right now. XAU's share of portfolio
+risk drops from 27% to 20%. **Revisit when the account is back near its peak** — the case for
+1.0% is entirely about the current drawdown, not about the pair.
+
+**Oct 16, 2026 — JP225_USD: `target_rr` 1.5 → 3.5 and the breakeven stage REMOVED. Timeframe
+and HTF gate unchanged (5m + daily).** Triggered by live degradation: JP225's expectancy went
++0.226R over 218 trades through July 2026 → **-0.201R over 71 trades since** (Welch t=-3.16,
+**p=0.002**) — the only pair whose decline is statistically significant, and it survives a
+Bonferroni correction across the 5 active pairs.
+
+Measured with `scripts/backtest_jp225_timeframe_study.py` (engine imported from
+`backtest_htf_direction_filter.py` + `backtest_xag_walkforward_retune.py`; gap-priced,
+broker SL/TP intrabar, stop moves poll-limited to 5m closes, pre-close flatten ON). Engine
+fidelity re-verified for JP225 specifically against the REAL `SmaScalpingDetector.analyze()`
+including the daily gate: **400 sampled bars (200 signal + 200 non-signal), 0 signal, 0
+direction, 0 stop-loss mismatches.**
+
+| JP225 5m + daily gate | Trades | WR | expR | ROI | MaxDD | Ret÷DD | fit → held-out | 2026 Q3 |
+|---|---|---|---|---|---|---|---|---|
+| RR 1.5 + BE 0.25→-0.1 (old) | 229 | 25.8% | +0.061 | +14.0% | -9.30% | 1.50 | +0.070 → +0.053 | -8.3R |
+| **RR 3.5, no stage (now)** | 166 | **36.7%** | **+0.452** | **+103.8%** | -12.55% | **8.27** | +0.639 → **+0.289** | -4.0R |
+
+⚠️ **Read these three things before retuning this pair again:**
+
+- **The RR axis has an interior optimum, not a monotone one, and 3.5 is it on every combination
+  tested.** Ret÷DD by target for the DEPLOYED config (no stage, flatten ON): 2.71 (1.5R), 2.59
+  (2.0), 3.09 (2.5), 5.82 (3.0), **8.27 (3.5)**, 7.16 (4.0), 3.34 (4.5), 2.63 (5.0), 2.73 (6.0),
+  1.50 (8.0), 1.70 (10.0). The peak is 3.5 with a contiguous 3.0–4.0 plateau and decay either
+  side. ⚠️ **Quote the ladder for the config you are deploying.** The same ladder with the stage
+  ON is a *different shape* (1.50, 2.36, 1.60, 4.72, 6.45, 3.94, 1.40, 1.23, 0.02 …) — it also
+  peaks at 3.5, but reading one as the other is how a plateau gets claimed that isn't there. All
+  four combinations (stage on/off × flatten on/off) peak at 3.5, which is what makes this
+  robust rather than a single lucky cell. Raising the target also **improved drawdown**
+  (-13.56% at 1.5R → -12.55% at 3.5R naked) because it stops truncating a tail.
+  `data/backtest_jp225_rr_ladder.csv`.
+- ⚠️ **The stage removal is NOT well evidenced. Read this before defending it.** The first
+  version of this entry claimed a significant paired ΔR of **-0.325R (t=-2.45, p=0.0155)** against
+  the stage. **That number is an engine artifact** and has been withdrawn. `replay_with_stage`
+  samples the poll price through the *next* bar's close and then tests that same bar's range, so a
+  stop move decided at bar k's close is applied to bar k's own high/low — a one-bar lookahead that
+  makes a stage look WORSE than it is (see Methodology Warnings). Correcting it
+  (`causal_poll()` in the study script) gives:
+
+  | RR 3.5, flatten ON | ROI | MaxDD | Ret÷DD | paired ΔR vs naked |
+  |---|---|---|---|---|
+  | no stage (deployed) | **+103.8%** | -12.55% | 8.27 | — |
+  | BE 0.25→-0.1, as-shipped poll | +47.8% | -7.42% | 6.45 | -0.325R, p=0.0155 |
+  | BE 0.25→-0.1, **causal poll** | +75.0% | **-7.32%** | **10.24** | -0.206R, **p=0.1024** |
+
+  So on corrected sampling: naked wins on absolute return, **the stage wins on drawdown and on
+  return-per-drawdown**, and the per-trade difference is **not significant**. With flatten OFF the
+  stage's edge is larger still (Ret÷DD 11.91 vs 5.70). Across the 25-cell grid, corrected sampling
+  leaves **1 of 25** cells significantly negative, not 8; no cell dominates naked on both ROI and
+  drawdown in either model, because naked and staged each win one axis.
+  **The honest summary is that the stage question is OPEN** — removal was adopted on the raised
+  target plus naked's higher absolute return, not on a measured edge. Re-adding BE 0.25→-0.1 is a
+  one-line change in `PAIR_LOCK_CONFIGS` and is defensible on drawdown grounds at any time.
+- **This cost drawdown protection, deliberately.** Naked is MaxDD -12.55% vs -7.42% staged, and
+  -4.0R vs +1.2R in the losing 2026 Q3. Adopted anyway because Ret÷DD is 8.27 vs 6.45 and because
+  even naked at 3.5R beats the old config in Q3 (-4.0R vs -8.3R). If drawdown control is needed
+  again, **BE 0.25→-0.2** was the best stage cell (MaxDD -7.03%, Ret÷DD 7.66, Q3 +2.2R) — never
+  the retired 0.25→-0.1, which was worst on both return and loss-streak length (18 consecutive
+  losses vs 11 naked).
+
+**Rejected in the same study — do not re-propose without new data:**
+
+- **15m instead of 5m.** Worse on every axis the question was asked about. On the identical
+  1-year window with the old settings: 5m ROI +14.0% / Sharpe 1.14 / WR 25.8% vs 15m **-2.1% /
+  -0.25 / 21.2%**, and 15m **fails** split-half where 5m passes. Out-of-sample is starker (5m
+  held-out expR +0.053 vs 15m **-0.134**, Sharpe +1.05 vs **-1.53**). Over 15m's full **3 years**
+  the production-equivalent config is flat: 248 trades, ROI **+0.3%**, Sharpe **0.05**. There is
+  no 15m edge on this pair. The RR *direction* does replicate there — 15m/3yr ROI +0.3% at
+  RR 1.5 → +14.1% at RR 3.5 — which is the only longer-window confirmation available for the
+  target change.
+  ⚠️ **That same window argues AGAINST removing the stage, and it is the only long-window
+  evidence either way.** On 15m/3yr at RR 3.5, flatten ON, the BE stage BEATS naked on return:
+  ROI 14.09% vs 6.01%, Sharpe 0.46 vs 0.21, walk-forward fit 10.17% vs 2.78% (held-out 3.56% vs
+  3.14%); naked wins only on drawdown (-13.34% vs -16.27%). Same at RR 3.0. It is a different
+  timeframe on a pair with no 15m edge at all, so it was not treated as decisive — but it is a
+  genuine contrary indication and the stage removal rests on the 1-year 5m window alone. If the
+  stage question is reopened, start here.
+- **A 4H gate, or 4H AND Daily.** The Daily gate earns its keep: trades it admits average
+  **+0.504R** vs **-0.085R** for those it blocks (difference +0.590R, Welch t=+2.43, p=0.0159),
+  keeping 54% of signals. The 4H gate separates nothing (+0.214R, p=0.39) and stacking both cuts
+  ROI to +50.8%. ⚠️ A *paired* test is meaningless for a gate with no stage — a gate changes which
+  trades are taken, not their outcomes, so paired ΔR is identically zero. Use kept-vs-blocked.
+
+⚠️ **The headline figures assume pre-close flattening is ON, and that is a Firestore toggle,
+not a repo fact.** JP225 is not in `ALWAYS_CLOSE_PAIRS`, so whether it flattens before the weekly
+close depends on `config/trade_settings → holiday_close_enabled`. With flatten **OFF** at RR 3.5
+the naked config scores ROI **+70.1%** (not +103.8%), Sharpe 2.08 (not 2.62), WR 29.7%, MaxDD
+-12.28% — while the retired stage *improves* to ROI +55.9% / Sharpe **2.37**. So with the toggle
+off the gap narrows sharply and the stage actually wins on Sharpe. The RR-3.5 peak holds either
+way (Ret÷DD 5.70 naked / 7.54 staged, both peaking at 3.5). **Check that toggle on the Settings
+page before quoting any number in this entry.**
+
+⚠️ **Max-hold now matters on JP225, where this file previously recorded it as inert.** The 7-day
+`PAIR_MAX_HOLD_DAYS` cap affected 0 JP225 trades at RR 1.5 (longest hold 3.2 days). At RR 3.5 the
+longest backtested hold is **6.6 days with flatten ON and 9.4 days with it OFF**, so the cap sits
+right at the edge and will start firing with the toggle off. Mean hold rises 2.8h → 12.7h. Re-read
+the Sep 24 max-hold entry before assuming JP225 is still unaffected.
+
+⚠️ **This change does NOT meet the walk-forward bar BCO and XAG cleared, and cannot.** Only ~1
+year of 5m history exists (70k rows ≈ 1 year), so the fit/held-out split is *inside* one
+favourable year rather than across regimes. Average hold also rises 2.8h → 12.7h, which means
+more exposure to the one-position-per-pair lockout and more opportunity for a manual close — the
+defect that already costs this system more than any config choice. Revisit once ~60 trades have
+accrued on the new target.
 
 **Sep 24, 2026 — max-hold time stop added: `PAIR_MAX_HOLD_DAYS` = 7 days on all 5 active
 pairs.** Nothing previously bounded how long a SmaScalping trade could run. Entries are built
@@ -756,10 +938,10 @@ live signals degrade.
 ⚠️ **XAU's stored `sharpe: 6.48` is a ~10-month tuned-window figure and is not reproducible.**
 Freshly measured over 3 years: **daily-annualised Sharpe 1.14, MaxDD -40.9%** (bootstrap median
 -28%; the observed -40.9% is a p5 unlucky ordering — quote the bootstrap). Its edge is heavily
-2026-concentrated: 40 of 329 trades supply **63% of lifetime R**. `risk_pct` remains 1.5%, the only
-pair above 1.0%; cutting to 1.0% takes
-bootstrap-median DD ~-28%→~-20% for a third of the CAGR, and **the incumbent cannot reach -12% DD
-by cutting risk at any level**. All 32 candidate stop-stages have ΔR CIs straddling zero: XAU stays
+2026-concentrated: 40 of 329 trades supply **63% of lifetime R**. `risk_pct` was **cut 1.5% → 1.0%
+on Oct 16, 2026** (see Recent Changes), making every active pair 1.0% except USD_JPY; the
+measurement behind it was that cutting to 1.0% takes bootstrap-median DD ~-28%→~-20% for a third
+of the CAGR, and **the incumbent cannot reach -12% DD by cutting risk at any level**. All 32 candidate stop-stages have ΔR CIs straddling zero: XAU stays
 naked.
 Sweep artifacts were NOT retained — XAU's config did not change, so only this summary is kept.
 Reproduce with the conventions in `scripts/backtest_xag_walkforward_retune.py`.
@@ -866,7 +1048,8 @@ months positive. Separately, BCO now closes before the weekly close even when
 `holiday_close_enabled` is off — see Weekly Pre-Close. That toggle being off is why the Jun 7 and
 Aug 2 2026 gap losses happened despite the pre-close job existing since April.
 
-**Aug 21, 2026 — JP225_USD breakeven stage** (0.25R→-0.1R). See Stop-Move Stages.
+**Aug 21, 2026 — JP225_USD breakeven stage** (0.25R→-0.1R). **Removed Oct 16, 2026** — see the
+Oct 16 entry.
 
 Older changes (NAS100 retune Jun 2026, XAG/BCO locks Apr 2026, USD_JPY 15m migration Apr 2026,
 the Mar 2026 move to SmaScalping 15m) are in git history.
