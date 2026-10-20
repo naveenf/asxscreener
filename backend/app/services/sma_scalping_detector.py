@@ -1,3 +1,4 @@
+import math
 from typing import Dict, Optional
 import pandas as pd
 from .strategy_interface import ForexStrategy
@@ -22,7 +23,9 @@ class SmaScalpingDetector(ForexStrategy):
                  body_ratio_min: float = 0.0,
                  vol_ratio_min: float = 0.0, atr_ratio_min: float = 0.0,
                  di_slope: bool = False, avoid_hours: list = None,
-                 htf_trend_align: bool = False):
+                 htf_trend_align: bool = False,
+                 clv_min: float = 0.0, clv_period: int = 3,
+                 eff_ratio_min: float = 0.0, eff_period: int = 10):
         self.di_threshold    = di_threshold
         self.rr              = rr
         self.adx_min         = adx_min
@@ -37,6 +40,10 @@ class SmaScalpingDetector(ForexStrategy):
         self.di_slope        = di_slope
         self.avoid_hours     = avoid_hours or []
         self.htf_trend_align = htf_trend_align
+        self.clv_min         = clv_min
+        self.clv_period      = max(1, clv_period)
+        self.eff_ratio_min   = eff_ratio_min
+        self.eff_period      = max(1, eff_period)
 
     def get_name(self) -> str:
         return "SmaScalping"
@@ -63,6 +70,10 @@ class SmaScalpingDetector(ForexStrategy):
         di_slope       = bool(params.get('di_slope',        self.di_slope))       if params else self.di_slope
         avoid_hours    = list(params.get('avoid_hours',     self.avoid_hours))    if params else self.avoid_hours
         htf_trend_align = bool(params.get('htf_trend_align', self.htf_trend_align)) if params else self.htf_trend_align
+        clv_min        = float(params.get('clv_min',        self.clv_min))        if params else self.clv_min
+        clv_period     = max(1, int(params.get('clv_period', self.clv_period)))   if params else self.clv_period
+        eff_ratio_min  = float(params.get('eff_ratio_min',  self.eff_ratio_min))  if params else self.eff_ratio_min
+        eff_period     = max(1, int(params.get('eff_period', self.eff_period)))   if params else self.eff_period
 
         if len(df) < di_persist + 1:
             return None
@@ -173,6 +184,59 @@ class SmaScalpingDetector(ForexStrategy):
         else:
             htf_trend_buy = htf_trend_sell = True
 
+        # Filter 11: CLV (Close Location Value) — Williams' Accumulation/
+        # Distribution close-location term, identical to the Money Flow
+        # Multiplier inside Chaikin Money Flow:
+        #     clv = ((Close - Low) - (High - Close)) / (High - Low)
+        #         == (2*Close - High - Low) / (High - Low)
+        # Range -1..+1 (+1 = closed on the high, 0 = midpoint, -1 = on the low).
+        # The filter quantity is the mean over the signal bar and the
+        # clv_period-1 bars before it (3 by default), i.e. an intrabar
+        # close-pressure proxy sustained over several bars.
+        # SIGNED BY DIRECTION: a short wants closes near the LOW of range, so
+        # the sell test uses -clv. A zero-range bar (High == Low) makes the
+        # per-bar clv undefined, and any NaN in the window makes the mean NaN
+        # — which FAILS CLOSED (blocks both directions), never silently
+        # permissive, matching Filter 10's convention. Uses the signal bar's
+        # own completed OHLC and earlier bars only — no lookahead.
+        # Mirrors the vectorised port in scripts/backtest_htf_direction_filter.py,
+        # backtest_xag_walkforward_retune.py and backtest_max_hold_sweep.py.
+        if clv_min > 0.0:
+            clv_buy = clv_sell = False
+            if len(df) >= clv_period:
+                window = df.iloc[-clv_period:]
+                rng_w  = (window['High'] - window['Low']).astype(float)
+                clv_w  = ((2.0 * window['Close'] - window['High'] - window['Low']).astype(float)
+                          / rng_w.where(rng_w != 0))
+                clv_n = float(clv_w.mean()) if bool(clv_w.notna().all()) else float('nan')
+                if math.isfinite(clv_n):
+                    clv_buy  = clv_n >= clv_min
+                    clv_sell = (-clv_n) >= clv_min
+        else:
+            clv_buy = clv_sell = True
+
+        # Filter 12: Efficiency Ratio — the Kaufman Efficiency Ratio (fractal
+        # efficiency), the core term of KAMA, over eff_period bars (10 by
+        # default):
+        #     eff = (Close[i] - Close[i-n]) / sum(|Close.diff()|) over the last n diffs
+        # 1.0 = a straight line, near 0 = the same distance travelled as noise.
+        # SIGNED BY DIRECTION (a short wants net DOWNWARD displacement), so the
+        # sell test uses -eff. A zero path length, a NaN close, or fewer than
+        # eff_period + 1 bars FAILS CLOSED. Signal bar close and earlier only.
+        if eff_ratio_min > 0.0:
+            eff_buy = eff_sell = False
+            if len(df) >= eff_period + 1:
+                closes = df['Close'].iloc[-(eff_period + 1):].astype(float)
+                if bool(closes.notna().all()):
+                    net  = float(closes.iloc[-1] - closes.iloc[0])
+                    path = float(closes.diff().abs().iloc[1:].sum())
+                    if path > 0:
+                        eff_n = net / path
+                        eff_buy  = eff_n >= eff_ratio_min
+                        eff_sell = (-eff_n) >= eff_ratio_min
+        else:
+            eff_buy = eff_sell = True
+
         is_buy = (
             latest['Close'] > latest['SMA20'] and
             latest['Close'] > latest['SMA50'] and
@@ -189,7 +253,9 @@ class SmaScalpingDetector(ForexStrategy):
             atr_exp_ok and
             di_slope_buy and
             session_ok and
-            htf_trend_buy
+            htf_trend_buy and
+            clv_buy and
+            eff_buy
         )
         is_sell = (
             latest['Close'] < latest['SMA20'] and
@@ -207,7 +273,9 @@ class SmaScalpingDetector(ForexStrategy):
             atr_exp_ok and
             di_slope_sell and
             session_ok and
-            htf_trend_sell
+            htf_trend_sell and
+            clv_sell and
+            eff_sell
         )
 
         if not (is_buy or is_sell):

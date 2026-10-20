@@ -192,6 +192,10 @@ def build_signals(df, params, htf=None):
     atr_ratio_min = float(params.get("atr_ratio_min", 0.0))
     di_slope = bool(params.get("di_slope", False))
     avoid_hours = set(params.get("avoid_hours", []))
+    clv_min = float(params.get("clv_min", 0.0))
+    clv_period = max(1, int(params.get("clv_period", 3)))
+    eff_ratio_min = float(params.get("eff_ratio_min", 0.0))
+    eff_period = max(1, int(params.get("eff_period", 10)))
 
     c, o, h, l = (df[x] for x in ("Close", "Open", "High", "Low"))
     s20, s50, s100 = df["SMA20"], df["SMA50"], df["SMA100"]
@@ -253,11 +257,34 @@ def build_signals(df, params, htf=None):
     else:
         htf_buy = htf_sell = T
 
+    # Filter 11: CLV (Close Location Value) — Williams' A/D close-location term,
+    # == the Money Flow Multiplier in Chaikin Money Flow — averaged over
+    # clv_period bars. Filter 12: Kaufman Efficiency Ratio (fractal efficiency,
+    # the core term of KAMA) over eff_period bars. Both are SIGNED BY TRADE
+    # DIRECTION (the sell gate tests the negated value) and both FAIL CLOSED on
+    # NaN (zero-range bar / zero path length / insufficient warm-up).
+    # Verbatim vectorised port of SmaScalpingDetector.analyze Filters 11-12.
+    if clv_min > 0.0:
+        clv = ((2 * c - h - l) / (h - l).replace(0, np.nan)).rolling(clv_period).mean()
+        clv_buy = (clv >= clv_min) & clv.notna()
+        clv_sell = ((-clv) >= clv_min) & clv.notna()
+    else:
+        clv_buy = clv_sell = T
+
+    if eff_ratio_min > 0.0:
+        eff = c.diff(eff_period) / c.diff().abs().rolling(eff_period).sum().replace(0, np.nan)
+        eff_buy = (eff >= eff_ratio_min) & eff.notna()
+        eff_sell = ((-eff) >= eff_ratio_min) & eff.notna()
+    else:
+        eff_buy = eff_sell = T
+
     common = valid & adx_ok & adx_rising_ok & vol_ok & atr_ok & sess
     is_buy = (common & (c > s20) & (c > s50) & (c > s100) & dp_pers & (dp > dm)
-              & ord_buy & spr_buy & rsi_buy & body_buy & slope_buy & htf_buy).fillna(False)
+              & ord_buy & spr_buy & rsi_buy & body_buy & slope_buy & htf_buy
+              & clv_buy & eff_buy).fillna(False)
     is_sell = (common & (c < s20) & (c < s50) & (c < s100) & dm_pers & (dm > dp)
-               & ord_sell & spr_sell & rsi_sell & body_sell & slope_sell & htf_sell).fillna(False)
+               & ord_sell & spr_sell & rsi_sell & body_sell & slope_sell & htf_sell
+               & clv_sell & eff_sell).fillna(False)
     is_sell &= ~is_buy
     return is_buy.values, is_sell.values
 

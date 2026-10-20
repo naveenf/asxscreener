@@ -115,6 +115,8 @@ Configured per-pair in `best_strategies.json`.
 | `di_spread_min` | Minimum DI+/DI- gap — rejects marginal crossings. |
 | `body_ratio_min` | Minimum candle body/range ratio — rejects dojis. |
 | `htf_trend_align` + `htf_trend_tf` | Only take a direction agreeing with the higher-timeframe trend (Close vs SMA50 on `htf_trend_tf`, e.g. `"4h"`/`"daily"`). Fails CLOSED (blocks both directions) on missing/thin HTF data — never silently permissive. See Recent Changes (Sep 2026 HTF gate). |
+| `clv_min` (+ `clv_period`, default 3) | **CLV — Close Location Value**, Williams' Accumulation/Distribution close-location term, identical to the Money Flow Multiplier inside Chaikin Money Flow: `(2·Close − High − Low) / (High − Low)`, range −1..+1 (+1 = closed on the high, 0 = midpoint). The gate is its mean over the signal bar and the two before it, **signed by direction** (a short needs closes near the LOW). `clv_min = 0.2` ≈ closes averaging in the **top 40% of each bar's range over 3 bars**, in the trade's direction. Fails CLOSED on NaN (a zero-range bar anywhere in the window). |
+| `eff_ratio_min` (+ `eff_period`, default 10) | **Kaufman Efficiency Ratio** (fractal efficiency — the core term of KAMA): `(Close − Close[−n]) / Σ|Close.diff()|` over the last n bars. 1.0 = a straight line, near 0 = all travel and no progress. **Signed by direction.** `eff_ratio_min = 0.45` = the **10-bar net move is at least 45% of the total path travelled**, in the trade's direction. Fails CLOSED on NaN (zero path length, or fewer than n+1 bars). |
 
 ---
 
@@ -125,10 +127,10 @@ mirrors it — if they disagree, the JSON wins.
 
 | Asset | TF | RR | risk | DI> | persist | Other filters | Sharpe | MaxDD% |
 |-------|----|----|------|-----|---------|---------------|--------|--------|
-| XAU_USD | 15m | 3.5 | **1.0%** | 35 | 2 | `adx_rising`, `avoid[8,9]` | 6.48 ‡ | -7.73 |
-| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `adx_min=25`, **`sma_ordered`**, `body_ratio_min=0.3`, `di_slope`, `avoid[7,8,9]`, **`htf_trend_align` (4h)** | 1.46 ‡‡ | -18.6 ‡‡ |
-| JP225_USD | 5m | **3.5** | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]`, **`htf_trend_align` (daily)** | 2.62 ◊ | -12.55 ◊ |
-| NAS100_USD | 15m | 3.5 | 1.0% | 35 | 2 | `adx_min=30`, `atr_ratio=1.2`, `di_slope`, `avoid[7,8,20-23]` | 14.36 ‡ | -1.99 |
+| XAU_USD | 15m | 3.5 | **1.0%** | 35 | 2 | `adx_rising`, `avoid[8,9]`, **`clv_min=0.2`** | 6.48 ‡ | -7.73 |
+| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `adx_min=25`, **`sma_ordered`**, `body_ratio_min=0.3`, `di_slope`, `avoid[7,8,9]`, **`htf_trend_align` (4h)**, **`clv_min=0.3`** | 1.46 ‡‡ | -18.6 ‡‡ |
+| JP225_USD | 5m | **3.5** | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]`, **`htf_trend_align` (daily)**, **`eff_ratio_min=0.45`** | 2.62 ◊ | -12.55 ◊ |
+| NAS100_USD | 15m | 3.5 | 1.0% | 35 | 2 | `adx_min=30`, `atr_ratio=1.2`, `di_slope`, `avoid[7,8,20-23]`, **`clv_min=0.2`** | 14.36 ‡ | -1.99 |
 | UK100_GBP | 15m | 3.5 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `avoid[15-19]` | 8.45 ‡ | -3.94 |
 | BCO_USD | 15m | 2.5 | 1.0% | **35** | 1 | `adx_min=15`, **`atr_ratio=1.2`**, **`di_spread=20`**, `avoid[20-23]` | 1.61 ‡‡ | -15.4 ‡‡ |
 | EUR_USD | 15m | 6.0 | 1.0% | 25 | 2 | `atr_ratio=1.0`, `avoid[20-23]` | 5.56 ‡ | -10.47 |
@@ -138,6 +140,16 @@ mirrors it — if they disagree, the JSON wins.
 Changes) — the gate was validated in a separate backtest
 (`data/backtest_htf_direction_filter.csv`) that isn't yet folded into that headline number.
 XAG's HTF-gated backtest: Sharpe 0.91→1.15 (4h) / 1.32 (daily), MaxDD -17.0%→-11.7%/-5.9%.
+
+⚠️ **XAU / XAG / JP225 / NAS100's Sharpe and MaxDD above ALSO predate `clv_min` /
+`eff_ratio_min`** (added Oct 20, 2026 — see Recent Changes). The `Other filters` column lists
+the gates, but the two metric columns describe the config as it ran WITHOUT them and so no
+longer describe what is deployed. Post-gate figures, measured over each pair's full available
+history on the Sep 28, 2026 data, are in the Oct 20 entry's table: XAU Sharpe 1.11→1.40 /
+MaxDD -29.1%→-19.2%, XAG 1.11→1.72 / -11.7%→-7.8%, JP225 2.08→2.60 / -12.3%→-9.6%,
+NAS100 0.67→1.01 / -17.9%→-14.9%. Those are 2-3 year (JP225: 1 year) windows and are NOT
+comparable to the ‡ tuned-window Sharpes in the table — quote them from the Oct 20 entry with
+its window, never from this row.
 
 ◊ **JP225's figures are the Oct 16, 2026 measurement of the config as it now stands** — 5m +
 daily gate, RR 3.5, no stop stage, gap-priced, pre-close flatten ON, over the only 5m history
@@ -458,6 +470,12 @@ config books ~166 trades/year (~14/month) on the same signals, because a 3.5R ta
 position far longer and only one position per pair is allowed. The retention cap is generous
 enough that nothing needs changing, but do not use 31.7/month to size a JP225 sample.
 
+⚠️ **Every rate above also predates the Oct 20, 2026 CLV / efficiency-ratio entry gates**, which
+cut trade count **17–20%** on XAU, XAG, JP225 and NAS100 (measured: XAU -17.8%, XAG -17.2%,
+JP225 -19.6%, NAS100 -19.6%). Scale those four rows down accordingly before sizing any sample —
+it pushes the already-unreachable pairs further out (NAS100's months-to-200 goes 43.1 → ~54).
+BCO is unchanged; it took no gate. See Recent Changes, Oct 20, 2026.
+
 ⚠️ **A stop-stage question needs far more than 200 trades.** To detect a 0.20R per-trade effect at
 80% power: JP225 needs ~9.5 months and BCO ~23 — both reachable. XAU needs ~176 months, NAS100
 ~200, UK100 ~257. **Those pairs are not answerable statistically at any practical data volume**
@@ -586,6 +604,12 @@ analysis that holds up independently of the ranking.
 - `di_persist=2` to XAG **on 5m** — kills the edge (+86%→+10%). This is 5m-specific: XAG on 15m
   and NAS100 on 15m both run persist=2 in production, where 2 candles is 30 min rather than 10.
 - `rsi_filter` on any 5m pair — adds noise.
+- **`vol_ratio_min` (tick volume) on any pair** — screened Oct 20, 2026 over 5 pairs x 5
+  thresholds and it separates nothing: no cell reached p<0.10, signs flipped between pairs, XAG
+  actively negative. Filter 6 stays implemented and set on zero pairs. **ATR-percentile** and
+  **Bollinger-width-percentile** compression gates failed the same way, with inconsistent signs.
+- `clv_min` or `eff_ratio_min` to **BCO_USD** — `clv3 >= 0.20` trades 4.6pp of drawdown for 56pp
+  of ROI (+123.7% -> +67.4%); `eff10 >= 0.45` is also worse. See Recent Changes (Oct 20, 2026).
 - `atr_ratio ≥ 1.3` to BCO — 1.3 destroys 2026 entirely (OOS expR +0.002, then -0.151 at 1.4) and
   1.5 collapses WR to 4.5%. **`atr_ratio = 1.2` is the opposite — one of the three best levers on
   the pair** (cut drawdown in 99% of 13,824 paired cells). The cliff is between 1.2 and 1.3.
@@ -673,6 +697,88 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 ---
 
 ## Recent Changes
+
+**Oct 20, 2026 — two new OPTIONAL SmaScalping entry gates: `clv_min` (CLV, Filter 11) and
+`eff_ratio_min` (Kaufman Efficiency Ratio, Filter 12). Deployed on four pairs: XAU
+`clv_min=0.2`, XAG `clv_min=0.3`, NAS100 `clv_min=0.2`, JP225 `eff_ratio_min=0.45`. BCO
+unchanged (both features measured harmful there); the three runtime-disabled pairs untouched.**
+Both default to 0.0 = OFF and are fully inert wherever not configured, exactly like
+`body_ratio_min` / `atr_ratio_min` / `di_spread_min`. Both are signed by trade direction and
+fail CLOSED on NaN. Formulas and plain-language meanings are in the Filter reference table.
+
+Measured per-pair, baseline → gated (gap-priced, broker SL/TP intrabar, production HTF gates
+applied, pre-close flatten only for BCO; data window ends **Sep 28, 2026** — a stale local copy,
+live data is on the VM):
+
+| Pair | Gate | n | WR% | expR | ROI% | MaxDD% | Sharpe | Ret÷DD | fit → held-out 2026 |
+|------|------|--:|----:|-----:|-----:|-------:|-------:|-------:|---------------------|
+| XAU_USD | `clv3 ≥ 0.20` | 320→263 | 27.2→29.3 | 0.222→0.317 | +90.93→**+117.75** | -29.11→**-19.22** | 1.11→1.40 | 3.12→6.13 | 0.105→0.237, **held-out flat: 0.978→0.940** |
+| XAG_USD | `clv3 ≥ 0.30` | 116→96 | 31.9→37.5 | 0.276→0.500 | +34.95→**+58.58** | -11.68→**-7.83** | 1.11→1.72 | 2.99→7.48 | 0.250→0.429 **and** 0.308→0.600 |
+| JP225_USD | `eff10 ≥ 0.45` | 158→127 | 29.7→33.1 | 0.358→0.513 | +70.06→**+85.95** | -12.28→**-9.56** | 2.08→2.60 | 5.71→8.99 | 0.206→0.426, 0.408→0.543 |
+| NAS100_USD | `clv3 ≥ 0.20` | 235→189 | 25.5→28.0 | 0.152→0.262 | +36.61→**+57.84** | -17.86→**-14.85** | 0.67→1.01 | 2.05→3.89 | 0.089→0.198, 0.469→0.543 |
+
+**XAG is the only variant that improves in BOTH windows** (fit and held-out). XAU's gate repairs
+a baseline that **fails this file's own split-half check** (h1 -0.016 → h1 +0.169 / h2 +0.464) —
+but its **held-out 2026 expectancy is essentially flat (0.978 → 0.940)**, so XAU's case rests on
+the fit window and on drawdown, not on unseen data. **JP225 is a one-year 5m window and cannot be
+walk-forward validated** (see the Oct 16 entry for why).
+
+**BCO rejected.** `clv3 ≥ 0.20` trades 4.6pp of drawdown (-15.33% → -10.73%) for **56pp of ROI**
+(+123.70% → +67.44%), and `eff10 ≥ 0.45` is also worse (ROI +88.00%, Sharpe 1.24 vs 1.50). This
+is the same "buying drawdown expensively" pattern this file already documents for XAG's locks —
+do not adopt it on drawdown grounds.
+
+**Plateau shape** (the promotion bar demands a contiguous plateau, not an isolated peak):
+- **XAG** peak at 0.30 with a plateau over **0.25–0.40**.
+- **NAS100** a broad flat plateau over **0.10–0.30**.
+- **JP225** peak at 0.45 with a plateau over **0.35–0.50**. ⚠️ 0.40 was initially picked and was
+  merely **the edge of the grid** — the axis had to be extended before the real peak appeared.
+  Check that an adopted cell is not a grid boundary.
+- **XAU** rises monotonically 0.125 → 0.225 and then **falls off a cliff** (ROI 125.7 at 0.225 →
+  97.5 at 0.25 → **58.4** at 0.275). **0.20 was deliberately chosen BELOW the 0.225 peak** to keep
+  clear of that cliff.
+
+⚠️ **Honest limitations — read before extending this to another pair or threshold:**
+- These are **single-axis marginals measured one pair at a time, NOT a joint walk-forward sweep.**
+  This file's own BCO `adx_min=20` precedent is that a marginal winner can be an interaction
+  artifact.
+- **27 gate cells × 5 pairs = 135 comparisons were screened**, so individual p-values are weak.
+  The defence is cross-pair replication plus the ladder/plateau shape, not significance.
+- **Trade count falls 17–20% on all four pairs.** On the slow pairs that directly lengthens the
+  time to any future ≥60-trade result (see Data Retention).
+- Kept-vs-blocked ΔR, **quoted for each pair's DEPLOYED cell**: JP225 `eff10>=0.45` **+0.766R,
+  t=+2.35, p=0.0203** (the neighbouring 0.40 cell is weaker at +0.641R, p=0.0628 — quote the cell
+  you shipped); NAS100 `clv3>=0.20` +0.523R, p=0.0631; XAG `clv3>=0.30` +1.565R, p<0.0001 but
+  resting on a **blocked group of only 10–31 trades**; XAU `clv3>=0.20` +0.330R, p=0.165 — **not
+  significant, and the XAU gate does not claim to be.** Against 135 screened comparisons a single
+  p=0.02 is not strong evidence on its own.
+- The window **ends Sep 28, 2026**.
+
+**Mechanism distinction — the "Do NOT Apply" fat-tail objection does NOT apply to these.** A stop
+stage truncates a winner that is already open; these are **entry** filters that remove losing
+entries before anything is risked. Win rate rises 2–6pp and expectancy rises on all four pairs,
+with ROI rising and drawdown falling together — the opposite signature to every stage tested here.
+
+**Also screened and REJECTED — do not re-propose without new data:**
+- **Tick volume (`vol_ratio_min`, already implemented as Filter 6, set on zero pairs)**, over 5
+  pairs × 5 thresholds: **nothing separated.** No cell reached p<0.10, signs flipped between
+  pairs, and XAG was actively negative.
+- **ATR-percentile** and **Bollinger-width-percentile** compression gates: failed with
+  inconsistent signs across pairs.
+
+Implementation: `sma_scalping_detector.py` Filters 11-12, with verbatim vectorised ports in
+`scripts/backtest_htf_direction_filter.py`, `backtest_xag_walkforward_retune.py` and
+`backtest_max_hold_sweep.py` (these three must stay in lockstep with `analyze()`). Verified three
+ways: **0 mismatches** between the vectorised engine gate and the screen's own reference formula
+over all 70,000 bars of each of the 5 active pairs, and **0 mismatches** between the real
+`SmaScalpingDetector.analyze()` and that same reference formula over a sample of 500 bars per
+pair (250 signal + 250 non-signal, each handed only the 500 bars up to and including the signal
+bar, which is also the lookahead test); BCO and the three disabled pairs produce a
+**bit-identical** signal set pre/post change; and every headline figure above reproduces from
+`best_strategies.json`. Tests:
+`backend/tests/test_sma_scalping_clv_eff_gate.py` (inertness, 0.0-means-off, fail-closed on NaN
+CLV / zero path length / short frame, direction signing both ways, the `>=` boundary, and formula
+parity against hand-computed values).
 
 **Oct 16, 2026 — XAU_USD `risk_pct` 1.5% → 1.0%.** Position sizing only; the entry config, the
 3.5R target and "XAU stays naked" are all unchanged. XAU was the only pair above 1.0% and is the
