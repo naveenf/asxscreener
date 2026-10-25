@@ -113,7 +113,7 @@ Configured per-pair in `best_strategies.json`.
 | `di_slope` | DI must be rising vs 2 candles ago (live: `iloc[-1] > iloc[-3]`). |
 | `avoid_hours` | Block entry during these UTC hours. |
 | `di_spread_min` | Minimum DI+/DI- gap — rejects marginal crossings. |
-| `body_ratio_min` | Minimum candle body/range ratio — rejects dojis. |
+| `body_ratio_min` | Minimum candle body/range ratio — rejects dojis. ⚠️ **Implemented and set on ZERO pairs** since Oct 26, 2026 — XAG was the only user and it measured expectancy-neutral there while costing ~24 trades and ~8R of total return (see Recent Changes). Sweep it against a pair's current config before adding it back; do not assume it is free in either direction. |
 | `htf_trend_align` + `htf_trend_tf` | Only take a direction agreeing with the higher-timeframe trend (Close vs SMA50 on `htf_trend_tf`, e.g. `"4h"`/`"daily"`). Fails CLOSED (blocks both directions) on missing/thin HTF data — never silently permissive. See Recent Changes (Sep 2026 HTF gate). |
 | `clv_min` (+ `clv_period`, default 3) | **CLV — Close Location Value**, Williams' Accumulation/Distribution close-location term, identical to the Money Flow Multiplier inside Chaikin Money Flow: `(2·Close − High − Low) / (High − Low)`, range −1..+1 (+1 = closed on the high, 0 = midpoint). The gate is its mean over the signal bar and the two before it, **signed by direction** (a short needs closes near the LOW). `clv_min = 0.2` ≈ closes averaging in the **top 40% of each bar's range over 3 bars**, in the trade's direction. Fails CLOSED on NaN (a zero-range bar anywhere in the window). |
 | `eff_ratio_min` (+ `eff_period`, default 10) | **Kaufman Efficiency Ratio** (fractal efficiency — the core term of KAMA): `(Close − Close[−n]) / Σ|Close.diff()|` over the last n bars. 1.0 = a straight line, near 0 = all travel and no progress. **Signed by direction.** `eff_ratio_min = 0.45` = the **10-bar net move is at least 45% of the total path travelled**, in the trade's direction. Fails CLOSED on NaN (zero path length, or fewer than n+1 bars). |
@@ -128,7 +128,7 @@ mirrors it — if they disagree, the JSON wins.
 | Asset | TF | RR | risk | DI> | persist | Other filters | Sharpe | MaxDD% |
 |-------|----|----|------|-----|---------|---------------|--------|--------|
 | XAU_USD | 15m | 3.5 | **1.0%** | 35 | 2 | `adx_rising`, `avoid[8,9]`, **`clv_min=0.2`** | 6.48 ‡ | -7.73 |
-| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `adx_min=25`, **`sma_ordered`**, `body_ratio_min=0.3`, `di_slope`, `avoid[7,8,9]`, **`htf_trend_align` (4h)**, **`clv_min=0.3`** | 1.46 ‡‡ | -18.6 ‡‡ |
+| XAG_USD | 15m | 3.0 | 1.0% | 35 | 2 | `adx_min=25`, **`sma_ordered`**, `di_slope`, `avoid[7,8,9]`, **`htf_trend_align` (4h)**, **`clv_min=0.3`** | 1.46 ‡‡ | -18.6 ‡‡ |
 | JP225_USD | 5m | **3.5** | 1.0% | 30 | 2 | `adx_min=20`, `adx_rising`, `di_slope`, `atr_ratio=1.2`, `di_spread=15`, `avoid[21-23]`, **`htf_trend_align` (daily)**, **`eff_ratio_min=0.45`** | 2.62 ◊ | -12.55 ◊ |
 | NAS100_USD | 15m | 3.5 | 1.0% | 35 | 2 | `adx_min=30`, `atr_ratio=1.2`, `di_slope`, `avoid[7,8,20-23]`, **`clv_min=0.2`** | 14.36 ‡ | -1.99 |
 | UK100_GBP | 15m | 3.5 | 1.0% | 35 | 2 | `atr_ratio=1.2`, `avoid[15-19]` | 8.45 ‡ | -3.94 |
@@ -698,6 +698,82 @@ Their outputs live alongside in `data/backtest_*.csv` plus
 
 ## Recent Changes
 
+**Oct 26, 2026 — `body_ratio_min` REMOVED from XAG_USD. No other pair changed, no code changed.**
+XAG was the only pair that set it, so the filter is now implemented and configured on **zero
+pairs**. Found by a drop-one ablation of every configured filter on all 5 active pairs — the first
+time this repo's configs were tested as joint objects rather than one marginal sweep at a time.
+
+Measured with `scripts/backtest_htf_direction_filter.py` (gap-priced, broker SL/TP intrabar,
+production 4h HTF gate applied, XAG not force-flattened), over the 4h-overlap window
+2024-09-23→2026-09-28. Data ends **Sep 28, 2026** (stale local copy; live data is on the VM).
+
+| XAG, window | n | expR | ROI% | MaxDD% | Sharpe | Ret÷DD | split-half |
+|---|--:|--:|--:|--:|--:|--:|---|
+| Full, keep 0.3 | 96 | 0.500 | +58.58 | -7.83 ◊ | 1.72 | 7.48 | +0.250/+0.750 |
+| Full, **removed** | 120 | 0.468 | **+71.28** | -5.96 ◊ | 1.83 | 11.96 | +0.333/+0.602 |
+| Fit (<2026), keep | 56 | 0.4286 | +25.78 | -7.83 ◊ | 1.49 | 3.29 | +0.000/+0.857 FAIL (also n<60) |
+| Fit, **removed** | 70 | 0.4286 | +33.20 | -5.96 ◊ | 1.78 | 5.57 | +0.257/+0.600 PASS |
+| Held-out 2026, keep | 40 | 0.600 | +26.08 | -6.79 ◊ | 2.06 | 3.84 | n<60, bar N/A |
+| Held-out 2026, **removed** | 50 | 0.523 | +28.58 | -4.90 ◊ | 1.96 | 5.83 | n<60, bar N/A |
+
+◊ **Every MaxDD and Ret÷DD figure in this table is one realised ordering and is NOT a drawdown
+verdict** — see the permutation test below. Quote total R and trade count from this table, not
+drawdown.
+
+**The case is total R and trade count, with expectancy unchanged. It is NOT a drawdown
+improvement — see the ⚠️ below.** Per-trade ΔR (removed − keep) is flat in every window: Welch
+p=0.90 full, p=1.00 fit, p=0.85 held-out. Total R rises **48.00 → 56.14 (+8.14R)** and trade count
+96 → 120 (+25%) on a pair that otherwise needs ~23 months to reach 200 trades, so the removal also
+buys back statistical power. The two trade sets share **75 entries with bit-identical R**
+(mean +0.600); the 44 off-only trades average **+0.276** against 20 keep-only at +0.200 — so the
+filter was suppressing genuinely profitable trades, just less profitable than the ones both configs
+take. That is exactly why expR falls while total R and ROI rise.
+
+⚠️ **The apparent drawdown gain is a PATH-ORDERING ARTIFACT. Do not cite -7.83% → -5.96% as a
+drawdown improvement.** Permuting each config's own realised R sequence 50,000 times (composition
+fixed, order randomised):
+
+| | observed MaxDD | percentile of its own order-null | permuted median | p5 / p95 |
+|---|---|---|---|---|
+| keep 0.3 | -7.83% | 58th (typical ordering) | **-8.65%** | -13.18 / -5.85 |
+| removed | -5.96% | **96th (only 3.9% of orderings are shallower)** | **-9.56%** | -14.25 / -6.71 |
+
+Under random ordering the removed config is shallower only **38.8%** of the time, and the median
+permuted gap is **-0.91pp in favour of KEEPING the filter**; P(random gap ≥ the observed +1.87pp)
+= 0.185. So on composition-neutral terms drawdown is unchanged to slightly worse. This is the
+same trap this file documents for XAU ("the observed -40.9% is a p5 unlucky ordering — quote the
+bootstrap") and for the max-hold sweep. Note how few distinct MaxDD values the whole ladder
+produces (-7.83, -7.78, -6.79, -5.96 recur) — MaxDD here is set by two or three loss clusters.
+
+⚠️ **Other honest limits — read before extending this:**
+- **Expectancy falls on the held-out year** (0.600 → 0.523) and ROI rises there by only +2.5pp.
+  Not significant, but the held-out window is the weakest part of the case.
+- **The split-half "repair" is partly mechanical.** FIT-keep fails on **n=56 < 60 as well as**
+  h1 = 0.000; removing the filter fixes it by admitting 14 trades past a hard threshold while fit
+  expR is literally unchanged. And **neither held-out variant clears the bar** (n=40 and n=50).
+- **This is a 2-year, single-regime result and CANNOT be walk-forward validated to 3 years**
+  until XAG's 4h history is backfilled (`scripts/download_htf_trend_data.py`) — the 4h file starts
+  2024-09-23 and the gate fails closed before coverage. It therefore does **not** meet the 3-year
+  standard the Sep 7 XAG retune itself cleared. The result is invariant to window choice
+  (4h-overlap, full 3-year 15m file and a trailing 2-year span give **bit-identical trade sets**;
+  only Sharpe moves, as a calendar-day denominator effect) and to spread (at 1.5× and 2× the
+  removal's Ret÷DD lead widens) — but invariance is not the same as a second regime.
+- `body_ratio_min=0.3` came from the **Sep 7, 2026 XAG retune, which validated a package**, so
+  removing one member is the marginal-vs-joint risk this file warns about. Checked directly: a
+  drop-one ablation of all six remaining members, run both with and without `body_ratio_min`,
+  flips **no verdict** — every other member still degrades both expR and MaxDD when dropped in
+  either host. `body_ratio_min` is the one dispensable member. This is the strongest part of the
+  case.
+- The axis is flat and low-information, and **0.3 is not special — it is second-worst** on
+  return-over-drawdown: 0.0 → 11.96 · 0.1 → 8.54 · 0.2 → 9.20 · **0.3 → 7.48** · 0.4 → 8.63 ·
+  0.5 → **7.09**. Every value 0.0–0.5 clears the promotion bar. **Do not "retune" it to 0.2 or
+  0.4** — on a flat axis that is refitting the same noise with the sign flipped.
+- n is 40–70 per sub-window. In the window, 327 raw signal bars were admitted and **99 (30.3%)
+  were suppressed** by the filter; the walked count rises only 96→120 because of the
+  one-position-at-a-time capacity limit.
+
+Reverting is re-adding one key to `data/metadata/best_strategies.json`; no code path changed.
+
 **Oct 20, 2026 — two new OPTIONAL SmaScalping entry gates: `clv_min` (CLV, Filter 11) and
 `eff_ratio_min` (Kaufman Efficiency Ratio, Filter 12). Deployed on four pairs: XAU
 `clv_min=0.2`, XAG `clv_min=0.3`, NAS100 `clv_min=0.2`, JP225 `eff_ratio_min=0.45`. BCO
@@ -1009,6 +1085,8 @@ isn't set.
 
 **Sep 7, 2026 — XAG_USD retuned on 3 years, walk-forward validated: added `sma_ordered`,
 `adx_min=25`, `body_ratio_min=0.3`, `avoid_hours=[7,8,9]`; removed `atr_ratio_min=1.2`.**
+⚠️ **`body_ratio_min=0.3` was REMOVED again on Oct 26, 2026** — see that entry. The rest of this
+package stands and was re-confirmed by the same ablation.
 The second config here validated walk-forward, after BCO. The OLD config had **no edge outside a
 single half-year**: -0.029R across the 27-month fit window (2023-09→2025-12, 205 trades), with
 2026-H1 alone contributing 36.6R of a 34.7R lifetime total (105%) and the other six sections
