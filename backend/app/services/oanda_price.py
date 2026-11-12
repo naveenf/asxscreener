@@ -867,7 +867,9 @@ class OandaPriceService:
                     to_id = qs.get("to", [None])[0]
                     if from_id is None or to_id is None:
                         continue
-                    page_params = {"from": from_id, "to": to_id}
+                    # Forward the type filter: without it the ID range returns every
+                    # transaction in the span, capped at 1000, silently dropping later ones.
+                    page_params = {"from": from_id, "to": to_id, "type": "TRANSFER_FUNDS"}
                     r_page = txn_endpoints.TransactionIDRange(accountID=account_id, params=page_params)
                     api.request(r_page)
                     page_txns = r_page.response.get("transactions", [])
@@ -933,7 +935,7 @@ class OandaPriceService:
                     to_id = qs.get("to", [None])[0]
                     if from_id is None or to_id is None:
                         continue
-                    page_params = {"from": from_id, "to": to_id}
+                    page_params = {"from": from_id, "to": to_id, "type": "DAILY_FINANCING"}
                     r_page = txn_endpoints.TransactionIDRange(accountID=account_id, params=page_params)
                     api.request(r_page)
                     page_txns = r_page.response.get("transactions", [])
