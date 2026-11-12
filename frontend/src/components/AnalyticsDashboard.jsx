@@ -68,6 +68,9 @@ const AnalyticsDashboard = () => {
 
   const activePeriodData = period_breakdowns?.[activePeriod] ?? {};
   const bucketCount      = Object.keys(activePeriodData).length;
+  // Daily/weekly compounding rates are noise, so those views show the monthly rate.
+  const growthIsYearly   = activePeriod === 'yearly';
+  const growthPct        = growthIsYearly ? summary?.cagr_pct : summary?.cmgr_pct;
 
 
   const closeTypes = summary?.close_types ?? {};
@@ -143,10 +146,10 @@ const AnalyticsDashboard = () => {
               subtext="Gross Win / Loss"
             />
             <KpiCard
-              label="Avg Monthly"
-              value={summary.avg_monthly_pct != null && summary.avg_monthly_pct !== 0 ? `${summary.avg_monthly_pct >= 0 ? '+' : ''}${summary.avg_monthly_pct.toFixed(2)}%` : '—'}
-              subtext="Month-on-month"
-              variant={summary.avg_monthly_pct > 0 ? 'pos' : summary.avg_monthly_pct < 0 ? 'neg' : undefined}
+              label={growthIsYearly ? 'CAGR' : 'CMGR'}
+              value={growthPct != null ? `${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(2)}%` : '—'}
+              subtext={growthIsYearly ? 'Compounded yearly' : 'Compounded monthly'}
+              variant={growthPct > 0 ? 'pos' : growthPct < 0 ? 'neg' : undefined}
             />
             <KpiCard
               label="Best Trade"

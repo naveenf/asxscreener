@@ -131,6 +131,52 @@ def compute_max_drawdown_pct(pnl_series, starting_balance, deposits=None) -> flo
     return max_dd
 
 
+AVG_DAYS_PER_MONTH = 365.25 / 12
+
+
+def compute_cmgr_pct(start_balance, end_balance, start_date, end_date, deposits=None) -> Optional[float]:
+    """Constant monthly % rate that grows start_balance into end_balance.
+
+    Solves  start * g^T + sum(deposit * g^t) = end  for g, where T is the months
+    in the range and t is the months each deposit was held. Deposits therefore
+    compound from their own date without counting as growth, and withdrawals
+    (negative amounts) are not read as losses. Time is measured in days, so a
+    partial first or last month counts only for the part that elapsed.
+
+    `deposits` is a list of {"date": date, "amount": float}. Returns None when no
+    meaningful rate exists: unusable balances, or a range shorter than a month,
+    where scaling a few days of P&L up to a monthly rate would be noise.
+    """
+    if not start_balance or not end_balance or start_balance <= 0 or end_balance <= 0:
+        return None
+    total_months = (end_date - start_date).days / AVG_DAYS_PER_MONTH
+    if total_months < 1:
+        return None
+
+    flows = [(float(start_balance), total_months)]
+    for dep in deposits or []:
+        held = (end_date - dep["date"]).days / AVG_DAYS_PER_MONTH
+        flows.append((dep["amount"], min(max(held, 0.0), total_months)))
+
+    def excess(growth: float) -> float:
+        return sum(amount * growth ** months for amount, months in flows) - end_balance
+
+    low, high = 1e-6, 2.0
+    while excess(high) < 0:
+        high *= 2
+        if high > 1e6:
+            return None
+    if excess(low) > 0:
+        return None
+    for _ in range(200):
+        mid = (low + high) / 2
+        if excess(mid) < 0:
+            low = mid
+        else:
+            high = mid
+    return ((low + high) / 2 - 1) * 100
+
+
 def _load_backtest_reference() -> dict:
     """Load backtest benchmark data from JSON file."""
     try:
@@ -505,7 +551,7 @@ async def get_trade_analytics(
                     "best_trade": 0, "worst_trade": 0, "profit_factor": 0,
                     "current_balance_aud": 0, "starting_balance_aud": 0,
                     "deposits_in_period": [], "modified_dietz_denominator": 0,
-                    "avg_rr": 0, "avg_monthly_pct": 0, "close_types": {}, "max_drawdown_pct": 0,
+                    "avg_rr": 0, "cmgr_pct": None, "cagr_pct": None, "close_types": {}, "max_drawdown_pct": 0,
                     "win_days": 0, "loss_days": 0, "max_win_streak": 0, "max_loss_streak": 0
                 },
                 "by_strategy": {}, "by_month": {}, "daily_breakdown": {}, "equity_curve": [],
@@ -746,7 +792,6 @@ async def get_trade_analytics(
         # they're folded into the return itself, not just the base. Confirmed
         # against a live Oanda statement Aug 2026: trade P&L alone overstated
         # the account's real monthly change by the financing amount.
-        avg_monthly_pct = 0
         monthly_buckets = period_breakdowns['monthly']
         deposits_by_month: dict = {}
         for tf in fund_transfers:
@@ -758,7 +803,6 @@ async def get_trade_analytics(
             financing_by_month[key] = financing_by_month.get(key, 0.0) + fc["amount"]
         if monthly_buckets and starting_balance_aud > 0:
             running_balance = starting_balance_aud
-            monthly_pcts = []
             for bucket in sorted(monthly_buckets.keys()):
                 bucket_pnl = monthly_buckets[bucket]['pnl']
                 bucket_financing = financing_by_month.get(bucket, 0.0)
@@ -766,10 +810,28 @@ async def get_trade_analytics(
                 pct = (bucket_change / running_balance * 100) if running_balance > 0 else 0
                 monthly_buckets[bucket]['pnl_pct'] = round(pct, 2)
                 monthly_buckets[bucket]['financing'] = round(bucket_financing, 2)
-                monthly_pcts.append(pct)
                 running_balance += bucket_change + deposits_by_month.get(bucket, 0.0)
-            avg_monthly_pct = sum(monthly_pcts) / len(monthly_pcts) if monthly_pcts else 0
-        summary['avg_monthly_pct'] = round(avg_monthly_pct, 2)
+
+        # 7c. CMGR. A range reaching today ends on Oanda's real balance; a range
+        # ending earlier has no such figure, so its end is rebuilt from the flows.
+        if period_end_dt >= date.today() and current_balance_aud > 0:
+            cmgr_end_balance = current_balance_aud
+        else:
+            cmgr_end_balance = (
+                starting_balance_aud
+                + net_pnl
+                + sum(fc["amount"] for fc in financing_charges)
+                + sum(tf["amount"] for tf in fund_transfers)
+            )
+        cmgr_pct = compute_cmgr_pct(
+            starting_balance_aud, cmgr_end_balance, period_start_dt, period_end_dt, fund_transfers
+        )
+        summary['cmgr_pct'] = round(cmgr_pct, 2) if cmgr_pct is not None else None
+        # Yearly rate is the same constant growth compounded over 12 months,
+        # derived from the unrounded monthly rate so rounding does not compound.
+        summary['cagr_pct'] = (
+            round(((1 + cmgr_pct / 100) ** 12 - 1) * 100, 2) if cmgr_pct is not None else None
+        )
 
         # 8. Backtest comparison
         backtest_ref = _load_backtest_reference()
