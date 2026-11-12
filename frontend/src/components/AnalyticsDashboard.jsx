@@ -146,7 +146,7 @@ const AnalyticsDashboard = () => {
               subtext="Gross Win / Loss"
             />
             <KpiCard
-              label={growthIsYearly ? 'CAGR' : 'CMGR'}
+              label={growthIsYearly ? 'Avg Yearly' : 'Avg Monthly'}
               value={growthPct != null ? `${growthPct >= 0 ? '+' : ''}${growthPct.toFixed(2)}%` : '—'}
               subtext={growthIsYearly ? 'Compounded yearly' : 'Compounded monthly'}
               variant={growthPct > 0 ? 'pos' : growthPct < 0 ? 'neg' : undefined}
